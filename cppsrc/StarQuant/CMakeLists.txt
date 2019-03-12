@@ -1,0 +1,75 @@
+include_directories(${StarQuantCpp_SOURCE_DIR}/StarQuant)
+set(StarQuantCppSrc
+  ./Strategy/smacross.cpp
+  ./Strategy/strategyFactory.cpp
+  ./Common/Util/calc.cpp
+  ./Common/Util/util.cpp
+  ./Common/Util/consolecontrolhandler.cpp
+  ./Common/Time/timeutil.cpp
+  ./Common/Time/getRealTime.cpp
+  ./Common/Time/heartbeat.cpp
+  ./Common/Strategy/strategymanager.cpp
+  ./Common/Strategy/strategybase.cpp
+  ./Common/Account/accountmanager.cpp
+  ./Common/Logger/logger.cpp
+  ./Common/config.cpp
+  ./Common/Performance/performancemanager.cpp
+  ./Common/Performance/reportmanager.cpp
+  ./Common/Data/marketdatafeed.cpp
+  ./Common/Data/datamanager.cpp
+  ./Common/Data/tick.cpp
+  ./Common/Data/barseries.cpp
+  ./Common/Data/bar.cpp
+  ./Common/Risk/marginmanager.cpp
+  ./Common/Risk/riskmanager.cpp
+  ./Common/Brokerage/brokerage.cpp
+  ./Common/Brokerage/exchange.cpp
+  ./Common/Order/ordermanager.cpp
+  ./Common/Order/orderbook.cpp
+  ./Common/Order/orderstatus.cpp
+  ./Common/Security/portfoliomanager.cpp
+  ./Common/Security/position.cpp
+  ./Common/Msgq/msgq.cpp
+  ./Services/backtestoptimizationengine.cpp
+  ./Services/Strategy/strategyservice.cpp
+  ./Services/Api/apiservice.cpp
+  ./Services/Data/dataservice.cpp
+  ./Services/starquant_.cpp
+  ./Services/Brokerage/brokerageservice.cpp
+  ./Services/tradingengine.cpp
+  ./Brokers/Paper/paperdatafeed.cpp
+  ./Brokers/Paper/paperbrokerage.cpp
+  ./Brokers/Ctp/ctpbrokerage.cpp
+  ./Brokers/Ctp/ctpdatafeed.cpp
+  ./Brokers/Tap/tapbrokerage.cpp
+  ./Brokers/Tap/tapdatafeed.cpp
+  ./Brokers/IB/Official/EClient.cpp
+  ./Brokers/IB/Official/SoftDollarTier.cpp
+  ./Brokers/IB/Official/OrderCondition.cpp
+  ./Brokers/IB/Official/ContractCondition.cpp
+  ./Brokers/IB/Official/OperatorCondition.cpp
+  ./Brokers/IB/Official/EClientSocket.cpp
+  ./Brokers/IB/Official/TimeCondition.cpp
+  ./Brokers/IB/Official/VolumeCondition.cpp
+  ./Brokers/IB/Official/EReader.cpp
+  ./Brokers/IB/Official/MarginCondition.cpp
+  ./Brokers/IB/Official/executioncondition.cpp
+  ./Brokers/IB/Official/ESocket.cpp
+  ./Brokers/IB/Official/StdAfx.cpp
+  ./Brokers/IB/Official/EReaderOSSignal.cpp
+  ./Brokers/IB/Official/EReaderWMSignal.cpp
+  ./Brokers/IB/Official/DefaultEWrapper.cpp
+  ./Brokers/IB/Official/EMessage.cpp
+  ./Brokers/IB/Official/PriceCondition.cpp
+  ./Brokers/IB/Official/PercentChangeCondition.cpp
+  ./Brokers/IB/Official/EDecoder.cpp
+  ./Brokers/IB/Official/EMutex.cpp
+  ./Brokers/IB/ibbrokerage.cpp
+  ./Brokers/Sina/sinadatafeed.cpp
+  ./Brokers/Backtest/backtestdatafeed.cpp
+  ./Brokers/Google/googledatafeed.cpp
+  )
+
+add_library(starquant SHARED ${StarQuantCppSrc})
+set_target_properties(starquant  PROPERTIES COMPILE_FLAGS "-fPIC")
+target_link_libraries(starquant  ${Boost_LIBRARIES} ${PYTHON_LIBRARY} yaml-cpp thosttraderapi thostmduserapi TapQuoteAPI TapTradeAPI  nanomsg pthread dl util m)

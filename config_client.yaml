@@ -1,0 +1,29 @@
+language: cn           # en, cn
+theme: dark           # white, dark
+initial_cash: 50000.0   # initial_cash
+account: 122699
+#account: Q359047946
+#-------------- active strategies -------------#
+strategy:
+  MovingAverageCrossStrategy:
+    short_window: 2
+    long_window: 8
+    symbols:
+      -  ZCE F CF 809
+      #- AAPL STK SMART
+      #- AMZN STK SMART
+  BuyAndHoldStrategy:
+    ticks: 5
+    symbols:
+      - ZCE F CF 809
+      #- AMZN STK SMART
+      #- MSFT STK SMART
+  OrderPerIntervalStrategy:
+    tick_trigger_threshold: 2
+    symbols:
+      #- ZCE F CF 809
+      #-IF1802
+      - SHFE F NI 1901
+#  TestStrategy:
+#    symbols:
+#      - SHFE F NI 1811

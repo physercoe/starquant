@@ -1,0 +1,109 @@
+#------------------ System Setting --------------#
+mode: trade      #trade, replay,
+filetoreplay: test.txt
+tickinterval: 1000
+brokerdelay: 100
+accounts:    # accounts active for trading
+
+
+#  - DU15057  #IB
+#  - DU15146  #IB
+#   - 001                  #paper broker
+#   - Q359047946       # esunny sim(Tap)
+  -  122699            # ctp simnow 1
+msgq: nanomsg           # nanomsg kafka, zmq
+log_dir: ./log
+data_dir: ./data
+#------------------ End of System ---------------#
+
+
+
+#-----------paper test-------------------------------#
+
+001:
+  broker: paper
+  api: TAP
+  sessionid: 100
+  base_currency: CNY
+  tickers:
+    - ZCE F CF 809
+#--------------end paper test------------------------#
+
+#-------------- Interactive Brokers -------------#
+
+DU15057:
+  broker: IB                 # IB CTP SINA, GOOGLE, PAPER
+  api: IB
+  port: 7497
+  base_currency: USD
+  tickers:
+    - SPY STK SMART
+    - AAPL STK SMART
+    - AMZN STK SMART
+    - TSLA STK SMART
+    - GOOGL STK SMART
+    - ESH8 FUT GLOBEX 50
+    - ESM8 FUT GLOBEX 50
+    - EUR.USD CASH IDEALPRO
+
+DU15146:
+  broker: IB
+  api: IB
+  port: 7498          # Two IB accounts should have different ports
+  base_currency: USD
+  tickers:
+# ----------------- End of IB  ------------------#
+
+#----------------- Ctp --------------------------#
+122699:
+  broker: CTP
+  brokerid: 9999
+  api: CTP
+  userid: 122699
+  password: ss92h2uj7t
+  auth_code: NA             # NA or actual auth code
+  user_prod_info: NA        # NA or actual user info
+  md_address: tcp://180.168.146.187:10010 #10010/11/13/56 218.202.237.33:10012
+  td_address: tcp://180.168.146.187:10001 #10000/1/3/50   218.202.237.33:10002
+# md_address: tcp://218.202.237.33:10012 #10010/11/13/56 218.202.237.33:10012
+# td_address: tcp://218.202.237.33:10002 #10000/1/3/50   218.202.237.33:10002
+
+  base_currency: CNY
+  tickers:
+    - IC1905
+    - IC1907
+    - IF1909
+    # - al1902
+    # - al1903
+    # - cu1902
+    # - cu1903
+    # - i1905
+    # - y1905
+    # - v1905
+    # - sn1905
+    # - ru1905
+
+
+#---------------Tap(esunny api)-----------------------
+Q359047946:
+  broker: TAP
+  api: TAP
+  sessionid: 100
+  user_name: Q359047946 
+  password: 624314 
+  auth_code: 67EA896065459BECDFDB924B29CB7DF1946CED32E26C1EAC946CED32E26C1EAC946CED32E26C1EAC946CED32E26C1EAC5211AF9FEE541DDE41BCBAB68D525B0D111A0884D847D57163FF7F329FA574E7946CED32E26C1EAC946CED32E26C1EAC733827B0CE853869ABD9B8F170E14F8847D3EA0BF4E191F5D97B3DFE4CCB1F01842DD2B3EA2F4B20CAD19B8347719B7E20EA1FA7A3D1BFEFF22290F4B5C43E6C520ED5A40EC1D50ACDF342F46A92CCF87AEE6D73542C42EC17818349C7DEDAB0E4DB16977714F873D505029E27B3D57EB92D5BEDA0A710197EB67F94BB1892B30F58A3F211D9C3B3839BE2D73FD08DD776B9188654853DDA57675EBB7D6FBBFC
+  user_prod_info: NA        # NA or actual user info
+  md_address: tcp://123.161.206.213:6161
+  md_ip: 123.161.206.213
+  md_port: 6161
+  td_address: tcp://61.163.243.173:6160
+  td_ip: 61.163.243.173
+  td_port: 6160
+  base_currency: CNY
+  tickers:
+    #- ZCE F CF 809
+    - SHFE F RB 1901
+    - SHFE F NI 1811
+ 
+
+# ---------------- End of Tap  ------------------#
