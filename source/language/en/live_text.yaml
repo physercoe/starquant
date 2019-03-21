@@ -1,0 +1,106 @@
+Region: en      # TODO: cn uptick is red, downtick is green; us is opposite
+Prog_Name: ElieQuant Python
+File: File
+Folder: Folder
+Open_Folder: Open Folder
+Exit: Exit
+Exit_App: Exit Application
+#------------------ Top Left ---------------#
+Market: Market
+Symbol: Symbol
+Name: Name
+Last_Price: Last
+Volume: Volume
+Open_Interest: Open Interest
+Bid_Size: Bid Size
+Bid: Bid
+Ask: Ask
+Ask_Size: Ask Size
+Yesterday_Close: Yest. Close
+Open_Price: Open
+High_Price: High
+Low_Price: Low
+Time: Time
+Source: Source
+SID: SID
+#------------------ End of Top Left ---------------#
+#------------------ Top Right ---------------#
+Discretionary: Discretionary
+Security_Type: Security Type
+Stock: Stock
+Future: Future
+Option: Option
+Forex: Forex
+Direction: Direction
+Long: Long
+Short: Short
+Order_Flag: Order Flag
+Open: Open
+Close: Close
+Close_Yesterday: Close Yesterday
+Close_Today: Close Today
+Force_Close : ForceClose
+Force_Off : ForceOff
+Local_Forceclose: Local_ForcClose
+Price: Price
+Quantity: Quantity
+Order_Type: Order Type
+MKT: Market
+LMT: Limit
+STP: STP
+STPLMT: STPLMT
+FAK: FAK
+FOK: FOK
+Exchange: Exchange
+Account: Account
+Place_Order: Place Order
+#------------------ End of Top Right ---------------#
+#------------------ Bottom Left ---------------#
+# 1. Log Tab
+Log: Log
+Content: Content
+# 2. Order Tab
+Order: Order
+OrderID: Order ID
+Filled: Filled
+Status: Status
+Order_Time: Order Time
+Cancel_Time: Cancel Time
+# 3. Fill Tab
+Fill: Fill
+FillID: Fill ID
+Fill_Price: Fill Price
+Fill_Time: Fill Time
+# 4. position tab
+Position: Position
+OpenQuantity: OpenQty
+CloseQuantity: CloseQty
+Yesterday_Quantity: Yest. Quantity
+Freezed: Freezed
+Average_Price: Average Price
+Open_PnL: Open PnL
+# 5. account tab
+Account: Account
+AccountID: AccountID
+Yesterday_Net: Yest. Net
+Net: Net
+Available: Available
+Commission: Commission
+Margin: Margin
+Closed_PnL: Closed PnL
+Brokerage: Brokerage
+API: API
+#------------------ End of Bottom Left ---------------#
+#------------------ Bottom Right ---------------#
+Automatic: Automatic
+SID: SID
+SName: Name
+nbuyHoldings: nbuyHoldings
+nsellHoldings: nsellHoldings
+nTrades: nTrades
+SStatus: Status
+Start_Strat: Start Strat
+Pause_Strat: Pause Strat
+Stop_Strat: Stop Strat
+Liquidate_Strat: Liquidate Strat
+

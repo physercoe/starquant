@@ -1,0 +1,110 @@
+Region: cn      # TODO: cn uptick is red, downtick is green; us is opposite
+Prog_Name: 量化交易平台（测试版v0.1，Python）
+File: 文件
+Folder: 文件夹
+Open_Folder: 打开文件夹
+Exit: 退出
+Exit_App: 退出群英量化
+#------------------ Top Left ---------------#
+Market: 行情
+Symbol: 合约代码
+Name: 合约名称
+Last_Price: 最新价
+Volume: 成交量
+Open_Interest: 持仓量
+Bid_Size: 买一量
+Bid: 买一价
+Ask: 卖一价
+Ask_Size: 卖一量
+Yesterday_Close: 昨收价
+Open_Price: 开盘价
+High_Price: 最高价
+Low_Price: 最低价
+Time: 时间
+Source: 来源
+SID: 策略编号
+#------------------ End of Top Left ---------------#
+#------------------ Top Right ---------------#
+Discretionary: 手动交易
+Security_Type: 合约类型
+Stock: 股票
+Future: 期货
+Option: 期权
+Forex: 外汇
+Direction: 方向
+Long: 多
+Short: 空
+Order_Flag: 开平
+Open: 开仓
+Close: 平仓
+Close_Yesterday: 平昨
+Close_Today: 平今
+Force_Close : ForceClose
+Force_Off : ForceOff
+Local_Forceclose: Local_ForceClose
+Price: 价格
+Quantity: 数量
+Order_Type: 指令类型
+MKT: 市价指令
+LMT: 限价指令
+STP: 市价止损
+STPLMT: 限价止损
+FAK: FAK
+FOK: FOK
+Exchange: 交易所
+Account: 账户
+Place_Order: 下单
+#------------------ End of Top Right ---------------#
+#------------------ Bottom Left ---------------#
+# 1. Log Tab
+Log: 日志
+Content: 内容
+# 2. Order Tab
+Order: 委托
+OrderID: 委托编号
+Filled: 成交数量
+Status: 委托状态
+Order_Time: 委托时间
+Cancel_Time: 撤销时间
+# 3. Fill Tab
+Fill: 成交
+FillID: 成交编号
+Fill_Price: 成交价格
+Fill_Time: 成交时间
+# 4. position tab
+Position: 持仓
+OpenQuantity: 持仓数量
+Yesterday_Quantity: 昨持仓
+Freezed: 冻结量
+Average_Price: 持仓成本
+Open_PnL: 持仓盈亏
+PosNo: 持仓编号
+# 5 closeposition tab
+ClosePosition: 平仓
+Close_Price: 平仓价格
+CloseQuantity: 平仓数量
+
+# 6. account tab
+Account: 账户
+AccountID: 账户编号
+Yesterday_Net: 昨净值
+Net: 净值
+Available: 可用
+Commission: 手续费
+Margin: 保证金
+Closed_PnL: 平仓盈亏
+Brokerage: 经纪商
+API: 接口
+#------------------ End of Bottom Left ---------------#
+#------------------ Bottom Right ---------------#
+Automatic: 自动交易
+SID: 策略ID
+SName: 策略名称
+nbuyHoldings: 持多仓数量
+nsellHoldings: 持空仓数量
+nTrades: 成交数
+SStatus: 状态
+Start_Strat: 开启策略
+Pause_Strat: 暂停策略
+Stop_Strat: 停止策略
+Liquidate_Strat: 清仓策略
