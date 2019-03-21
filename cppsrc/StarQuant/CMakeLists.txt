@@ -72,4 +72,4 @@ set(StarQuantCppSrc
 
 add_library(starquant SHARED ${StarQuantCppSrc})
 set_target_properties(starquant  PROPERTIES COMPILE_FLAGS "-fPIC")
-target_link_libraries(starquant  ${Boost_LIBRARIES} ${PYTHON_LIBRARY} yaml-cpp thosttraderapi thostmduserapi TapQuoteAPI TapTradeAPI  nanomsg pthread dl util m)
+target_link_libraries(starquant  ${Boost_LIBRARIES} ${PYTHON_LIBRARY} ${MONGOC_LIBRARIES} yaml-cpp thosttraderapi thostmduserapi TapQuoteAPI TapTradeAPI  nanomsg pthread dl util m)

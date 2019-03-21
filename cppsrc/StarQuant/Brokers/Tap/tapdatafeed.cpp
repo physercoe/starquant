@@ -163,17 +163,7 @@ void Tapdatafeed::subscribeMarketData() {
 
 		vector<string> v = stringsplit(*it, ' ');
 
-		//c.localSymbol = v[0];
-		//c.secType = v[1];
-		//c.exchange = v[2];
-		//c.currency = "USD";
-
-		//if (v.size() == 4)
-		//{
-		//	c.multiplier = v[3];
-		//}
 		APIStrncpy(stContract1.Commodity.ExchangeNo, v[0].c_str());
-
 //		APIStrncpy(stContract1.Commodity.CommodityType, v[1].c_str());
 		stContract1.Commodity.CommodityType = v[1][0];
 		APIStrncpy(stContract1.Commodity.CommodityNo, v[2].c_str());
@@ -386,10 +376,10 @@ void TAP_CDECL Tapdatafeed::OnRspSubscribeQuote(TAPIUINT32 sessionID, TAPIINT32 
 
 
 
-			FullTick k;
+			Tick_L5 k;
 
 			k.time_ = ymdhms();
-			k.datatype_ = DataType::DT_Full;
+			k.datatype_ = DataType::DT_Tick_L5;
 			k.fullsymbol_ = ticker;
 			k.price_ = info->QLastPrice;
 			k.size_ = info->QTotalQty;			// not valid without volume
@@ -405,20 +395,11 @@ void TAP_CDECL Tapdatafeed::OnRspSubscribeQuote(TAPIUINT32 sessionID, TAPIINT32 
 	//		k.upper_limit_price_ = info->UpperLimitPrice;
 	//		k.lower_limit_price_ = info->LowerLimitPrice;
 			
-			msgq_pub_->sendmsg(k.serialize());
+	//		msgq_pub_->sendmsg(k.serialize());
 
 
 
 
-			if(myID==0)
-			{
-//				quotedata[0]=info->QLastPrice;
-			}
-			if(myID==1)
-			{
-//				quotedata[1]=info->QLastPrice;
-			}
-//			m_Event.SignalEvent();
 
 		}
 
@@ -451,18 +432,18 @@ void TAP_CDECL Tapdatafeed::OnRtnQuote(const TapAPIQuoteWhole *info)
 			 <<endl;
 
             string ticker= info->Contract.Commodity.ExchangeNo;
-			ticker +=" ";
-			ticker +=info->Contract.Commodity.CommodityType;
-			ticker +=" ";
-			ticker +=info->Contract.Commodity.CommodityNo;
-			ticker +=" ";
-			ticker +=info->Contract.ContractNo1;
+			ticker += " ";
+			ticker += info->Contract.Commodity.CommodityType;
+			ticker += " ";
+			ticker += info->Contract.Commodity.CommodityNo;
+			ticker += " ";
+			ticker += info->Contract.ContractNo1;
 
-		FullTick k;
+		Tick_L5 k;
 
 //		k.time_ = hmsf();
 		k.time_ =info->DateTimeStamp;
-		k.datatype_ = DataType::DT_Full;
+		k.datatype_ = DataType::DT_Tick_L5;
 		k.fullsymbol_ = ticker;
 		k.price_ = info->QLastPrice;
 		k.size_ = info->QLastQty;			// not valid without volume

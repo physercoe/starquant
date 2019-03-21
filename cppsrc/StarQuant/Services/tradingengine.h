@@ -23,7 +23,7 @@ namespace StarQuant
 	class DLL_EXPORT_IMPORT tradingengine {
 		RUN_MODE mode = RUN_MODE::TRADE_MODE; //RUN_MODE::REPLAY_MODE;
 //		RUN_MODE mode = RUN_MODE::RECORD_MODE; //RUN_MODE::REPLAY_MODE;
-		BROKERS _broker = BROKERS::GOOGLE;
+		BROKERS _broker = BROKERS::PAPER;
 //		BROKERS _broker = BROKERS::TAP;
 		shared_ptr<marketdatafeed> pmkdata;
 		shared_ptr<brokerage> pbrokerage;

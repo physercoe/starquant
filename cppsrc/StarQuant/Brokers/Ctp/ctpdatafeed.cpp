@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
 
@@ -109,13 +110,20 @@ namespace StarQuant
 	void ctpdatafeed::subscribeMarketData() {
 		for (auto it = CConfig::instance().securities.begin(); it != CConfig::instance().securities.end(); ++it)
 		{
-			char* buffer = (char*)(*it).c_str();
+			// 转换为ctp行情订阅ticker的格式：合约品种小写+到期日
+
+			//vector<string> v = stringsplit(*it, ' ');
+			//string ctbticker = v[2];
+			//boost::to_lower(ctbticker);
+			//ctbticker = ctbticker + v[3];
+			string ctbticker = CConfig::instance().SecurityFullNameToCtpSymbol(*it);			
+			char* buffer = (char*)ctbticker.c_str();
 			char* myreq[1] = { buffer };
 			cout<<"subcribe quote "<<myreq<<endl;
 			int i = this->api_->SubscribeMarketData(myreq, 1);
 			if (i!=0){
 				cout<<"subscribe  error "<<i<<endl;
-			}		// parameter 1 = myreq has one contract; return 0 = 发送订阅行情请求失败
+			}		
 		}
 
 		/*int count = instruments.size();
@@ -133,7 +141,13 @@ namespace StarQuant
 	void ctpdatafeed::unsubscribeMarketData(TickerId reqId) {
 		for (auto it = CConfig::instance().securities.begin(); it != CConfig::instance().securities.end(); ++it)
 		{
-			char* buffer = (char*)(*it).c_str();
+			
+			//vector<string> v = stringsplit(*it, ' ');
+			//string ctbticker = v[2];
+			//boost::to_lower(ctbticker);
+			//ctbticker = ctbticker + v[3];
+			string ctbticker = CConfig::instance().SecurityFullNameToCtpSymbol(*it);
+			char* buffer = (char*)ctbticker.c_str();
 			char* myreq[1] = { buffer };
 			cout<<"unsubscribe "<<myreq<<endl;
 			int i = this->api_->UnSubscribeMarketData(myreq, 1);		// parameter 1 = myreq has one contract; return 0 = 发送订阅行情请求失败
@@ -308,15 +322,14 @@ namespace StarQuant
 	/// 深度行情通知
 	/// CTP只有一档行情
 	void ctpdatafeed::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData) {
-		// TODO: add pDepthMarketData->ExchangeID to fullsymbol			ExchangeInstID=合约在交易所的代码
-		// TODO: use pDepthMarketData->UpdateTime instead of now	
+
 		if (pDepthMarketData == nullptr){
 			return;
 		}
 			
-		cout<<"quote return "<<endl;
-		FullTick k;
-		cout<<pDepthMarketData->InstrumentID<<" price "
+		cout<<"quote return at"<< ymdhmsf6() <<endl;
+		Tick_L1 k;
+		cout<<pDepthMarketData->ExchangeID<<' '<<pDepthMarketData->ExchangeInstID<<" "<<pDepthMarketData->InstrumentID<<" price "
 			<<pDepthMarketData->LastPrice<<" vol "
 			<<pDepthMarketData->Volume<<" bidprice "
 			<<pDepthMarketData->BidPrice1<<" bidvol "
@@ -329,11 +342,24 @@ namespace StarQuant
 			<<pDepthMarketData->LowestPrice<<" pcp "
 			<<pDepthMarketData->PreClosePrice<<" ulp "
 			<<pDepthMarketData->UpperLimitPrice<<" llp "
-			<<pDepthMarketData->LowerLimitPrice<<" "
+			<<pDepthMarketData->LowerLimitPrice<<" updatime "
+			<<pDepthMarketData->UpdateTime<<" updatemillis"
+			<<pDepthMarketData->UpdateMillisec<<" "
 			<<endl;
-		k.time_ = hmsf();
-		k.datatype_ = DataType::DT_Full;
-		k.fullsymbol_ = pDepthMarketData->InstrumentID;
+		//k.time_ = ymdhmsf();
+		char buf[64];
+		char a[9];
+		char b[9];
+		strcpy(a,pDepthMarketData->ActionDay);
+		strcpy(b,pDepthMarketData->UpdateTime);
+        std::sprintf(buf, "%c%c%c%c-%c%c-%c%c %c%c:%c%c:%c%c.%.3d", a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],b[0],b[1],b[3],b[4],b[6],b[7],pDepthMarketData->UpdateMillisec );
+		//k.time_ = string(pDepthMarketData->ActionDay) + " " + string(pDepthMarketData->UpdateTime) + "." + to_string(pDepthMarketData->UpdateMillisec);
+		k.time_ = buf;
+		//cout<<"time "<<pDepthMarketData->ActionDay<< k.time_<<endl;
+		k.datatype_ = DataType::DT_Tick_L1;
+		//k.fullsymbol_ = CConfig::instance().instrument2sec[pDepthMarketData->InstrumentID];
+		k.fullsymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pDepthMarketData->InstrumentID);
+		//cout<< "quote fullsymbol"<<k.fullsymbol_<<endl;;
 		k.price_ = pDepthMarketData->LastPrice;
 		k.size_ = pDepthMarketData->Volume;			// not valid without volume
 		k.bidprice_L1_ = pDepthMarketData->BidPrice1;
@@ -359,12 +385,12 @@ namespace StarQuant
 	/////////////////////////////////////////////// end of incoming functions ///////////////////////////////////////
 
 	/////////////////////////////////////////////// begin auxiliary functions ///////////////////////////////////////
-	string ctpdatafeed::SecurityFullNameToCtpSymbol(const std::string& symbol) {
-		return symbol;
-	}
+	// string ctpdatafeed::SecurityFullNameToCtpSymbol(const std::string& symbol) {
+	// 	return symbol;
+	// }
 
-	string ctpdatafeed::CtpSymbolToSecurityFullName(const std::string& symbol) {
-		return symbol;
-	}
+	// string ctpdatafeed::CtpSymbolToSecurityFullName(const std::string& symbol) {
+	// 	return symbol;
+	// }
 	/////////////////////////////////////////////// end auxiliary functions ///////////////////////////////////////
 }

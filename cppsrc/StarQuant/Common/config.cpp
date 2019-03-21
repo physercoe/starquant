@@ -3,8 +3,10 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
+
 #include <Common/config.h>
-//#include <Common/Util/util.h>
+#include <Common/Util/util.h>
 #include <yaml-cpp/yaml.h>
 
 namespace bpt = boost::property_tree;
@@ -34,9 +36,44 @@ namespace StarQuant {
 #ifdef _DEBUG
 		std::printf("Current path is : %s\n", boost::filesystem::current_path().string().c_str());
 #endif
+
+		string contractpath = boost::filesystem::current_path().string() + "/etc/contract.yaml";
+		YAML::Node contractinfo = YAML::LoadFile(contractpath);
+		//std::cout<<contractinfo[0].  as<std::string>();
+		for (YAML::const_iterator exch = contractinfo.begin();exch != contractinfo.end();exch++)
+		{
+			string exchange = 	exch->first.as<std::string>();
+			for (YAML::const_iterator cont = exch->second.begin();cont != exch->second.end();cont++)
+			{
+				string contract = cont->first.as<std::string>();
+				string instrument = cont->second["ctpsymbol"].as<std::string>();
+				string fullsym = exchange + " " + cont->second["type"].as<std::string>() + " " + contract;
+				instrument2sec[instrument] = fullsym ;
+				sec2instrument[fullsym] = instrument;							
+			}
+
+		}
+
+		// const std::vector<string> shfe = contractinfo["SHFE"].as<std::vector<string>>();
+		// for (auto contract : shfe){
+		// 	const string instrument = contractinfo["SHFE"][contract]["ctpsymbol"].as<std::string>();
+		// 	instrument2sec[instrument] = contract;
+		// 	sec2instrument[contract] = instrument;
+		// }	
+		// const std::vector<string> shfe = contractinfo["SHFE"].as<std::vector<string>>();
+		// for (auto contract : shfe){
+		// 	const string instrument = contractinfo["SHFE"][contract]["ctpsymbol"].as<std::string>();
+		// 	instrument2sec[instrument] = contract;
+		// 	sec2instrument[contract] = instrument;
+		// }	
+
+		
+
+
+
+
 		string path = boost::filesystem::current_path().string() + "/config_server.yaml";
 		YAML::Node config = YAML::LoadFile(path);
-
 		string configmode = config["mode"].as<std::string>();
 		if (configmode =="record")
 			_mode = RUN_MODE::RECORD_MODE;
@@ -64,6 +101,13 @@ namespace StarQuant {
 		// 	_msgq = MSGQ::NANOMSG;
 		_msgq = MSGQ::NANOMSG;
 		
+		_mongodbaddr = config["dbaddr"].as<std::string>();
+		_mongodbname = config["dbname"].as<std::string>();
+		 
+
+
+
+
 		// TODO: support multiple accounts; currently only the last account loop counts
 		const std::vector<string> accounts = config["accounts"].as<std::vector<string>>();
 		for (auto s : accounts) {
@@ -91,7 +135,7 @@ namespace StarQuant {
 				account = s;
 				brokerapi = "TAP";
 				tap_sessionid = config[s]["sessionid"].as<unsigned int>();
-				std::cout<<tap_sessionid;
+				//std::cout<<tap_sessionid;
 				//tap_broker_id = config[s]["broker"].as<std::string>();
 				//tap_user_id = s;
 				tap_password = config[s]["password"].as<std::string>();
@@ -117,6 +161,11 @@ namespace StarQuant {
 			for (auto s : tickers)
 			{
 				securities.push_back(s);
+				// vector<string> v = stringsplit(s, ' ');
+				// string ctbticker = v[2];
+				// boost::to_lower(ctbticker);
+				// ctbticker = ctbticker + v[3];
+				// instrument2sec[ctbticker] = s;
 			}
 		}
 	}
@@ -140,4 +189,30 @@ namespace StarQuant {
 		//return full_path.string();
 		return _data_dir;
 	}
+
+	string CConfig::SecurityFullNameToCtpSymbol(const std::string& symbol) {
+		vector<string> v = stringsplit(symbol, ' ');
+		string tmp = v[0] + " " + v[1] + " " + v[2];
+		string ctbticker = sec2instrument[tmp] + v[3];
+		return ctbticker;
+	}
+
+	string CConfig::CtpSymbolToSecurityFullName(const std::string& symbol) {
+		string fullsymbol;
+		string num = symbol;
+		string alpha = symbol;
+		num.erase(std::remove_if(num.begin(),num.end(),&isalpha),num.end());
+		alpha.erase(std::remove_if(alpha.begin(),alpha.end(),&isdigit),alpha.end());
+		string tmp = instrument2sec[alpha];
+		fullsymbol = tmp + " " + num;
+		return fullsymbol;
+	}
+	
+
+
+
+
+
+
+
 }

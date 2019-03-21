@@ -77,15 +77,14 @@ namespace StarQuant
 
 					vector<string> vs = stringsplit(msg, SERIALIZATION_SEPARATOR);
 					//cout<<"Databoad rec msg size:"<<vs.size()<<endl;
-					if ((vs.size() == 6) || (vs.size() == 33))	// Always Tick; actual contents are determined by DataType
+					if ((DataType)(atoi(vs[0].c_str())) == DataType::DT_Trade)	// Always Tick; actual contents are determined by DataType
 					{
 						Tick k;
-						k.fullsymbol_ = vs[0];
-						k.time_ = vs[1];					//atoi(vs[1].c_str());
-						k.datatype_ = (DataType)(atoi(vs[2].c_str()));
+						k.fullsymbol_ = vs[1];
+						k.time_ = vs[2];					//atoi(vs[1].c_str());
 						k.price_ = atof(vs[3].c_str());
 						k.size_ = atoi(vs[4].c_str());
-						k.depth_ = atoi(vs[5].c_str());
+						k.depth_ = 1;
 
 						if (DataManager::instance()._latestmarkets.find(k.fullsymbol_) != DataManager::instance()._latestmarkets.end()) {
 							//cout<<"Databoard latest price:"<<k.price_<<" Datatype:"<<k.datatype_<<endl;
@@ -94,26 +93,25 @@ namespace StarQuant
 						}
 						//cout<<"Databoard latest price:"<<k.fullsymbol_.length()<<DataManager::instance()._latestmarkets[k.fullsymbol_].price_<<endl;
 					}
-					else if (vs.size() == 17)		// Always Tick; actual contents are determined by DataType
+					else if ((DataType)(atoi(vs[0].c_str())) == DataType::DT_Tick_L1)		// Always Tick; actual contents are determined by DataType
 					{
-						FullTick k;
-						k.fullsymbol_ = vs[0];
-						k.time_ = vs[1];
-						k.datatype_ = (DataType)(atoi(vs[2].c_str()));
+						Tick_L1 k;
+						k.fullsymbol_ = vs[1];
+						k.time_ = vs[2];
 						k.price_ = atof(vs[3].c_str());
 						k.size_ = atoi(vs[4].c_str());
-						k.depth_ = atoi(vs[5].c_str());
-						k.bidprice_L1_ = atoi(vs[6].c_str());
-						k.bidsize_L1_ = atoi(vs[7].c_str());
-						k.askprice_L1_ = atoi(vs[8].c_str());
-						k.asksize_L1_ = atoi(vs[9].c_str());
-						k.open_interest = atoi(vs[10].c_str());
-						k.open_ = atoi(vs[11].c_str());
-						k.high_ = atoi(vs[12].c_str());
-						k.low_ = atoi(vs[13].c_str());
-						k.pre_close_ = atoi(vs[14].c_str());
-						k.upper_limit_price_ = atoi(vs[15].c_str());
-						k.lower_limit_price_ = atoi(vs[16].c_str());
+						k.depth_ = 1;
+						k.bidprice_L1_ = atoi(vs[5].c_str());
+						k.bidsize_L1_ = atoi(vs[6].c_str());
+						k.askprice_L1_ = atoi(vs[7].c_str());
+						k.asksize_L1_ = atoi(vs[8].c_str());
+						k.open_interest = atoi(vs[9].c_str());
+						k.open_ = atoi(vs[10].c_str());
+						k.high_ = atoi(vs[11].c_str());
+						k.low_ = atoi(vs[12].c_str());
+						k.pre_close_ = atoi(vs[13].c_str());
+						k.upper_limit_price_ = atoi(vs[14].c_str());
+						k.lower_limit_price_ = atoi(vs[15].c_str());
 
 						if (DataManager::instance()._latestmarkets.find(k.fullsymbol_) != DataManager::instance()._latestmarkets.end()) {
 							DataManager::instance().SetTickValue(k);
@@ -121,7 +119,48 @@ namespace StarQuant
 						}
 						
 					}
+					else if ((DataType)(atoi(vs[0].c_str())) == DataType::DT_Tick_L5)		// Always Tick; actual contents are determined by DataType
+					{
+						Tick_L5 k;
+						k.fullsymbol_ = vs[1];
+						k.time_ = vs[2];
+						k.price_ = atof(vs[3].c_str());
+						k.size_ = atoi(vs[4].c_str());
+						k.depth_ = 5;
+						k.bidprice_L1_ = atoi(vs[5].c_str());
+						k.bidsize_L1_ = atoi(vs[6].c_str());
+						k.askprice_L1_ = atoi(vs[7].c_str());
+						k.asksize_L1_ = atoi(vs[8].c_str());
+						k.bidprice_L2_ = atoi(vs[9].c_str());
+						k.bidsize_L2_ = atoi(vs[10].c_str());
+						k.askprice_L2_ = atoi(vs[11].c_str());
+						k.asksize_L2_ = atoi(vs[12].c_str());
+						k.bidprice_L3_ = atoi(vs[13].c_str());
+						k.bidsize_L3_ = atoi(vs[14].c_str());
+						k.askprice_L3_ = atoi(vs[15].c_str());
+						k.asksize_L3_ = atoi(vs[16].c_str());
+						k.bidprice_L4_ = atoi(vs[17].c_str());
+						k.bidsize_L4_ = atoi(vs[18].c_str());
+						k.askprice_L4_ = atoi(vs[19].c_str());
+						k.asksize_L4_ = atoi(vs[20].c_str());
+						k.bidprice_L5_ = atoi(vs[21].c_str());
+						k.bidsize_L5_ = atoi(vs[22].c_str());
+						k.askprice_L5_ = atoi(vs[23].c_str());
+						k.asksize_L5_ = atoi(vs[24].c_str());
+						k.open_interest = atoi(vs[25].c_str());
+						k.open_ = atoi(vs[26].c_str());
+						k.high_ = atoi(vs[27].c_str());
+						k.low_ = atoi(vs[28].c_str());
+						k.pre_close_ = atoi(vs[29].c_str());
+						k.upper_limit_price_ = atoi(vs[30].c_str());
+						k.lower_limit_price_ = atoi(vs[31].c_str());
 
+						if (DataManager::instance()._latestmarkets.find(k.fullsymbol_) != DataManager::instance()._latestmarkets.end()) {
+							DataManager::instance().SetTickValue(k);
+							// PRINT_TO_FILE("ERROR:[%s,%d][%s]%s.\n", __FILE__, __LINE__, __FUNCTION__, buf);
+						}
+						
+					}
 
 
 
@@ -170,6 +209,7 @@ namespace StarQuant
 
 				if (!msg.empty())
 					fwriter.put(msg);
+					fwriter.insertdb(msg);
 			}
 		}
 		//PRINT_TO_FILE("INFO:[%s,%d][%s]recording service stopped: %s\n", __FILE__, __LINE__, __FUNCTION__);

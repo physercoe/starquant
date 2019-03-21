@@ -58,8 +58,8 @@ namespace StarQuant {
 			_60s[k.fullsymbol_].newTick(k);
 			//PortfolioManager::instance()._positions[sym].
 		}
-		else if (k.datatype_ == DataType::DT_Full) {
-			//_latestmarkets[k.fullsymbol_] = dynamic_cast<FullTick&>(k);		// default assigement shallow copy
+		else if (k.datatype_ == DataType::DT_Tick_L1 || k.datatype_ == DataType::DT_Tick_L5 || k.datatype_ == DataType::DT_Tick_L20 ) {
+			//_latestmarkets[k.fullsymbol_] = dynamic_cast<Tick_L5&>(k);		// default assigement shallow copy
 			_latestmarkets[k.fullsymbol_].price_ = k.price_;
 			_latestmarkets[k.fullsymbol_].size_ = k.size_;
 			//cout<<"settickvalue price"<<_latestmarkets[k.fullsymbol_].price_<<endl;
@@ -80,7 +80,7 @@ namespace StarQuant {
 
 	void DataManager::rebuild() {
 		for (auto& s : CConfig::instance().securities) {
-			FullTick k;
+			Tick_L5 k;
 			k.fullsymbol_ = s;
 			_latestmarkets[s] = k;
 

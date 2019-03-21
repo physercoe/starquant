@@ -57,6 +57,25 @@ namespace StarQuant {
 
 		return string(buf);
 	}
+	string ymdhmsf6() {
+		std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+		std::chrono::system_clock::duration tp = now.time_since_epoch();
+		tp -= std::chrono::duration_cast<std::chrono::seconds>(tp);
+		time_t tt = std::chrono::system_clock::to_time_t(now);
+		
+		// tm t = *gmtime(&tt);
+		 tm t = *localtime(&tt);
+		
+		char buf[64];
+		std::sprintf(buf, "%04u-%02u-%02u %02u:%02u:%02u.%06u", t.tm_year + 1900,
+			t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
+			static_cast<unsigned>(tp / std::chrono::microseconds(1)));
+
+		return string(buf);
+	}
+
+
+
 
 	string hmsf() {
 		std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
@@ -220,4 +239,34 @@ namespace StarQuant {
 		int span2 = inttimetointtimespan(latertime);
 		return span2 - span1;
 	}
+
+
+
+
+	int64_t string2unixtimems(const string& s)
+	{
+		struct tm tm_;
+		int64_t unixtimems;
+		int year, month, day, hour, minute,second,millisec;
+		sscanf(s.c_str(),"%d-%d-%d %d:%d:%d.%d", &year, &month, &day, &hour, &minute, &second,&millisec);
+		tm_.tm_year  = year-1900;
+		tm_.tm_mon   = month-1;
+		tm_.tm_mday  = day;
+		tm_.tm_hour  = hour;
+		tm_.tm_min   = minute;
+		tm_.tm_sec   = second;
+		tm_.tm_isdst = 0;
+
+		time_t t_ = mktime(&tm_);
+		unixtimems = t_*1000+millisec;
+		return unixtimems;
+
+
+	}
+
+
+
+ 
+
+
 }

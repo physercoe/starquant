@@ -75,8 +75,8 @@ namespace StarQuant
 		int loginReqId_;
 		CThostFtdcMdApi* api_;		// TODO: change it to unique_ptr
 
-		string SecurityFullNameToCtpSymbol(const std::string& symbol);
-		string CtpSymbolToSecurityFullName(const std::string& symbol);
+		//string SecurityFullNameToCtpSymbol(const std::string& symbol);
+		//string CtpSymbolToSecurityFullName(const std::string& symbol);
 		
 	};
 }

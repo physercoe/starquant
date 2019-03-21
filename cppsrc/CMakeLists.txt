@@ -20,7 +20,7 @@ FIND_PACKAGE(PythonLibs)
 find_package(yamlcpp REQUIRED)
 find_package(nanomsg REQUIRED)
 find_package(cereal REQUIRED)
-
+find_package(libmongoc-1.0 REQUIRED)
 
 INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
 INCLUDE_DIRECTORIES(${RAPIDJSON_INCLUDE_DIRS})
@@ -29,7 +29,7 @@ INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
 INCLUDE_DIRECTORIES(${YAMLCPP_INCLUDE_DIR})
 include_directories(${NANOMSG_INCLUDE_DIR})
 include_directories(${CEREAL_INCLUDE_DIR})
-
+include_directories(${MONGOC_INCLUDE_DIRS})
 
 
 

@@ -1,0 +1,341 @@
+SHFE:
+  CU:
+    chinesename: 铜
+    type: F
+    ctpsymbol: cu
+    multiplier: 5
+    mintick: 10
+  AL:
+    chinesename: 铝
+    type: F
+    ctpsymbol: al
+    multiplier: 5
+    mintick: 5
+  ZN:
+    chinesename: 锌
+    type: F
+    ctpsymbol: zn
+    multiplier: 5
+    mintick: 5
+  AU:
+    chinesename: 黄金
+    type: F
+    ctpsymbol: au
+    multiplier: 1000
+    mintick: 0.05
+  RB:
+    chinesename: 螺纹钢
+    type: F
+    ctpsymbol: rb
+    multiplier: 10
+    mintick: 1
+  WR:
+    chinesename: 线材
+    type: F
+    ctpsymbol: wr
+    multiplier: 10
+    mintick: 1
+  FU:
+    chinesename: 燃料油
+    type: F
+    ctpsymbol: fu
+    multiplier: 10
+    mintick: 1
+  RU:
+    chinesename: 天然橡胶
+    type: F
+    ctpsymbol: ru
+    multiplier: 10
+    mintick: 5
+  PB:
+    chinesename: 铅
+    type: F
+    ctpsymbol: pb
+    multiplier: 5
+    mintick: 5
+  AG:
+    chinesename: 白银
+    type: F
+    ctpsymbol: ag
+    multiplier: 15
+    mintick: 1
+  NI:
+    chinesename: 镍
+    type: F
+    ctpsymbol: ni
+    multiplier: 1
+    mintick: 10
+  SN:
+    chinesename: 锡
+    type: F
+    ctpsymbol: sn
+    multiplier: 1
+    mintick: 10
+  BU:
+    chinesename: 沥青
+    type: F
+    ctpsymbol: bu
+    multiplier: 10
+    mintick: 2
+  HC:
+    chinesename: 热卷
+    type: F
+    ctpsymbol: hc
+    multiplier: 10
+    mintick: 1
+
+DCE:
+  C:
+    chinesename: 玉米
+    type: F
+    ctpsymbol: c
+    multiplier: 10
+    mintick: 1
+  A:
+    chinesename: 大豆1号
+    type: F
+    ctpsymbol: a
+    multiplier: 10
+    mintick: 1
+  B:
+    chinesename: 大豆2号
+    type: F
+    ctpsymbol: b
+    multiplier: 10
+    mintick: 1
+  CS:
+    chinesename: 玉米淀粉
+    type: F
+    ctpsymbol: cs
+    multiplier: 10
+    mintick: 1
+  M:
+    chinesename: 豆粕
+    type: F
+    ctpsymbol: m
+    multiplier: 10
+    mintick: 1
+  Y:
+    chinesename: 豆油
+    type: F
+    ctpsymbol: y
+    multiplier: 10
+    mintick: 2
+  P:
+    chinesename: 棕榈油
+    type: F
+    ctpsymbol: p
+    multiplier: 10
+    mintick: 2
+  L:
+    chinesename: 聚乙烯
+    type: F
+    ctpsymbol: l
+    multiplier: 5
+    mintick: 5
+  V:
+    chinesename: 聚氯乙烯
+    type: F
+    ctpsymbol: v
+    multiplier: 5
+    mintick: 5
+  J:
+    chinesename: 焦炭
+    type: F
+    ctpsymbol: j
+    multiplier: 100
+    mintick: 0.5
+  JM:
+    chinesename: 焦煤
+    type: F
+    ctpsymbol: jm
+    multiplier: 60
+    mintick: 0.5
+  I:
+    chinesename: 铁矿石
+    type: F
+    ctpsymbol: i
+    multiplier: 100
+    mintick: 0.5    
+  JD:
+    chinesename: 鸡蛋
+    type: F
+    ctpsymbol: jd
+    multiplier: 5
+    mintick: 1
+  FB:
+    chinesename: 纤维板
+    type: F
+    ctpsymbol: fb
+    multiplier: 500
+    mintick: 0.05
+  BB:
+    chinesename: 胶合板
+    type: F
+    ctpsymbol: bb
+    multiplier: 500
+    mintick: 0.05
+  PP:
+    chinesename: 聚丙烯
+    type: F
+    ctpsymbol: a
+    multiplier: 5
+    mintick: 1
+
+ZCE:
+  PM:
+    chinesename: 普麦
+    type: F
+    ctpsymbol: PM
+    multiplier: 50
+    mintick: 1
+  WH:
+    chinesename: 强麦
+    type: F
+    ctpsymbol: WH
+    multiplier: 20
+    mintick: 1
+  CF:
+    chinesename: 棉花
+    type: F
+    ctpsymbol: CF
+    multiplier: 5
+    mintick: 5
+  SR:
+    chinesename: 白糖
+    type: F
+    ctpsymbol: SR
+    multiplier: 10
+    mintick: 1
+  OI:
+    chinesename: 菜籽油
+    type: F
+    ctpsymbol: OI
+    multiplier: 10
+    mintick: 1
+  TA:
+    chinesename: PTA
+    type: F
+    ctpsymbol: TA
+    multiplier: 5
+    mintick: 2
+  RI:
+    chinesename: 早籼稻
+    type: F
+    ctpsymbol: RI
+    multiplier: 20
+    mintick: 1
+  LR:
+    chinesename: 晚籼稻
+    type: F
+    ctpsymbol: LR
+    multiplier: 20
+    mintick: 1
+  MA:
+    chinesename: 甲醇
+    type: F
+    ctpsymbol: MA
+    multiplier: 10
+    mintick: 1
+  FG:
+    chinesename: 玻璃
+    type: F
+    ctpsymbol: FG
+    multiplier: 20
+    mintick: 1
+  RS:
+    chinesename: 油菜籽
+    type: F
+    ctpsymbol: RS
+    multiplier: 10
+    mintick: 1
+  RM:
+    chinesename: 菜籽粕
+    type: F
+    ctpsymbol: RM
+    multiplier: 10
+    mintick: 1
+  ZC:
+    chinesename: 动力煤
+    type: F
+    ctpsymbol: ZC
+    multiplier: 100
+    mintick: 0.2
+  JR:
+    chinesename: 粳稻
+    type: F
+    ctpsymbol: JR
+    multiplier: 20
+    mintick: 1
+  SF:
+    chinesename: 硅铁
+    type: F
+    ctpsymbol: SF
+    multiplier: 5
+    mintick: 2
+  SM:
+    chinesename: 硅锰
+    type: F
+    ctpsymbol: SM
+    multiplier: 5
+    mintick: 2
+  CY:
+    chinesename: 棉纱
+    type: F
+    ctpsymbol: CY
+    multiplier: 5
+    mintick: 5
+  AP:
+    chinesename: 苹果
+    type: F
+    ctpsymbol: AP
+    multiplier: 10
+    mintick: 1
+
+CFFEX:
+  IF:
+    chinesename: 沪深300
+    type: F
+    ctpsymbol: IF
+    multiplier: 300
+    mintick: 0.2
+  IH:
+    chinesename: 上证50
+    type: F
+    ctpsymbol: IH
+    multiplier: 300
+    mintick: 0.2
+  IC:
+    chinesename: 中证500
+    type: F
+    ctpsymbol: IC
+    multiplier: 200
+    mintick: 0.2
+  TS:
+    chinesename: 2年期国债
+    type: F
+    ctpsymbol: TS
+    multiplier: 2000000
+    mintick: 0.005
+  T:
+    chinesename: 10年期国债
+    type: F
+    ctpsymbol: T
+    multiplier: 1000000
+    mintick: 0.005
+  TF:
+    chinesename: 5年期国债
+    type: F
+    ctpsymbol: TF
+    multiplier: 1000000
+    mintick: 1
+INE:
+  SC:
+    chinesename: 原油
+    type: F
+    ctpsymbol: sc
+    multiplier: 1000
+    mintick: 0.1
+
+
+

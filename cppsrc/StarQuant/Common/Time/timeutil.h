@@ -39,6 +39,7 @@ namespace StarQuant {
 	string ymd();
 	string ymdhms();
 	string ymdhmsf();
+	string ymdhmsf6();
 	string hmsf();
 	int hmsf2inttime(string hmsf);
 
@@ -58,6 +59,7 @@ namespace StarQuant {
 	int inttimespantointtime(int timespan);						// # of seconds to int time
 	int inttimeadd(int firsttime, int timespaninseconds);		// in seconds
 	int inttimediff(int firsttime, int latertime);				// in seconds
+	int64_t string2unixtimems(const string& s);
 }
 
 #endif   // _StarQuant_Common_TimeUtil_H

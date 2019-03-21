@@ -111,6 +111,20 @@ printf("%s ",ymdhmsf().c_str());printf(__VA_ARGS__);\
 		string logDir();
 		string dataDir();
 
+
+		string SecurityFullNameToCtpSymbol(const std::string& symbol);
+		string CtpSymbolToSecurityFullName(const std::string& symbol);
+
+
+
+
+
+
+
+
+
+
+
 		/******************************************* Brokerage ***********************************************/
 		// TODO: move to brokerage
 		string ib_host = "127.0.0.1";
@@ -143,8 +157,29 @@ printf("%s ",ymdhmsf().c_str());printf(__VA_ARGS__);\
 		uint16_t tap_broker_port = 0;
 		
 		
-		vector<string> securities;
 		/**************************************** End of Brokeragee ******************************************/
+		/****************************************Securities List *************************************/
+		vector<string> securities;  //full symbol
+		map<string,string> instrument2sec; //instrument id to full symbol map
+		map<string,string> sec2instrument; //symbol to ctp instrument
+
+
+
+		/****************************************End of Securities List *************************************/
+
+		/**************************************** Database info ******************************************/
+		string _mongodbaddr = "mongodb://localhost:27017";
+		string _mongodbname = "";
+		//vector<string> 
+
+
+
+
+
+		/**************************************** End of Database ******************************************/
+
+
+
 
 		/******************************************* Message Queue ***********************************************/
 		string MKT_DATA_PUBSUB_PORT = "55555";				// market/tick data

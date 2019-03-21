@@ -32,9 +32,50 @@ namespace StarQuant {
 		virtual string serialize() const;
 	};
 
-	class DLL_EXPORT_IMPORT FullTick : public Tick {
+
+	class DLL_EXPORT_IMPORT Tick_L1 : public Tick {
 	public:
-		FullTick() : Tick()
+		Tick_L1() : Tick()
+			, bidprice_L1_(0.0)
+			, bidsize_L1_(0)
+			, askprice_L1_(0.0)
+			, asksize_L1_(0)
+			, open_interest(0)
+			, open_(0.0)
+			, high_(0.0)
+			, low_(0.0)
+			, pre_close_(0.0)
+			, upper_limit_price_(0.0)
+			, lower_limit_price_(0.0)
+		{
+			datatype_ = DataType::DT_Tick_L1;
+			depth_ = 1;
+		}
+
+		Tick_L1(const string& s) : Tick(s) {}
+		~Tick_L1() {}
+
+		// assuming base Tick class stores trade/last data
+		// here it adds bid/ask data
+		double bidprice_L1_;
+		int bidsize_L1_;
+		double askprice_L1_;
+		int asksize_L1_;
+		int open_interest;
+		double open_;
+		double high_;
+		double low_;
+		double pre_close_;
+		double upper_limit_price_;
+		double lower_limit_price_;
+
+		virtual string serialize() const;		// overriding
+	};
+
+
+	class DLL_EXPORT_IMPORT Tick_L5 : public Tick {
+	public:
+		Tick_L5() : Tick()
 			, bidprice_L1_(0.0)
 			, bidsize_L1_(0)
 			, askprice_L1_(0.0)
@@ -63,13 +104,12 @@ namespace StarQuant {
 			, upper_limit_price_(0.0)
 			, lower_limit_price_(0.0)
 		{
+			datatype_ = DataType::DT_Tick_L5;
+			depth_ = 5;
 		}
 
-		FullTick(const string& s) : Tick(s) {}
-		~FullTick() {}
-
-		// assuming base Tick class stores trade/last data
-		// here it adds bid/ask data
+		Tick_L5(const string& s) : Tick(s) {}
+		~Tick_L5() {}
 		double bidprice_L1_;
 		int bidsize_L1_;
 		double askprice_L1_;

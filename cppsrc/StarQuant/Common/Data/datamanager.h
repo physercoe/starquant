@@ -44,7 +44,7 @@ namespace StarQuant
 		//atomic<uint64_t> count_ = { 0 };
 		uint64_t count_ = 0;
 
-		std::map<string, FullTick> _latestmarkets;
+		std::map<string, Tick_L5> _latestmarkets;
 		//std::map<string, BarSeries> _5s;
 		//std::map<string, BarSeries> _15s;
 		std::map<string, BarSeries> _60s;
