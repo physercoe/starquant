@@ -150,7 +150,7 @@ class Backtest(object):
         self._events_engine.run()
         self._performance_manager.update_final_performance(self._current_time, self._portfolio_manager, self._data_board)
         self._performance_manager.save_results(self._symbols,self._hist_dir,self._output_dir)
-        self._performance_manager.create_tearsheet()
+        self._performance_manager.create_tearsheet(self._output_dir)
 
     # ------------------------------- end of public functions -----------------------------#
 

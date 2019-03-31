@@ -9,7 +9,7 @@ from queue import Queue, Empty
 from PyQt5 import QtCore, QtWidgets, QtGui
 from datetime import datetime
 
-from source.event.event import EventType
+from source.event.event import *   #EventType
 from source.order.order_flag import OrderFlag
 from .ui_market_window import MarketWindow
 from .ui_order_window import OrderWindow
@@ -62,7 +62,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._outgoing_queue = Queue()                    # outgoing queue from client side
         self._ui_events_engine = LiveEventEngine()        # update ui
         self._outgoing_request_events_engine = LiveEventEngine()          # events/actions request from client
-        self._schedule_timer = QtCore.QTimer()                  # task scheduler; TODO produce result_packet
+        self._flowrate_timer = QtCore.QTimer()                  #  TODO add task scheduler;produce result_packet
 
         # 3. data board
         self._data_board = DataBoard()
@@ -102,15 +102,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self._ui_events_engine.register_handler(EventType.GENERAL, self.log_window.msg_signal.emit)
 
         self._outgoing_request_events_engine.register_handler(EventType.ORDER, self._outgoing_order_request_handler)
-        self._outgoing_request_events_engine.register_handler(EventType.ACCOUNT, self._outgoing_account_request_handler)
-        self._outgoing_request_events_engine.register_handler(EventType.POSITION, self._outgoing_position_request_handler)
-        self._outgoing_request_events_engine.register_handler(EventType.GENERAL, self._outgoing_general_msg_request_handler)
-
+        self._outgoing_request_events_engine.register_handler(EventType.QRY_ACCOUNT, self._outgoing_account_request_handler)
+        self._outgoing_request_events_engine.register_handler(EventType.QRY_POS, self._outgoing_position_request_handler)
+        self._outgoing_request_events_engine.register_handler(EventType.GENERAL_REQ, self._outgoing_general_request_handler)
+        self._flowrate_timer.timeout.connect(self.risk_manager.reset)   #timer event to reset riskmanager flow rate count
         ## 10. start
         self._ui_events_engine.start()
         self._outgoing_request_events_engine.start()
         self._client_mq.start()
-
+        self._flowrate_timer.start(5000)
     #################################################################################################
     # -------------------------------- Event Handler   --------------------------------------------#
     #################################################################################################
@@ -119,6 +119,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def open_proj_folder(self):
         webbrowser.open('.')
+
+    def send_cmd(self):
+        cmdstr= str(self.cmd.text())
+        try:
+            gr = GeneralReqEvent()
+            gr.req = cmdstr
+            self._outgoing_request_events_engine.put(gr)   
+        except:
+            print('send cmd error')
 
     def place_order(self):
         s = str(self.sym.text())
@@ -178,7 +187,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._data_board.on_tick(tick_event)       # update databoard
         self._order_manager.on_tick(tick_event)     # check standing stop orders
-        print('tick arrive timestamp:',datetime.now())                       # test latency
+        # print('tick arrive timestamp:',datetime.now())                       # test latency
         self._strategy_manager.on_tick(tick_event)  # feed strategies
         self.market_window.tick_signal.emit(tick_event)         # display
 
@@ -233,19 +242,26 @@ class MainWindow(QtWidgets.QMainWindow):
          process o, check against risk manager and compliance manager
         """
         self.risk_manager.order_in_compliance(o)  # order pointer; modify order directly
-        self._order_manager.on_order(o)
-        #self.order_window.
-        msg = o.serialize()
-        print('client send msg: ' + msg)
-        self._outgoing_queue.put(msg)
+        if (self.risk_manager.passorder()):
+            self._order_manager.on_order(o)
+            #self.order_window.
+            msg = o.serialize()
+            print('client send msg: ' + msg)
+            self._outgoing_queue.put(msg)
 
     def _outgoing_account_request_handler(self, a):
-        msg = a.serialize()
-        print('client send msg: ' + msg)
-        self._outgoing_queue.put(msg)
+        if (self.risk_manager.passquery()):
+            msg = a.serialize()
+            print('client send msg: ' + msg)
+            self._outgoing_queue.put(msg)
 
     def _outgoing_position_request_handler(self, p):
-        msg = p.serialize()
+        if (self.risk_manager.passquery()):
+            msg = p.serialize()
+            print('client send msg: ' + msg)
+            self._outgoing_queue.put(msg)
+    def _outgoing_general_request_handler(self,gr):
+        msg = gr.serialize()
         print('client send msg: ' + msg)
         self._outgoing_queue.put(msg)
 
@@ -331,10 +347,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.exchange = QtWidgets.QComboBox()
         self.exchange.addItems(['郑商所ZCE','大商所DCE','中金所CFFEX','上期所SHFE','能源INE','期权OPTION','上证SSE'])
         self.account = QtWidgets.QComboBox()
-        self.account.addItems(['FROM', 'CONFIG'])
+        # self.account.addItems(['FROM', 'CONFIG'])
+        self.account.addItems([str(element) for element in self._config_server['accounts']])
         self.btn_order = QtWidgets.QPushButton(self._lang_dict['Place_Order'])
         self.btn_order.clicked.connect(self.place_order)
 
+        self.cmd = QtWidgets.QLineEdit()
+        self.btn_cmd = QtWidgets.QPushButton('Send CMD')
+        self.btn_cmd.clicked.connect(self.send_cmd)
+        
         place_order_layout.addRow(QtWidgets.QLabel(self._lang_dict['Discretionary']))
         place_order_layout.addRow(self._lang_dict['Symbol'], self.sym)
         place_order_layout.addRow(self._lang_dict['Name'], self.sym_name)
@@ -347,6 +368,9 @@ class MainWindow(QtWidgets.QMainWindow):
         place_order_layout.addRow(self._lang_dict['Exchange'], self.exchange)
         place_order_layout.addRow(self._lang_dict['Account'], self.account)
         place_order_layout.addRow(self.btn_order)
+        place_order_layout.addRow(QtWidgets.QLabel('Server Request'))
+        place_order_layout.addRow('cmd',self.cmd)
+        place_order_layout.addRow(self.btn_cmd)
         topright.setLayout(place_order_layout)
 
         # -------------------------------- bottom Left ------------------------------------------#

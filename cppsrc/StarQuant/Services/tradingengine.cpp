@@ -1,21 +1,20 @@
 #include <future>
 #include <atomic>
-#include <Services/tradingengine.h>
-#include <Common/config.h>
-#include <Common/Util/util.h>
-#include <Common/Logger/logger.h>
-#include <Common/Data/datamanager.h>
-#include <Common/Order/ordermanager.h>
-#include <Common/Security/portfoliomanager.h>
-#include <Services/Strategy/strategyservice.h>
-#include <Services/Data/dataservice.h>
-#include <Services/Brokerage/brokerageservice.h>
-#include <Services/Api/apiservice.h>
-//#include <Services/Interface/api_ws.h>
-
 #include <fstream>
 #include <iostream>
 #include <string>
+
+#include <Services/tradingengine.h>
+#include <Common/config.h>
+#include <Common/util.h>
+#include <Common/logger.h>
+#include <Data/datamanager.h>
+#include <Trade/ordermanager.h>
+#include <Trade/portfoliomanager.h>
+//#include <Services/Strategy/strategyservice.h>
+#include <Services/dataservice.h>
+
+
 
 namespace StarQuant
 {
@@ -30,32 +29,39 @@ namespace StarQuant
 		// TODO: check if there is an StarQuant instance running already
 		_broker = CConfig::instance()._broker;
 		mode = CConfig::instance()._mode;
+
+		//client_msg_pair_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PAIR, CConfig::instance().API_PORT);
+		//md_msg_pub_=  std::make_shared<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().API_ZMQ_DATA_PORT,false);
 	}
 
 	tradingengine::~tradingengine() {
-		while ((pbrokerage && pbrokerage->isConnectedToBrokerage()) || (pmkdata && pmkdata->isConnectedToMarketDataFeed())) {
-			msleep(100);
+		for (auto e: pengines_){
+			while ( (e != nullptr) && (e->estate_ != STOP) ){
+				msleep(100);
+			}
 		}
+		// while ((pbrokerage_ib && pbrokerage_ib->isConnectedToBrokerage()) || (pmkdata_ib && pmkdata_ib->isConnectedToMarketDataFeed())) {
+		// 	msleep(100);
+		// }
+		// while ((pbrokerage_ctp && pbrokerage_ctp->isConnectedToBrokerage()) || (pmkdata_ctp && pmkdata_ctp->isConnectedToMarketDataFeed())) {
+		// 	msleep(100);
+		// }
+		// while ((pbrokerage_tap && pbrokerage_tap->isConnectedToBrokerage()) || (pmkdata_tap && pmkdata_tap->isConnectedToMarketDataFeed())) {
+		// 	msleep(100);
+		// }
+		// while ((pbrokerage_xtp && pbrokerage_xtp->isConnectedToBrokerage()) || (pmkdata_xtp && pmkdata_xtp->isConnectedToMarketDataFeed())) {
+		// 	msleep(100);
+		// }
 
 		while (MICRO_SERVICE_NUMBER > 0) {
 			msleep(100);
 		}
-
 		if (CConfig::instance()._msgq == MSGQ::NANOMSG)
 			nn_term();
-		else if (CConfig::instance()._msgq == MSGQ::ZMQ)
-			;
-
-		//printf("waiting for threads joined...\n");
-		for (thread* t : threads) {
-			if (t->joinable()) {
-				t->join();
-				delete t;
-			}
+		for (auto& t : threads_){
+			if (t.joinable())
+				t.join();
 		}
-
-		//delete pmkdata;
-		//delete pbrokerage;
 		PRINT_TO_FILE("INFO:[%s,%d][%s]Exit trading engine.\n", __FILE__, __LINE__, __FUNCTION__);
 	}
 
@@ -64,119 +70,47 @@ namespace StarQuant
 			return 1;
 		try {
 			auto fu1 = async(launch::async, check_gshutdown, true);
-
 			if (mode == RUN_MODE::RECORD_MODE) {
 				printf("RECORD_MODE\n");
-				if (_broker == BROKERS::IB)
-				{
-					pmkdata = make_shared<IBBrokerage>();
-					threads.push_back(new thread(MarketDataService, pmkdata,
-						CConfig::instance().ib_client_id++));
-					threads.push_back(new thread(TickRecordingService));
+				//threads_.push_back(new thread(TickRecordingService));
 				}
-				else if (_broker == BROKERS::SINA)
-				{
-					pmkdata = make_shared<sinadatafeed>();
-					threads.push_back(new thread(MarketDataService, pmkdata,
-						CConfig::instance().ib_client_id++));
-					threads.push_back(new thread(TickRecordingService));
-				}
-			}
 			else if (mode == RUN_MODE::REPLAY_MODE) {
 				printf("REPLAY_MODE\n");
-				threads.push_back(new thread(TickReplayService, CConfig::instance().filetoreplay,CConfig::instance()._tickinterval));
-				threads.push_back(new thread(DataBoardService));
-				pbrokerage = make_shared<paperbrokerage>(CConfig::instance()._brokerdelay);
-				threads.push_back(new thread(BrokerageService, pbrokerage, 0));
-					
-				//threads.push_back(new thread(StrategyManagerService));
+				// threads_.push_back(new thread(TickReplayService, CConfig::instance().filetoreplay,CConfig::instance()._tickinterval));
+				// threads_.push_back(new thread(DataBoardService));
+				// //threads_.push_back(new thread(StrategyManagerService));
 			}
 			else if (mode == RUN_MODE::TRADE_MODE) {
 				printf("TRADE_MODE\n");
-				if (_broker == BROKERS::IB)
-				{
-					std::shared_ptr<IBBrokerage> tmp = std::make_shared<IBBrokerage>();
-					pmkdata = tmp;
-					threads.push_back(new thread(MarketDataService, pmkdata,
-						CConfig::instance().ib_client_id++));
-					threads.push_back(new thread(TickRecordingService));
-					pbrokerage = tmp;
-					//pbrokerage = std::dynamic_pointer_cast<ibbrokerage>(pmkdata);		// dynamic_pointer_cast has issue about std::
-					threads.push_back(new thread(BrokerageService, pbrokerage, 0));
+				//threads_.push_back(new thread(TickRecordingService));
+				if (CConfig::instance()._loadapi["CTP"]){
+					std::shared_ptr<IEngine> ctpmdengine = make_shared<CtpMDEngine>();
+					std::shared_ptr<IEngine> ctptdengine = make_shared<CtpTDEngine>();
+					threads_.push_back(std::thread(&CtpMDEngine::start,ctpmdengine));
+					threads_.push_back(std::thread(&CtpTDEngine::start,ctptdengine));
+					pengines_.push_back(ctpmdengine);
+					pengines_.push_back(ctptdengine);
+					//threads_.push_back(std::thread(&CtpTDEngine::start,std::ref(ctptdengine)));
 				}
-				else if (_broker == BROKERS::CTP)
-				{
-					pmkdata = make_shared<ctpdatafeed>();
-					threads.push_back(new thread(MarketDataService, pmkdata,
-						CConfig::instance().ib_client_id++));
-					threads.push_back(new thread(TickRecordingService));
-					pbrokerage = make_shared<ctpbrokerage>();
-					threads.push_back(new thread(BrokerageService, pbrokerage, 0));
-					//threads.push_back(new thread(StrategyManagerService));
+				if (CConfig::instance()._loadapi["TAP"]){
+					std::shared_ptr<IEngine> tapmdengine = make_shared<TapMDEngine>();
+					std::shared_ptr<IEngine> taptdengine = make_shared<TapTDEngine>();
+					threads_.push_back(std::thread(&TapMDEngine::start,tapmdengine));
+					threads_.push_back(std::thread(&TapTDEngine::start,taptdengine));
+					pengines_.push_back(tapmdengine);
+					pengines_.push_back(taptdengine);		
 				}
-				else if (_broker == BROKERS::TAP)
-				{
-					pmkdata = make_shared<Tapdatafeed>();
-                    threads.push_back(new thread(MarketDataService, pmkdata, CConfig::instance().ib_client_id++));
-					threads.push_back(new thread(TickRecordingService));
-					pbrokerage = make_shared<Tapbrokerage>();
-					threads.push_back(new thread(BrokerageService, pbrokerage, 0));
-					//threads.push_back(new thread(StrategyManagerService));
-
-
-
-				}
-				else if (_broker == BROKERS::SINA)
-				{
-					pmkdata = make_shared<sinadatafeed>();
-					threads.push_back(new thread(MarketDataService, pmkdata,
-						CConfig::instance().ib_client_id++));
-					threads.push_back(new thread(TickRecordingService));
-					pbrokerage = make_shared<paperbrokerage>();
-					threads.push_back(new thread(BrokerageService, pbrokerage, 0));
-				}
-				else if (_broker == BROKERS::GOOGLE)
-				{
-					pmkdata = make_shared<googledatafeed>();
-					threads.push_back(new thread(MarketDataService, pmkdata,
-						CConfig::instance().ib_client_id++));
-					threads.push_back(new thread(TickRecordingService));
-					pbrokerage = make_shared<paperbrokerage>();
-					threads.push_back(new thread(BrokerageService, pbrokerage, 0));
-				}
-				else if (_broker == BROKERS::PAPER)
-				{
-					pmkdata = make_shared<sinadatafeed>();
-					threads.push_back(new thread(MarketDataService, pmkdata,
-						CConfig::instance().ib_client_id++));
-					threads.push_back(new thread(TickRecordingService));
-					pbrokerage = make_shared<paperbrokerage>();
-					threads.push_back(new thread(BrokerageService, pbrokerage, 0));
+				if (CConfig::instance()._loadapi["XTP"]){
 				}
 			}
 			else {
 				PRINT_TO_FILE("EXIT:[%s,%d][%s]Mode %d doesn't exist.\n", __FILE__, __LINE__, __FUNCTION__, mode);
 				return 1;
 			}
-
-			if (CConfig::instance()._msgq == MSGQ::NANOMSG) {
-				// threads.push_back(new thread(ApiService));				// communicate with outside client monitor
-			}
-			// It seems that zmq interferes with interactive brokers
-			//		triggering error code 509: Exception caught while reading socket - Resource temporarily unavailable
-			//		so internally nanomsg is used.
-			//		Zmq add a tick data relay service in ApiService class
-			else if (CConfig::instance()._msgq == MSGQ::ZMQ) {
-				//threads.push_back(new thread(ApiService));
-			}
-			else {
-				//threads.push_back(new thread(Thread_API_WS));				// communicate with outside client monitor
-			}
-
-			//threads.push_back(new thread(DataBoardService));	// update databoard
-			//threads.push_back(new thread(StrategyManagerService));
-
 			fu1.get(); //block here
+			for (auto e: pengines_){
+				e->stop();
+			}
 		}
 		catch (exception& e) {
 			printf("Thanks for using StarQuant. GoodBye: %s\n", e.what());

@@ -8,13 +8,13 @@ class MarketWindow(QtWidgets.QTableWidget):
 
     def __init__(self, symbols, lang_dict, parent=None):
         super(MarketWindow, self).__init__(parent)
-        self._symbolsshort = {}
+        # self._symbolsshort = {}
         self._symbols = symbols
         # 生成简写和全称之间对应的字典
-        for ticker in self._symbols:
-            v = ticker.split(' ')
-            instrumentid = v[2].lower()+v[3]
-            self._symbolsshort.update({instrumentid:ticker})
+        # for ticker in self._symbols:
+        #     v = ticker.split(' ')
+        #     instrumentid = v[2].lower()+v[3]
+        #     self._symbolsshort.update({instrumentid:ticker})
         
         self._lang_dict = lang_dict
         self.setFont(lang_dict['font'])
@@ -55,14 +55,10 @@ class MarketWindow(QtWidgets.QTableWidget):
                 self.setItem(i, j, QtWidgets.QTableWidgetItem(0.0))
 
     def update_table(self,tickevent):
-        
-        # tick事件中ctp合约全称和tap的不一样，这里为了处理两种情况加入了判断
-        if tickevent.full_symbol in self._symbols or tickevent.full_symbol in self._symbolsshort:
-            if tickevent.full_symbol in self._symbols:
-                row = self._symbols.index(tickevent.full_symbol)
-            else:
-                row = self._symbols.index(self._symbolsshort.get(tickevent.full_symbol))
-
+        if tickevent.full_symbol in self._symbols:
+            row = self._symbols.index(tickevent.full_symbol)
+            # else:
+            #     row = self._symbols.index(self._symbolsshort.get(tickevent.full_symbol))
             if (tickevent.price > 0.0):
                 #timestr = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tickevent.timestamp))
                 timestr = tickevent.timestamp.strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -88,4 +84,22 @@ class MarketWindow(QtWidgets.QTableWidget):
                     self.item(row, 10).setText(str(tickevent.open))
                     self.item(row, 11).setText(str(tickevent.high))
                     self.item(row, 12).setText(str(tickevent.low))
+        else:
+            self._symbols.insert(0,tickevent.full_symbol)
+            self.insertRow(0)
+            self.setItem(0, 0, QtWidgets.QTableWidgetItem(tickevent.full_symbol))
+            if(tickevent.tick_type == TickType.Tick_L1 or tickevent.tick_type == TickType.Tick_L5):
+                self.item(0, 2).setText(str(tickevent.price))
+                self.item(0, 3).setText(str(tickevent.size))
+                self.item(0, 4).setText(str(tickevent.open_interest))
+                self.item(0, 5).setText(str(tickevent.bid_size_L1))
+                self.item(0, 6).setText(str(tickevent.bid_price_L1))
+                self.item(0, 7).setText(str(tickevent.ask_price_L1))
+                self.item(0, 8).setText(str(tickevent.ask_size_L1))
+                self.item(0, 9).setText(str(tickevent.pre_close))
+                self.item(0, 10).setText(str(tickevent.open))
+                self.item(0, 11).setText(str(tickevent.high))
+                self.item(0, 12).setText(str(tickevent.low))
+
+
 

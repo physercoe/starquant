@@ -6,7 +6,7 @@ from nanomsg import Socket, PAIR, SUB, SUB_SUBSCRIBE, AF_SP
 from source.data.tick_event import TickEvent, TickType
 from source.order.order_status_event import OrderStatusEvent
 from source.order.fill_event import FillEvent
-from source.event.event import GeneralEvent
+from source.event.event import GeneralEvent,MSG_TYPE
 from source.position.position_event import PositionEvent
 from source.position.contract_event import ContractEvent
 from source.data.historical_event import HistoricalEvent
@@ -25,6 +25,7 @@ class ClientMq(object):
     def _run(self):
         while self._active:
             try:
+                # subscribed market data msg from server
                 msg1 = self._tick_sock.recv(flags=1)
                 msg1 = msg1.decode("utf-8")
                 if msg1 is not None and msg1.index('|') > 0:
@@ -40,6 +41,7 @@ class ClientMq(object):
                 pass
 
             try:
+                # response msg from server
                 msg2 = self._msg_sock.recv(flags=1)
                 msg2 = msg2.decode("utf-8")
                 if msg2 is not None and msg2.index('|') > 0:
@@ -48,33 +50,33 @@ class ClientMq(object):
                         msg2 = msg2[:-1]
                     if msg2[-1] == '\x00':
                         msg2 = msg2[:-1]
-
                     v = msg2.split('|')
-                    if v[0] == 's':
+                    msg2type = MSG_TYPE(int(v[0]))
+                    if msg2type == MSG_TYPE.MSG_TYPE_RTN_ORDER:
                        m = OrderStatusEvent()
                        m.deserialize(msg2)
                        self._ui_event_engine.put(m)
-                    elif v[0] == 'f':
+                    elif msg2type == MSG_TYPE.MSG_TYPE_RTN_TRADE:
                         m = FillEvent()
                         m.deserialize(msg2)
                         self._ui_event_engine.put(m)
-                    elif v[0] == 'n':
+                    elif msg2type == MSG_TYPE.MSG_TYPE_RSP_POS:
                         m = PositionEvent()
                         m.deserialize(msg2)
                         self._ui_event_engine.put(m)
-                    elif v[0] == 'h':
+                    elif msg2type == MSG_TYPE.MSG_TYPE_Hist:
                         m = HistoricalEvent()
                         m.deserialize(msg2)
                         self._ui_event_engine.put(m)
-                    elif v[0] == 'u':
+                    elif msg2type == MSG_TYPE.MSG_TYPE_RSP_ACCOUNT:
                         m = AccountEvent()
                         m.deserialize(msg2)
                         self._ui_event_engine.put(m)
-                    elif v[0] == 'r':
+                    elif msg2type == MSG_TYPE.MSG_TYPE_RSP_CONTRACT:
                         m = ContractEvent()
                         m.deserialize(msg2)
                         self._ui_event_engine.put(m)
-                    elif v[0] == 'm':
+                    elif msg2type == MSG_TYPE.MSG_TYPE_INFO:
                         m = GeneralEvent()
                         m.deserialize(msg2)
                         self._ui_event_engine.put(m)
@@ -86,6 +88,7 @@ class ClientMq(object):
                 # time.sleep(1)
 
             try:
+                # request, qry msg to server
                 msg3 = self._outgoing_quue.get(False)
                 print('outgoing get msg,begin nano',msg3)
                 self._msg_sock.send(bytes(msg3,"ascii"), flags=1)

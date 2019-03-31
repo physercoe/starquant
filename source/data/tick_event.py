@@ -6,35 +6,36 @@ from ..event.event import *
 import time
 import pandas as pd
 class TickType(Enum):
-    Tick_L1 = 0
-    Tick_L5 = 1
-    Tick_L20 = 2
-    Bar_1min = 3
-    Bar_5min = 4
-    Bar_15min = 5
-    Bar_1h = 6
-    Bar_1d = 7
-    Bar_1w = 8
-    Bar_1m = 9
-    Trade = 10		
-    Bid = 11
-    Ask = 12
-    Full = 13
-    BidPrice = 14
-    BidSize = 15
-    AskPrice = 16
-    AskSize = 17
-    Price = 18
-    TradeSize = 19
-    OpenPrice = 20
-    HighPrice = 21
-    LowPrice = 22
-    ClosePrice = 23
-    Volume = 24
-    OpenInterest = 25
-    Bar = 26
-    Account = 27
-    Position = 28
+    # same as msg_type
+    Tick_L1 = 100
+    Tick_L5 = 101
+    Tick_L10 =102
+    Tick_L20 = 103
+    Bar_1min = 111
+    Bar_5min = 112
+    Bar_15min = 113
+    Bar_1h = 114
+    Bar_1d = 115
+    Bar_1w = 116
+    Bar_1m = 117
+    Trade = 160		
+    Bid = 161
+    Ask = 162
+    Full = 163
+    BidPrice = 164
+    BidSize = 165
+    AskPrice = 166
+    AskSize = 167
+    Price = 168
+    TradeSize = 169
+    OpenPrice = 170
+    HighPrice = 171
+    LowPrice = 172
+    ClosePrice = 173
+    Volume = 174
+    OpenInterest = 175
+    Bar = 176
+
 
 
 

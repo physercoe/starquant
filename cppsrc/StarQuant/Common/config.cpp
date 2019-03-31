@@ -18,6 +18,13 @@ namespace StarQuant {
 	mutex CConfig::instancelock_;
 
 	CConfig::CConfig() {
+		_loadapi["CTP"] = false;
+		_loadapi["TAP"] = false;
+		_loadapi["IB"] = false;
+		_loadapi["SINA"] = false;
+		_loadapi["GOOGLE"] = false;
+		_loadapi["PAPER"] = false;
+		_loadapi["XTP"] = false;
 		readConfig();
 	}
 
@@ -36,7 +43,7 @@ namespace StarQuant {
 #ifdef _DEBUG
 		std::printf("Current path is : %s\n", boost::filesystem::current_path().string().c_str());
 #endif
-
+// 读入合约相关信息数据，TODO:从 md qry得到相关数据
 		string contractpath = boost::filesystem::current_path().string() + "/etc/contract.yaml";
 		YAML::Node contractinfo = YAML::LoadFile(contractpath);
 		//std::cout<<contractinfo[0].  as<std::string>();
@@ -54,25 +61,8 @@ namespace StarQuant {
 
 		}
 
-		// const std::vector<string> shfe = contractinfo["SHFE"].as<std::vector<string>>();
-		// for (auto contract : shfe){
-		// 	const string instrument = contractinfo["SHFE"][contract]["ctpsymbol"].as<std::string>();
-		// 	instrument2sec[instrument] = contract;
-		// 	sec2instrument[contract] = instrument;
-		// }	
-		// const std::vector<string> shfe = contractinfo["SHFE"].as<std::vector<string>>();
-		// for (auto contract : shfe){
-		// 	const string instrument = contractinfo["SHFE"][contract]["ctpsymbol"].as<std::string>();
-		// 	instrument2sec[instrument] = contract;
-		// 	sec2instrument[contract] = instrument;
-		// }	
 
-		
-
-
-
-
-		string path = boost::filesystem::current_path().string() + "/config_server.yaml";
+		string path = boost::filesystem::current_path().string() + "etc/config_server.yaml";
 		YAML::Node config = YAML::LoadFile(path);
 		string configmode = config["mode"].as<std::string>();
 		if (configmode =="record")
@@ -91,83 +81,53 @@ namespace StarQuant {
 		boost::filesystem::path data_path(dataDir());
 		boost::filesystem::create_directory(data_path);
 
-
-		const string msgq = config["msgq"].as<std::string>();
-		// if (msgq == "zmq")
-		// 	_msgq = MSGQ::ZMQ;
-		// else if (msgq == "kafka")
-		// 	_msgq = MSGQ::KAFKA;
-		// else
-		// 	_msgq = MSGQ::NANOMSG;
+		// const string msgq = config["msgq"].as<std::string>();
 		_msgq = MSGQ::NANOMSG;
 		
 		_mongodbaddr = config["dbaddr"].as<std::string>();
 		_mongodbname = config["dbname"].as<std::string>();
 		 
+		SERVERPUB_URL = config["serverpub_url"].as<std::string>();
+		SERVERSUB_URL = config["serversub_url"].as<std::string>();
 
-
-
-
-		// TODO: support multiple accounts; currently only the last account loop counts
-		const std::vector<string> accounts = config["accounts"].as<std::vector<string>>();
-		for (auto s : accounts) {
-			const string broker = config[s]["broker"].as<std::string>();
-			if (broker == "IB") {
-				_broker = BROKERS::IB;
-				account = s;
-				ib_port = config[s]["port"].as<long>();
-			}
-			
-			else if (broker == "CTP") {
-				_broker = BROKERS::CTP;
-				account = s;
-				brokerapi ="CTP";
-				ctp_broker_id = config[s]["brokerid"].as<std::string>();
-				ctp_user_id = config[s]["userid"].as<std::string>();;
-				ctp_password = config[s]["password"].as<std::string>();
-				ctp_auth_code = config[s]["auth_code"].as<std::string>();
-				ctp_user_prod_info = config[s]["user_prod_info"].as<std::string>();
-				ctp_data_address = config[s]["md_address"].as<std::string>();
-				ctp_broker_address = config[s]["td_address"].as<std::string>();
-			}
-			else if (broker == "TAP") {
-				_broker = BROKERS::TAP;
-				account = s;
-				brokerapi = "TAP";
-				tap_sessionid = config[s]["sessionid"].as<unsigned int>();
-				//std::cout<<tap_sessionid;
-				//tap_broker_id = config[s]["broker"].as<std::string>();
-				//tap_user_id = s;
-				tap_password = config[s]["password"].as<std::string>();
-				tap_user_name = config[s]["user_name"].as<std::string>();
-				tap_auth_code = config[s]["auth_code"].as<std::string>();
-				tap_user_prod_info = config[s]["user_prod_info"].as<std::string>();
-				tap_data_address = config[s]["md_address"].as<std::string>();
-				tap_broker_address = config[s]["td_address"].as<std::string>();
-				tap_data_ip = config[s]["md_ip"].as<std::string>();
-				tap_data_port = config[s]["md_port"].as<unsigned short>();
-				tap_broker_ip = config[s]["td_ip"].as<std::string>();
-				tap_broker_port = config[s]["td_port"].as<unsigned short>();				
-				
-			}			
-			else if (broker == "SINA")
-				_broker = BROKERS::SINA;
-			else
-				_broker = BROKERS::PAPER;
-
-
-			securities.clear();
-			const std::vector<string> tickers = config[s]["tickers"].as<std::vector<string>>();
-			for (auto s : tickers)
-			{
-				securities.push_back(s);
-				// vector<string> v = stringsplit(s, ' ');
-				// string ctbticker = v[2];
-				// boost::to_lower(ctbticker);
-				// ctbticker = ctbticker + v[3];
-				// instrument2sec[ctbticker] = s;
-			}
+		const std::vector<string> apis = config["apis"].as<std::vector<string>>();
+		for (auto s : apis){
+			_loadapi[s] = true;
+			struct Account acc;
+			acc.id = s;
+			acc.apitype = config[s]["api"].as<std::string>();
+			acc.brokerid = config[s]["brokerid"].as<std::string>();
+			acc.md_ip = config[s]["md_ip"].as<std::string>();
+			acc.md_port = config[s]["md_port"].as<uint16_t>();
+			acc.td_ip = config[s]["td_ip"].as<std::string>();
+			acc.td_port = config[s]["td_port"].as<uint16_t>();
+			acc.userid = config[s]["userid"].as<std::string>();
+			acc.password = config[s]["password"].as<std::string>();
+			acc.auth_code = config[s]["auth_code"].as<std::string>();
+			acc.productinfo = config[s]["user_prod_info"].as<std::string>();
+			acc.intid = config[s]["intid"].as<int>();
+			_apimap[s] = acc;
 		}
+		// if(_loadapi["CTP"]){
+		// 	ctp_data_address = _apimap["CTP"].md_ip + ":" + _apimap["CTP"].md_port;
+		// 	ctp_broker_address = _apimap["CTP"].td_ip + ":" + _apimap["CTP"].td_port;
+		// }
+
+			// securities.clear();
+			// const std::vector<string> tickers = config[s]["tickers"].as<std::vector<string>>();
+			// for (auto s : tickers)
+			// {
+			// 	securities.push_back(s);
+			// }
+		
+		// string MKT_DATA_PUBSUB_PORT = "55555";				// market/tick data
+		// string BROKERAGE_PAIR_PORT = "55556";				// brokerage order, account, etc
+		// string BAR_AGGREGATOR_PUBSUB_PORT = "55557";		// bar from aggregation service
+		// string API_PORT = "55558";							// client port
+		// string API_ZMQ_DATA_PORT = "55559";					// client port
+
+
+
 	}
 
 	string CConfig::configDir()
@@ -178,15 +138,11 @@ namespace StarQuant {
 
 	string CConfig::logDir()
 	{
-		//boost::filesystem::path full_path = boost::filesystem::current_path() / "log";
-		//return full_path.string();
 		return _log_dir;
 	}
 
 	string CConfig::dataDir()
 	{
-		//boost::filesystem::path full_path = boost::filesystem::current_path() / "data";
-		//return full_path.string();
 		return _data_dir;
 	}
 
