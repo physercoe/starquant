@@ -72,9 +72,9 @@ namespace StarQuant
 		}
 
 		string serialize() {
-			string str =  to_string(clientId)
+			string str =  std::to_string(clientId)
 				+ SERIALIZATION_SEPARATOR + api
-				+ SERIALIZATION_SEPARATOR + to_string(MSG_TYPE::MSG_TYPE_RTN_TRADE)                 
+				+ SERIALIZATION_SEPARATOR + std::to_string(MSG_TYPE::MSG_TYPE_RTN_TRADE)                 
 				+ SERIALIZATION_SEPARATOR +	std::to_string(serverOrderId)
 				+ SERIALIZATION_SEPARATOR + std::to_string(clientOrderId)
 				+ SERIALIZATION_SEPARATOR + std::to_string(brokerOrderId)

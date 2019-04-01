@@ -26,6 +26,9 @@ TapTDEngine::~TapTDEngine() {
 }
 
 void TapTDEngine::init(){
+	if (msgq_recv_ == nullptr){
+		msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().SERVERSUB_URL);	
+	}	
 	//创建目录
 	name_ = "TAP_TD";
 	tapacc_ = CConfig::instance()._apimap["TAP"];
@@ -140,10 +143,10 @@ void TapTDEngine::start(){
 		bool tmp;
 		switch (msgintype)
 		{
-			case MSG_TYPE_MD_ENGINE_OPEN:
+			case MSG_TYPE_TD_ENGINE_OPEN:
 				tmp = connect();
 				break;
-			case MSG_TYPE_MD_ENGINE_CLOSE:
+			case MSG_TYPE_TD_ENGINE_CLOSE:
 				tmp = disconnect();
 				break;
 			case MSG_TYPE_ORDER:
@@ -278,7 +281,7 @@ void TapTDEngine::insertOrder(const vector<string>& v) {
 		string msg = o->serialize() 
 				+ SERIALIZATION_SEPARATOR + ymdhmsf();
 		cout<<"Tap td send orderestatus msg:"<<msg<<endl;
-		lock_guard<mutex> g(IEngine::sendlock_);
+		lock_guard<mutex> g2(IEngine::sendlock_);
 		IEngine::msgq_send_->sendmsg(msg);
 	}
 	else{
@@ -288,7 +291,7 @@ void TapTDEngine::insertOrder(const vector<string>& v) {
 		string msg = o->serialize() 
 				+ SERIALIZATION_SEPARATOR + ymdhmsf();
 		cout<<"Tap td send orderestatus msg:"<<msg<<endl;
-		lock_guard<mutex> g(IEngine::sendlock_);
+		lock_guard<mutex> g2(IEngine::sendlock_);
 		IEngine::msgq_send_->sendmsg(msg);		
 	}
 }
@@ -477,7 +480,7 @@ void TAP_CDECL TapTDEngine::OnRtnOrder( const TapAPIOrderInfoNotice *info ){
 				string msg = o->serialize() 
 					+ SERIALIZATION_SEPARATOR + ymdhmsf();
 				cout<<"Ctp td send orderestatus msg:"<<msg<<endl;
-				lock_guard<mutex> g(IEngine::sendlock_);
+				lock_guard<mutex> g2(IEngine::sendlock_);
 				IEngine::msgq_send_->sendmsg(msg);
 			} else{
 				cout << "报单成功，"
@@ -493,7 +496,7 @@ void TAP_CDECL TapTDEngine::OnRtnOrder( const TapAPIOrderInfoNotice *info ){
 				string msg = o->serialize() 
 					+ SERIALIZATION_SEPARATOR + ymdhmsf();
 				cout<<"Ctp td send orderestatus msg:"<<msg<<endl;
-				lock_guard<mutex> g(IEngine::sendlock_);
+				lock_guard<mutex> g2(IEngine::sendlock_);
 				IEngine::msgq_send_->sendmsg(msg);
 			}
 		}
@@ -527,7 +530,7 @@ void TAP_CDECL TapTDEngine::OnRtnOrder( const TapAPIOrderInfoNotice *info ){
 			string msg = o->serialize() 
 				+ SERIALIZATION_SEPARATOR + ymdhmsf();
 			cout<<"Ctp td send orderestatus msg:"<<msg<<endl;
-			lock_guard<mutex> g(IEngine::sendlock_);
+			lock_guard<mutex> g2(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(msg);
 		}
 	}

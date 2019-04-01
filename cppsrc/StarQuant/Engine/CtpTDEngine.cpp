@@ -36,9 +36,10 @@ namespace StarQuant
 	}
 
 	void CtpTDEngine::init(){
-		if (IEngine::msgq_send_ == nullptr){
-			IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
-		}
+		// if (IEngine::msgq_send_ == nullptr){
+		// 	IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
+		// }
+		cout<<"ctptd init"<<endl;
 		if (msgq_recv_ == nullptr){
 			msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().SERVERSUB_URL);	
 		}	
@@ -51,7 +52,7 @@ namespace StarQuant
 		this->api_ = CThostFtdcTraderApi::CreateFtdcTraderApi(path.c_str());
 		///注册回调接口
 		this->api_->RegisterSpi(this);
-		if (CConfig::instance().ctp_auth_code == "NA") {
+		if (ctpacc_.auth_code == "NA") {
 			needauthentication_ = false;
 		}
 		else {
@@ -61,6 +62,7 @@ namespace StarQuant
 	void CtpTDEngine::stop(){
 		int tmp = disconnect();
 		estate_  = EState::STOP;
+		cout<<" ctp td stop"<<endl;
 		if (api_ != NULL){
 			this->api_->RegisterSpi(NULL);
 			this->api_->Release();
@@ -77,13 +79,14 @@ namespace StarQuant
 			vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);			
 			if (v[0] != name_) //filter message according to its destination
 				continue;
+			cout<<name_<<"recv msg "<<msgin<<endl;
 			bool tmp;
 			switch (msgintype)
 			{
-				case MSG_TYPE_MD_ENGINE_OPEN:
+				case MSG_TYPE_TD_ENGINE_OPEN:
 					tmp = connect();
 					break;
-				case MSG_TYPE_MD_ENGINE_CLOSE:
+				case MSG_TYPE_TD_ENGINE_CLOSE:
 					tmp = disconnect();
 					break;
 				case MSG_TYPE_ORDER:
@@ -157,7 +160,7 @@ namespace StarQuant
 				case DISCONNECTED:
 					this->api_->SubscribePrivateTopic(privatetype);
 					this->api_->SubscribePublicTopic(publictype);
-					this->api_->RegisterFront((char*)ctpacc_.auth_code.c_str());
+					this->api_->RegisterFront((char*)ctp_td_address.c_str());
 					this->api_->Init();
 					estate_ = CONNECTING;
 					PRINT_TO_FILE("INFO:[%s,%d][%s]CTP_TD register front!\n", __FILE__, __LINE__, __FUNCTION__);
@@ -182,6 +185,9 @@ namespace StarQuant
 							estate_ = CONNECT_ACK;
 							msleep(1000);
 						}
+					}
+					else{
+						estate_ = AUTHENTICATE_ACK;
 					}
 					break;
 				case AUTHENTICATING:
@@ -287,7 +293,7 @@ namespace StarQuant
 		//orderfield.TimeCondition = THOST_FTDC_TC_IOC;
 		//orderfield.VolumeCondition = THOST_FTDC_VC_CV;				// FAK; FOK uses THOST_FTDC_VC_AV
 		PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Placing Order clientorderId=%ld: fullSymbol=%s\n", __FILE__, __LINE__, __FUNCTION__, o->clientOrderId, o->fullSymbol.c_str());
-			lock_guard<mutex> g(orderStatus_mtx);
+		lock_guard<mutex> g2(orderStatus_mtx);
 		int i = api_->ReqOrderInsert(&orderfield, reqId_++);
 		o->orderStatus = OrderStatus::OS_Submitted;
 		if (i != 0){
@@ -738,7 +744,7 @@ namespace StarQuant
 			string msg = o->serialize() 
 				+ SERIALIZATION_SEPARATOR + ymdhmsf();
 			cout<<"Ctp td send orderestatus msg:"<<msg<<endl;
-			lock_guard<mutex> g(IEngine::sendlock_);
+			lock_guard<mutex> g2(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(msg);
 		}
 		else {
@@ -790,7 +796,6 @@ namespace StarQuant
 		}
 		else {
 			PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]fill order id is not tracked. OrderId= %s\n", __FILE__, __LINE__, __FUNCTION__, pTrade->OrderRef);
-			t.clientId = o->clientId;
 			t.api = "others";
 			t.account = ctpacc_.id;
 			string msg = t.serialize()
@@ -821,7 +826,7 @@ namespace StarQuant
 				string msg = o->serialize() 
 					+ SERIALIZATION_SEPARATOR + ymdhmsf();
 				cout<<"Ctp td return order insert error: "<<msg<<endl;
-				lock_guard<mutex> g(IEngine::sendlock_);
+				lock_guard<mutex> g2(IEngine::sendlock_);
 				IEngine::msgq_send_->sendmsg(msg);
 			}
 			else {

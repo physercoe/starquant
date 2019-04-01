@@ -4,9 +4,9 @@
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
-
+#include <cctype>
 #include <Common/config.h>
-#include <Common/Util/util.h>
+#include <Common/util.h>
 #include <yaml-cpp/yaml.h>
 
 namespace bpt = boost::property_tree;
@@ -62,7 +62,7 @@ namespace StarQuant {
 		}
 
 
-		string path = boost::filesystem::current_path().string() + "etc/config_server.yaml";
+		string path = boost::filesystem::current_path().string() + "/etc/config_server.yaml";
 		YAML::Node config = YAML::LoadFile(path);
 		string configmode = config["mode"].as<std::string>();
 		if (configmode =="record")
@@ -108,26 +108,6 @@ namespace StarQuant {
 			acc.intid = config[s]["intid"].as<int>();
 			_apimap[s] = acc;
 		}
-		// if(_loadapi["CTP"]){
-		// 	ctp_data_address = _apimap["CTP"].md_ip + ":" + _apimap["CTP"].md_port;
-		// 	ctp_broker_address = _apimap["CTP"].td_ip + ":" + _apimap["CTP"].td_port;
-		// }
-
-			// securities.clear();
-			// const std::vector<string> tickers = config[s]["tickers"].as<std::vector<string>>();
-			// for (auto s : tickers)
-			// {
-			// 	securities.push_back(s);
-			// }
-		
-		// string MKT_DATA_PUBSUB_PORT = "55555";				// market/tick data
-		// string BROKERAGE_PAIR_PORT = "55556";				// brokerage order, account, etc
-		// string BAR_AGGREGATOR_PUBSUB_PORT = "55557";		// bar from aggregation service
-		// string API_PORT = "55558";							// client port
-		// string API_ZMQ_DATA_PORT = "55559";					// client port
-
-
-
 	}
 
 	string CConfig::configDir()
@@ -157,8 +137,8 @@ namespace StarQuant {
 		string fullsymbol;
 		string num = symbol;
 		string alpha = symbol;
-		num.erase(std::remove_if(num.begin(),num.end(),&isalpha),num.end());
-		alpha.erase(std::remove_if(alpha.begin(),alpha.end(),&isdigit),alpha.end());
+		num.erase(std::remove_if(num.begin(),num.end(),&::isalpha),num.end());
+		alpha.erase(std::remove_if(alpha.begin(),alpha.end(),&::isdigit),alpha.end());
 		string tmp = instrument2sec[alpha];
 		fullsymbol = tmp + " " + num;
 		return fullsymbol;

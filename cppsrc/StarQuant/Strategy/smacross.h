@@ -1,7 +1,7 @@
 #ifndef _StarQuant_Strategy_SmaCross_H_
 #define _StarQuant_Strategy_SmaCross_H_
 
-#include <Common/Strategy/strategybase.h>
+#include <Strategy/strategybase.h>
 #include <atomic>
 
 namespace StarQuant {

@@ -12,6 +12,8 @@ enum EState :int {
     DISCONNECTED = 0,           // initial state is disconnected
     CONNECTING,
     CONNECT_ACK,           // ctp: front end is  connected; tap:  logined
+    AUTHENTICATING,
+    AUTHENTICATE_ACK,       //ctp trade authencated
     LOGINING,
     LOGIN_ACK,             // logined for ctp, for tap api is ready to do things
     LOGOUTING,

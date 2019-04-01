@@ -5,8 +5,8 @@
 #include <iterator>
 //#include <future>
 #include <Common/config.h>
-#include <Common/Logger/logger.h>
-#include <Common/Time/getRealTime.h>
+#include <Common/logger.h>
+#include <Common/getRealTime.h>
 
 using std::string;
 using std::vector;
@@ -17,7 +17,7 @@ namespace StarQuant {
 
 	vector<string> stringsplit(const string &s, char delim);
 	bool startwith(const string&, const string&);
-	MSG_TYPE msgtype(const string& str);
+	MSG_TYPE MsgType(const string& str);
 	bool endwith(const std::string &str, const std::string &suffix);
 	string UTF8ToGBK(const std::string & strUTF8);
 	string GBKToUTF8(const std::string & strGBK);

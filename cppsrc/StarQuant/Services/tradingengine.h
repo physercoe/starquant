@@ -14,6 +14,8 @@ using namespace std;
 
 namespace StarQuant
 {
+	void startengine(shared_ptr<IEngine> pe);
+
 	class DLL_EXPORT_IMPORT tradingengine {
 		RUN_MODE mode = RUN_MODE::TRADE_MODE; //RUN_MODE::REPLAY_MODE;
 //		RUN_MODE mode = RUN_MODE::RECORD_MODE; //RUN_MODE::REPLAY_MODE;

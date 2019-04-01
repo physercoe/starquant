@@ -3,8 +3,6 @@
 
 #include <memory>
 #include <Common/config.h>
-#include <Common/Data/marketdatafeed.h>
-#include <Common/Brokerage/brokerage.h>
 
 namespace StarQuant
 {

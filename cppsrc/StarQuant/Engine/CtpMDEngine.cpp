@@ -32,9 +32,11 @@ namespace StarQuant
 	}
 
 	void CtpMDEngine::init(){
-		if (IEngine::msgq_send_ == nullptr){
-			IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
-		}
+		// if (IEngine::msgq_send_ == nullptr){
+		// 	lock_guard<mutex> g(IEngine::sendlock_);
+		// 	IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
+		// }
+		cout<<"ctp md init"<<endl;
 		if (msgq_recv_ == nullptr){
 			msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().SERVERSUB_URL);	
 		}	

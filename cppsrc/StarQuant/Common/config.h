@@ -28,7 +28,8 @@
 #include <cereal/types/map.hpp>
 
 #include <Common/logger.h>
-#include<Common/timeutil.h>
+#include <Common/timeutil.h>
+#include <Common/msgq.h>
 
 #if defined(_WIN32) || defined(_WIN64)
 #ifdef DLL_EXPORT
@@ -85,13 +86,13 @@ printf("%s ",ymdhmsf().c_str());printf(__VA_ARGS__);\
 		IB = 0, CTP, GOOGLE, SINA, PAPER,TAP
 	};
 
-	enum class MSGQ : uint8_t {
-		NANOMSG = 0, ZMQ, KAFKA, WEBSOCKET
-	};
+	// enum class MSGQ : uint8_t {
+	// 	NANOMSG = 0, ZMQ, KAFKA, WEBSOCKET
+	// };
 
-	enum class MSGQ_PROTOCOL : uint8_t {
-		PAIR = 0, REQ, REP, PUB, SUB, PIPELINE
-	};
+	// enum class MSGQ_PROTOCOL : uint8_t {
+	// 	PAIR = 0, REQ, REP, PUB, SUB, PIPELINE
+	// };
 // -----------------------------msg type for interprocess communication-----------------
 	enum MSG_TYPE : int32_t {
 		PYTHON_OBJ = 0,
@@ -105,8 +106,8 @@ printf("%s ",ymdhmsf().c_str());printf(__VA_ARGS__);\
 		MSG_TYPE_PAGED_START = 20,
 		MSG_TYPE_PAGED_END = 21,
 // 30 - 49 control
-		MSG_TYPE_TRADE_ENGINE_OPEN = 30,
-		MSG_TYPE_TRADE_ENGINE_CLOSE = 31,
+		MSG_TYPE_TD_ENGINE_OPEN = 30,
+		MSG_TYPE_TD_ENGINE_CLOSE = 31,
 		MSG_TYPE_MD_ENGINE_OPEN = 32,
 		MSG_TYPE_MD_ENGINE_CLOSE = 33,
 

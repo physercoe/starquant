@@ -16,14 +16,12 @@ set(StarQuantCppSrc
   ./Trade/marginmanager.cpp
   ./Trade/riskmanager.cpp
   ./Trade/ordermanager.cpp
-  ./Trade/orderbook.cpp
   ./Trade/orderstatus.cpp
   ./Trade/portfoliomanager.cpp
   ./Trade/position.cpp
-  ./Trade/accountmanager.cpp
   ./Engine/IEngine.cpp
   ./Engine/CtpMDEngine.cpp
-  ./Engine/CtpMDEngine.cpp
+  ./Engine/CtpTDEngine.cpp
   ./Engine/TapMDEngine.cpp
   ./Engine/TapTDEngine.cpp
   ./Services/dataservice.cpp

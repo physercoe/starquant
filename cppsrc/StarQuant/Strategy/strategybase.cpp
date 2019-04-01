@@ -1,7 +1,7 @@
-#include <Common/Strategy/strategybase.h>
+#include <Strategy/strategybase.h>
 #include <Common/config.h>
-#include <Common/Time/timeutil.h>
-#include <Common/Order/ordermanager.h>
+#include <Common/timeutil.h>
+#include <Trade/ordermanager.h>
 
 namespace StarQuant {
 	extern std::atomic<bool> gShutdown;

@@ -9,6 +9,11 @@
 #include <Common/util.h>
 #include <Common/logger.h>
 #include <Data/datamanager.h>
+#include <Engine/IEngine.h>
+#include <Engine/CtpMDEngine.h>
+#include <Engine/CtpTDEngine.h>
+#include <Engine/TapMDEngine.h>
+#include <Engine/TapTDEngine.h>
 #include <Trade/ordermanager.h>
 #include <Trade/portfoliomanager.h>
 //#include <Services/Strategy/strategyservice.h>
@@ -21,15 +26,24 @@ namespace StarQuant
 	extern std::atomic<bool> gShutdown;
 	extern atomic<uint64_t> MICRO_SERVICE_NUMBER;
 
+	void startengine(shared_ptr<IEngine> pe){
+		pe->start();
+	}
+
 	tradingengine::tradingengine() {
 		CConfig::instance();
+		//cout<<"config done "<<endl;
 		DataManager::instance();
 		OrderManager::instance();
 		PortfolioManager::instance();
 		// TODO: check if there is an StarQuant instance running already
 		_broker = CConfig::instance()._broker;
 		mode = CConfig::instance()._mode;
-
+		if (IEngine::msgq_send_ == nullptr){
+			IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
+			cout<<"finish msgqsend"<<endl;
+		}
+		//cout<<"trading engine inited "<<endl;
 		//client_msg_pair_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PAIR, CConfig::instance().API_PORT);
 		//md_msg_pub_=  std::make_shared<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().API_ZMQ_DATA_PORT,false);
 	}
@@ -40,19 +54,6 @@ namespace StarQuant
 				msleep(100);
 			}
 		}
-		// while ((pbrokerage_ib && pbrokerage_ib->isConnectedToBrokerage()) || (pmkdata_ib && pmkdata_ib->isConnectedToMarketDataFeed())) {
-		// 	msleep(100);
-		// }
-		// while ((pbrokerage_ctp && pbrokerage_ctp->isConnectedToBrokerage()) || (pmkdata_ctp && pmkdata_ctp->isConnectedToMarketDataFeed())) {
-		// 	msleep(100);
-		// }
-		// while ((pbrokerage_tap && pbrokerage_tap->isConnectedToBrokerage()) || (pmkdata_tap && pmkdata_tap->isConnectedToMarketDataFeed())) {
-		// 	msleep(100);
-		// }
-		// while ((pbrokerage_xtp && pbrokerage_xtp->isConnectedToBrokerage()) || (pmkdata_xtp && pmkdata_xtp->isConnectedToMarketDataFeed())) {
-		// 	msleep(100);
-		// }
-
 		while (MICRO_SERVICE_NUMBER > 0) {
 			msleep(100);
 		}
@@ -86,17 +87,19 @@ namespace StarQuant
 				if (CConfig::instance()._loadapi["CTP"]){
 					std::shared_ptr<IEngine> ctpmdengine = make_shared<CtpMDEngine>();
 					std::shared_ptr<IEngine> ctptdengine = make_shared<CtpTDEngine>();
-					threads_.push_back(std::thread(&CtpMDEngine::start,ctpmdengine));
-					threads_.push_back(std::thread(&CtpTDEngine::start,ctptdengine));
+					threads_.push_back(std::thread(startengine,ctpmdengine));
+					threads_.push_back(std::thread(startengine,ctptdengine));
 					pengines_.push_back(ctpmdengine);
 					pengines_.push_back(ctptdengine);
+					cout<<threads_.size()<< " "<<pengines_.size()<< endl;
+					
 					//threads_.push_back(std::thread(&CtpTDEngine::start,std::ref(ctptdengine)));
 				}
 				if (CConfig::instance()._loadapi["TAP"]){
 					std::shared_ptr<IEngine> tapmdengine = make_shared<TapMDEngine>();
 					std::shared_ptr<IEngine> taptdengine = make_shared<TapTDEngine>();
-					threads_.push_back(std::thread(&TapMDEngine::start,tapmdengine));
-					threads_.push_back(std::thread(&TapTDEngine::start,taptdengine));
+					threads_.push_back(std::thread(startengine,tapmdengine));
+					threads_.push_back(std::thread(startengine,taptdengine));
 					pengines_.push_back(tapmdengine);
 					pengines_.push_back(taptdengine);		
 				}
@@ -108,15 +111,21 @@ namespace StarQuant
 				return 1;
 			}
 			fu1.get(); //block here
-			for (auto e: pengines_){
-				e->stop();
-			}
+			// for (auto e: pengines_){
+			// 	e->stop();
+			// }
 		}
 		catch (exception& e) {
 			printf("Thanks for using StarQuant. GoodBye: %s\n", e.what());
 		}
 		catch (...) {
 			printf("StarQuant terminated in error!\n");
+		}
+		for (const auto& e: pengines_){
+			cout << pengines_.size();
+			int i = 0;
+			cout<<i++;
+			e->stop();
 		}
 		return 0;
 	}

@@ -3,7 +3,7 @@
 
 #include <memory>
 #include <Common/config.h>
-#include <Common/Strategy/strategybase.h>
+#include <Strategy/strategybase.h>
 
 // A factory function to create strategy
 namespace StarQuant

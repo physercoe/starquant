@@ -33,6 +33,9 @@ namespace StarQuant
 	}
 
 	void TapMDEngine::init(){
+		if (msgq_recv_ == nullptr){
+			msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().SERVERSUB_URL);	
+		}	
 		// 创建Tap目录
 		name_ = "TAP_MD";
 		tapacc_ = CConfig::instance()._apimap["TAP"];
@@ -56,11 +59,17 @@ namespace StarQuant
 
 	void TapMDEngine::stop(){
 		int tmp = disconnect();
+		int count = 0;
+		while( estate_ != DISCONNECTED){
+			msleep(100);
+			count++;
+			if(count > 20)
+				break;
+		}
 		estate_ = EState::STOP; 
 		if (api_ != NULL) {
 			FreeTapQuoteAPI(this->api_);
 			this->api_ = NULL;
-			estate_ = EState::DISCONNECTED;	
 		}
 	}
 

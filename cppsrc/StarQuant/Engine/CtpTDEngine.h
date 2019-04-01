@@ -37,7 +37,6 @@ namespace StarQuant
 		//void insertOrder(std::shared_ptr<Order> order);
 		//void insertOrder(const string& msgorder);
 		void insertOrder(const vector<string>& msgv);
-
 		//void cancelOrder(const string& msgorder);
 		void cancelOrder(const vector<string>& msgv);
 		void cancelOrder(int oid);

@@ -22,7 +22,7 @@ namespace StarQuant
 	void DataBoardService() {
 		try {
 			std::unique_ptr<CMsgq> msgq_sub_;
-			msgq_sub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().MKT_DATA_PUBSUB_PORT, false);
+			msgq_sub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().SERVERPUB_URL, false);
 			while (!gShutdown) {
 				string msg = msgq_sub_->recmsg(0);
 				if (!msg.empty()) {
@@ -129,7 +129,7 @@ namespace StarQuant
 
 	void TickRecordingService() {
 		std::unique_ptr<CMsgq> msgq_sub_;
-		msgq_sub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().MKT_DATA_PUBSUB_PORT, false);
+		msgq_sub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().SERVERPUB_URL, false);
 		string ymdstr = ymd();
 		string fname = CConfig::instance().dataDir() + "/marketdata-" + ymdstr + ".txt";
 		FILE* fp = fopen(fname.c_str(), "a+");

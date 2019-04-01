@@ -90,13 +90,13 @@ namespace StarQuant
 		string serialize() {
 			string sprice = "0.0";
 			if (orderType == OrderType::OT_Limit){
-				sprice = to_string(limitPrice);
+				sprice = std::to_string(limitPrice);
 			}else if (orderType == OrderType::OT_StopLimit){
-				sprice = to_string(stopPrice);
+				sprice = std::to_string(stopPrice);
 			}
-			string str = to_string(clientId) //msg destination
+			string str = std::to_string(clientId) //msg destination
 				+ SERIALIZATION_SEPARATOR + api //msg source
-				+ SERIALIZATION_SEPARATOR + to_string(MSG_TYPE::MSG_TYPE_RTN_ORDER)  //CConfig::instance().order_status_msg
+				+ SERIALIZATION_SEPARATOR + std::to_string(MSG_TYPE::MSG_TYPE_RTN_ORDER)  //CConfig::instance().order_status_msg
 				+ SERIALIZATION_SEPARATOR + std::to_string(serverOrderId)
 				+ SERIALIZATION_SEPARATOR + std::to_string(clientOrderId)
 				+ SERIALIZATION_SEPARATOR + std::to_string(brokerOrderId)

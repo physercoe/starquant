@@ -1,4 +1,4 @@
-#include <Common/Strategy/strategymanager.h>
+#include <Strategy/strategymanager.h>
 
 namespace StarQuant {
 
