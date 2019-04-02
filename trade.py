@@ -74,8 +74,8 @@ def stop_server():
 server_process = None
 
 if __name__ == "__main__":
-    server_process = Process(target=start_server)
-    server_process.start()
-    atexit.register(stop_server)
+    # server_process = Process(target=start_server)
+    # server_process.start()
+    # atexit.register(stop_server)
 
     main()
