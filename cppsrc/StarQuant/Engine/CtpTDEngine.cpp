@@ -39,18 +39,19 @@ namespace StarQuant
 		// if (IEngine::msgq_send_ == nullptr){
 		// 	IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
 		// }
-		cout<<"ctptd init"<<endl;
+		if(logger == nullptr){
+			logger = SQLogger::getLogger("TDEngine.CTP");
+		}
 		if (msgq_recv_ == nullptr){
 			msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().SERVERSUB_URL);	
-		}	
+		}
+		LOG_DEBUG(logger,"CTP TD initiated");	
 		name_ = "CTP_TD";
 		ctpacc_ = CConfig::instance()._apimap["CTP"];
 		string path = CConfig::instance().logDir() + "/ctp/";
 		boost::filesystem::path dir(path.c_str());
 		boost::filesystem::create_directory(dir);
-		///创建TraderApi
 		this->api_ = CThostFtdcTraderApi::CreateFtdcTraderApi(path.c_str());
-		///注册回调接口
 		this->api_->RegisterSpi(this);
 		if (ctpacc_.auth_code == "NA") {
 			needauthentication_ = false;
@@ -62,7 +63,7 @@ namespace StarQuant
 	void CtpTDEngine::stop(){
 		int tmp = disconnect();
 		estate_  = EState::STOP;
-		cout<<" ctp td stop"<<endl;
+		LOG_DEBUG(logger,"CTP TD stoped");	
 		if (api_ != NULL){
 			this->api_->RegisterSpi(NULL);
 			this->api_->Release();
@@ -79,7 +80,7 @@ namespace StarQuant
 			vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);			
 			if (v[0] != name_) //filter message according to its destination
 				continue;
-			cout<<name_<<"recv msg "<<msgin<<endl;
+			LOG_DEBUG(logger,"CTP TD recv msg:"<<msgin );
 			bool tmp;
 			switch (msgintype)
 			{
@@ -91,11 +92,10 @@ namespace StarQuant
 					break;
 				case MSG_TYPE_ORDER:
 					if (estate_ == LOGIN_ACK){
-						PRINT_TO_FILE_AND_CONSOLE("INFO[%s,%d][%s]receive order: %s\n", __FILE__, __LINE__, __FUNCTION__, msgin.c_str());
 						insertOrder(v);
 					}
 					else{
-						cout<<"CTP_TD is not connected,can not place order! "<<endl;
+						LOG_DEBUG(logger,"CTP_TD is not connected,can not place order!");
 						string msgout = to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR +"CTP_TD is not connected,can not place order";
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
@@ -103,11 +103,10 @@ namespace StarQuant
 					break;
 				case MSG_TYPE_CANCEL_ORDER:
 					if (estate_ == LOGIN_ACK){
-						PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Cancel Order clientorderId=%ld\n", __FILE__, __LINE__, __FUNCTION__, stol(v[3]));
 						cancelOrder(v);
 					}
 					else{
-						cout<<"CTP_TD is not connected,can not cancel order! "<<endl;
+						LOG_DEBUG(logger,"CTP_TD is not connected,can not cancel order!");
 						string msgout = to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR +"CTP_TD is not connected,can not cancel order";
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
@@ -118,7 +117,7 @@ namespace StarQuant
 						queryPosition();//TODO:区分不同来源，回报中添加目的地信息
 					}
 					else{
-						cout<<"CTP_TD is not connected,can not cancel order! "<<endl;
+						LOG_DEBUG(logger,"CTP_TD is not connected,can not qry pos!");
 						string msgout = to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR +"CTP_TD is not connected,can not cancel order";
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
@@ -129,7 +128,7 @@ namespace StarQuant
 						queryAccount();
 					}
 					else{
-						cout<<"CTP_TD is not connected,can not cancel order! "<<endl;
+						LOG_DEBUG(logger,"CTP_TD is not connected,can not qry acc!");
 						string msgout = to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR +"CTP_TD is not connected,can not cancel order";
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
@@ -163,7 +162,7 @@ namespace StarQuant
 					this->api_->RegisterFront((char*)ctp_td_address.c_str());
 					this->api_->Init();
 					estate_ = CONNECTING;
-					PRINT_TO_FILE("INFO:[%s,%d][%s]CTP_TD register front!\n", __FILE__, __LINE__, __FUNCTION__);
+					LOG_INFO(logger,"CTP_TD register Front!");
 					count++;
 					break;
 				case CONNECTING:
@@ -171,7 +170,7 @@ namespace StarQuant
 					break;
 				case CONNECT_ACK:
 					if(needauthentication_){
-						PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp td authenticating ...\n", __FILE__, __LINE__, __FUNCTION__);
+						LOG_INFO(logger,"CTP_TD authenticating ...");
 						CThostFtdcReqAuthenticateField authField;
 						strcpy(authField.UserID, ctpacc_.userid.c_str());
 						strcpy(authField.BrokerID, ctpacc_.brokerid.c_str());
@@ -181,7 +180,8 @@ namespace StarQuant
 						count++;
 						estate_ = AUTHENTICATING;
 						if (error != 0){
-							cout<<"Ctp td  authenticate  error "<<error<<endl;
+							LOG_ERROR(logger,"Ctp td  authenticate  error");
+							//cout<<"Ctp td  authenticate  error "<<error<<endl;
 							estate_ = CONNECT_ACK;
 							msleep(1000);
 						}
@@ -194,7 +194,7 @@ namespace StarQuant
 					msleep(100);
 					break;
 				case AUTHENTICATE_ACK:
-					PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp td logining ...\n", __FILE__, __LINE__, __FUNCTION__);
+					LOG_INFO(logger,"Ctp td logining ...");
 					strcpy(loginField.BrokerID, ctpacc_.brokerid.c_str());
 					strcpy(loginField.UserID, ctpacc_.userid.c_str());
 					strcpy(loginField.Password, ctpacc_.password.c_str());
@@ -202,7 +202,7 @@ namespace StarQuant
 					count++;
 					estate_ = EState::LOGINING;
 					if (error != 0){
-						cout<<"Ctp TD login error "<<error<<endl;
+						LOG_ERROR(logger,"Ctp TD login error:"<<error);
 						estate_ = EState::AUTHENTICATE_ACK;
 						msleep(1000);
 					}
@@ -214,7 +214,7 @@ namespace StarQuant
 					break;
 			}
 			if(count >15){
-				cout<<"too many tries fails, give up connecting"<<endl;
+				LOG_ERROR(logger,"too many tries fails, give up connecting");
 				//estate_ = EState::DISCONNECTED;
 				return false;
 			}			
@@ -224,20 +224,20 @@ namespace StarQuant
 
 	bool CtpTDEngine::disconnect(){
 		if(estate_ == LOGIN_ACK){
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Td logouting ...\n", __FILE__, __LINE__, __FUNCTION__);
+			LOG_INFO(logger,"Ctp Td logouting ..");
 			CThostFtdcUserLogoutField logoutField = CThostFtdcUserLogoutField();
 			strcpy(logoutField.BrokerID, ctpacc_.brokerid.c_str());
 			strcpy(logoutField.UserID, ctpacc_.userid.c_str());
 			int error = this->api_->ReqUserLogout(&logoutField, reqId_++);
 			estate_ = EState::LOGOUTING;
 			if (error != 0){
-				cout<<"ctp td logout error "<<error<<endl;//TODO: send error msg to client
+				LOG_ERROR(logger,"ctp td logout error:"<<error);//TODO: send error msg to client
 				return false;
 			}
 			return true;
 		}
 		else{
-			cout<<"ctp td is not connected(logined), can not disconnect! "<<endl;
+			LOG_INFO(logger,"ctp td is not connected(logined), cannot disconnect!");
 			return false;
 		}
 
@@ -292,12 +292,12 @@ namespace StarQuant
 		//orderfield.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
 		//orderfield.TimeCondition = THOST_FTDC_TC_IOC;
 		//orderfield.VolumeCondition = THOST_FTDC_VC_CV;				// FAK; FOK uses THOST_FTDC_VC_AV
-		PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Placing Order clientorderId=%ld: fullSymbol=%s\n", __FILE__, __LINE__, __FUNCTION__, o->clientOrderId, o->fullSymbol.c_str());
+		LOG_INFO(logger,"Insert Order: clientorderid ="<<o->clientOrderId<<"fullsymbol = "<<o->fullSymbol);
 		lock_guard<mutex> g2(orderStatus_mtx);
 		int i = api_->ReqOrderInsert(&orderfield, reqId_++);
 		o->orderStatus = OrderStatus::OS_Submitted;
 		if (i != 0){
-			cout<<"Ctp TD order insert error "<<i<<endl;
+			LOG_ERROR(logger,"Ctp TD order insert error "<<i);
 			o->orderStatus = OrderStatus::OS_Error;
 			//sendOrderStatus(order->serverOrderId);
 		}
@@ -322,24 +322,24 @@ namespace StarQuant
 			//myreq.OrderActionRef = int(m_brokerOrderId_++);//TODO: int <-> long is unsafe, use another way
 			int i = this->api_->ReqOrderAction(&myreq, reqId_++);
 			if (i != 0){
-				cout<<"Ctp TD cancle order error "<<i<<endl;
+				LOG_ERROR(logger,"Ctp TD cancle order error "<<i);
 			}
 		}
 		else{
-			cout<<"ordermanager cannot find order!"<<endl;
+			LOG_ERROR(logger,"ordermanager cannot find order!");
 		}
 
 	}
 
 	void CtpTDEngine::cancelOrder(int oid) {
-		PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Cancel Order m_orderId=%ld\n", __FILE__, __LINE__, __FUNCTION__, (long)oid);
+		LOG_INFO(logger,"Cancel Order serverorderid = "<<oid);		
 		CThostFtdcInputOrderActionField myreq = CThostFtdcInputOrderActionField();
 		std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(oid);
 		if (o != nullptr){
 			string ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(o->fullSymbol);
 			strcpy(myreq.InstrumentID, ctpsym.c_str());
 			//strcpy(myreq.ExchangeID, o->.c_str());
-			strcpy(myreq.OrderRef, to_string(o->brokerOrderId).c_str());
+			strcpy(myreq.OrderRef, to_string(o->serverOrderId).c_str());
 			myreq.FrontID = frontID_;
 			myreq.SessionID = sessionID_;
 			myreq.ActionFlag = THOST_FTDC_AF_Delete;
@@ -347,16 +347,15 @@ namespace StarQuant
 			strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
 			int i = this->api_->ReqOrderAction(&myreq, reqId_++);
 			if (i != 0){
-				cout<<"Ctp TD cancle order error "<<i<<endl;
+				LOG_ERROR(logger,"Ctp TD cancle order error "<<i);
 			}
 		}
 		else{
-			cout<<"ordermanager cannot find order!"<<endl;
+			LOG_ERROR(logger,"ordermanager cannot find order!");
 		}
 	}
 
-	void CtpTDEngine::cancelOrders(const string& symbol) {
-		PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Cancel Order symbol=%s\n", __FILE__, __LINE__, __FUNCTION__, symbol.c_str());
+	void CtpTDEngine::cancelOrders(const string& symbol) {		
 	}
 
 	// 查询账户

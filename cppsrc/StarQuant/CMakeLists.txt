@@ -31,7 +31,7 @@ set(StarQuantCppSrc
 
 add_library(starquant SHARED ${StarQuantCppSrc})
 set_target_properties(starquant  PROPERTIES COMPILE_FLAGS "-fPIC")
-target_link_libraries(starquant  ${Boost_LIBRARIES} ${PYTHON_LIBRARY} ${MONGOC_LIBRARIES} yaml-cpp LinuxDataCollect thosttraderapi thostmduserapi TapQuoteAPI TapTradeAPI  nanomsg pthread dl util m)
+target_link_libraries(starquant  ${Boost_LIBRARIES} ${PYTHON_LIBRARY} ${MONGOC_LIBRARIES} ${LOG4CPLUS_LIBRARIES} ${YAMLCPP_LIBRARY} LinuxDataCollect thosttraderapi thostmduserapi TapQuoteAPI TapTradeAPI  ${NANOMSG_LIBRARY_SHARED} pthread dl util m)
 set(SQSERVER_SRC  ./Services/sqserver.cpp )
 add_executable(sqserver ${SQSERVER_SRC})
 TARGET_LINK_LIBRARIES(sqserver starquant)

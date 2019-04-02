@@ -3,6 +3,11 @@
 #include <Common/timeutil.h>
 #include <Common/config.h>
 
+#include <log4cplus/initializer.h>
+#include <log4cplus/configurator.h>
+#include <log4cplus/fileappender.h>
+#include <log4cplus/consoleappender.h>
+#include <log4cplus/loglevel.h>
 #include <fstream>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -24,6 +29,7 @@
 
 namespace fs = boost::filesystem;
 using std::lock_guard;
+using namespace log4cplus;
 
 namespace StarQuant
 {
@@ -80,4 +86,39 @@ namespace StarQuant
 		fwrite(buf, sizeof(char), buflen, logfile);
 		va_end(args);
 	}
+
+	static bool configured = false;
+
+	bool SQLogger::doConfigure(string configureName)
+	{
+		if (!configured)
+		{
+			log4cplus::PropertyConfigurator::doConfigure(LOG4CPLUS_TEXT(configureName));
+			configured = true;
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	std::shared_ptr<SQLogger> SQLogger::getLogger(string name)
+	{
+		return std::shared_ptr<SQLogger>(new SQLogger(name));
+	}
+
+	SQLogger::SQLogger(string name)
+	{
+		doConfigure(CConfig::instance().logconfigfile_);
+		logger = log4cplus::Logger::getInstance(name);
+	}
+
+	string SQLogger::getConfigFolder()
+	{
+		return CConfig::instance().configDir();
+	}
+
+
+
 }

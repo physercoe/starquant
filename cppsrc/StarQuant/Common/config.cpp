@@ -73,14 +73,14 @@ namespace StarQuant {
 			_brokerdelay = config["brokerdelay"].as<int>();
 			filetoreplay = config["filetoreplay"].as<std::string>();
 		}
-		_config_dir = boost::filesystem::current_path().string();
+		_config_dir = boost::filesystem::current_path().string() + "/etc/";
 		_log_dir = config["log_dir"].as<std::string>();
 		_data_dir = config["data_dir"].as<std::string>();
 		boost::filesystem::path log_path(logDir());
 		boost::filesystem::create_directory(log_path);
 		boost::filesystem::path data_path(dataDir());
 		boost::filesystem::create_directory(data_path);
-
+		logconfigfile_ = boost::filesystem::current_path().string() + "/etc/config_log";
 		// const string msgq = config["msgq"].as<std::string>();
 		_msgq = MSGQ::NANOMSG;
 		

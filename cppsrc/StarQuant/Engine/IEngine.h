@@ -1,7 +1,7 @@
 #ifndef _StarQuant_Engine_IEngine_H_
 #define _StarQuant_Engine_IEngine_H_
 #include <Common/msgq.h>
-
+#include <Common/logger.h>
 
 
 
@@ -21,7 +21,7 @@ enum EState :int {
 };
 
 // Interface class: base engine for td and md engine
-class IEngine {			
+class IEngine {	    	
 public:
     static mutex sendlock_;  // msg send lock_
     static std::unique_ptr<CMsgq> msgq_send_;  //for md and td messenge to client, all engine share same msgq, usually publish mode
@@ -36,6 +36,8 @@ public:
     virtual void stop();
     virtual bool connect() = 0;
     virtual bool disconnect() = 0;
+protected:
+    std::shared_ptr<SQLogger> logger;
 };
 
 }

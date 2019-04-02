@@ -227,6 +227,7 @@ printf("%s ",ymdhmsf().c_str());printf(__VA_ARGS__);\
 		string configDir();
 		string logDir();
 		string dataDir();
+		string logconfigfile_;
 
 		map<string,bool> _loadapi;
 
