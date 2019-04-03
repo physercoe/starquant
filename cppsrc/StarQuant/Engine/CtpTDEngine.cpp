@@ -32,7 +32,14 @@ namespace StarQuant
 	}
 
 	CtpTDEngine::~CtpTDEngine() {
-		stop();
+		if (estate_ != STOP)
+			stop();
+		if (api_ != nullptr){
+			this->api_->RegisterSpi(nullptr);
+			this->api_->Release();// api must init() or will segfault
+			this->api_ = nullptr;
+		}
+		cout<<"exit ctp td"<<endl;
 	}
 
 	void CtpTDEngine::init(){
@@ -45,10 +52,10 @@ namespace StarQuant
 		if (msgq_recv_ == nullptr){
 			msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().SERVERSUB_URL);	
 		}
-		LOG_DEBUG(logger,"CTP TD initiated");	
+		//LOG_DEBUG(logger,"CTP TD initiated");	
 		name_ = "CTP_TD";
 		ctpacc_ = CConfig::instance()._apimap["CTP"];
-		string path = CConfig::instance().logDir() + "/ctp/";
+		string path = CConfig::instance().logDir() + "/ctp/td";
 		boost::filesystem::path dir(path.c_str());
 		boost::filesystem::create_directory(dir);
 		this->api_ = CThostFtdcTraderApi::CreateFtdcTraderApi(path.c_str());
@@ -59,16 +66,21 @@ namespace StarQuant
 		else {
 			needauthentication_ = true;
 		}
+		THOST_TE_RESUME_TYPE privatetype = THOST_TERT_QUICK;// THOST_TERT_RESTART，THOST_TERT_RESUME, THOST_TERT_QUICK
+		THOST_TE_RESUME_TYPE publictype = THOST_TERT_QUICK;// THOST_TERT_RESTART，THOST_TERT_RESUME, THOST_TERT_QUICK
+		string ctp_td_address = ctpacc_.td_ip + ":" + to_string(ctpacc_.td_port);			
+		this->api_->SubscribePrivateTopic(privatetype);
+		this->api_->SubscribePublicTopic(publictype);
+		this->api_->RegisterFront((char*)ctp_td_address.c_str());
+		this->api_->Init();
+		estate_ = CONNECTING;
+		LOG_DEBUG(logger,"CTP TD inited");
 	}
 	void CtpTDEngine::stop(){
 		int tmp = disconnect();
 		estate_  = EState::STOP;
 		LOG_DEBUG(logger,"CTP TD stoped");	
-		if (api_ != NULL){
-			this->api_->RegisterSpi(NULL);
-			this->api_->Release();
-			this->api_ = NULL;
-		}
+
 	}
 
 	void CtpTDEngine::start(){
@@ -154,16 +166,17 @@ namespace StarQuant
 		int count = 0;// count numbers of tries, two many tries ends
 		string ctp_td_address = ctpacc_.td_ip + ":" + to_string(ctpacc_.td_port);	
 		CThostFtdcReqUserLoginField loginField = CThostFtdcReqUserLoginField();
-		while (estate_ != LOGIN_ACK){
+		while (estate_ != LOGIN_ACK && estate_ != STOP){
 			switch (estate_){
 				case DISCONNECTED:
-					this->api_->SubscribePrivateTopic(privatetype);
-					this->api_->SubscribePublicTopic(publictype);
-					this->api_->RegisterFront((char*)ctp_td_address.c_str());
-					this->api_->Init();
-					estate_ = CONNECTING;
-					LOG_INFO(logger,"CTP_TD register Front!");
-					count++;
+					// this->api_->SubscribePrivateTopic(privatetype);
+					// this->api_->SubscribePublicTopic(publictype);
+					// this->api_->RegisterFront((char*)ctp_td_address.c_str());
+					// this->api_->Init();
+					// //this->api_->Join();
+					// estate_ = CONNECTING;
+					// LOG_INFO(logger,"CTP_TD register Front!");
+					// count++;
 					break;
 				case CONNECTING:
 					msleep(100);
@@ -181,7 +194,6 @@ namespace StarQuant
 						estate_ = AUTHENTICATING;
 						if (error != 0){
 							LOG_ERROR(logger,"Ctp td  authenticate  error");
-							//cout<<"Ctp td  authenticate  error "<<error<<endl;
 							estate_ = CONNECT_ACK;
 							msleep(1000);
 						}
@@ -237,7 +249,7 @@ namespace StarQuant
 			return true;
 		}
 		else{
-			LOG_INFO(logger,"ctp td is not connected(logined), cannot disconnect!");
+			LOG_DEBUG(logger,"ctp td is not connected(logined), cannot disconnect!");
 			return false;
 		}
 
@@ -363,53 +375,52 @@ namespace StarQuant
 		CThostFtdcQryTradingAccountField myreq = CThostFtdcQryTradingAccountField();
 		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
-		int error = api_->ReqQryTradingAccount(&myreq, reqId_++);			// return 0 = 发送投资者资金账户查询请求失败
-		PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Td requests account information.\n", __FILE__, __LINE__, __FUNCTION__);
+		int error = api_->ReqQryTradingAccount(&myreq, reqId_++);
+		LOG_INFO(logger,"Ctp Td requests account information");			
 		if (error != 0){
-			cout<<"Ctp td qry acc error "<<error<<endl;
+			LOG_ERROR(logger,"Ctp td qry acc error "<<error);
 		}
 	}
 
 	void CtpTDEngine::queryOrder(const string& msgorder_){
 	}
 
-	/// 查询账户， trigger onRspQryInvestorPosition
+	/// 查询pos
 	void CtpTDEngine::queryPosition() {
 		CThostFtdcQryInvestorPositionField myreq = CThostFtdcQryInvestorPositionField();
 		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
-		int error = this->api_->ReqQryInvestorPosition(&myreq, reqId_++);		
-		PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp broker requests open positions.\n", __FILE__, __LINE__, __FUNCTION__);
+		int error = this->api_->ReqQryInvestorPosition(&myreq, reqId_++);
+		LOG_INFO(logger,"Ctp td requests positions");		
 		if (error != 0){
-			cout<<"trade qry pos error "<<error<<endl;
+			LOG_ERROR(logger,"Ctp td qry pos error "<<error);
 		}
 	}
 
 	////////////////////////////////////////////////////// begin callback/incoming function ///////////////////////////////////////
 	///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
 	void CtpTDEngine::OnFrontConnected() {
-		PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Td frontend connected; Continue to login.\n", __FILE__, __LINE__, __FUNCTION__);
-		cout<< "Ctp TD front connected "<<endl;
+		LOG_INFO(logger,"Ctp Td frontend connected");
 		estate_ = CONNECT_ACK;
 		reqId_ = 0;
 	}
 
 	void CtpTDEngine::OnFrontDisconnected(int nReason) {
-		PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp td disconnected, nReason=%d.\n", __FILE__, __LINE__, __FUNCTION__, nReason);
+		LOG_INFO(logger,"Ctp td disconnected, nReason="<<nReason);
 		estate_ = DISCONNECTED;
 	}
 	///心跳超时警告。当长时间未收到报文时，该方法被调用。
 	void CtpTDEngine::OnHeartBeatWarning(int nTimeLapse) {
-		PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp brokerage heartbeat overtime error, nTimeLapse=%d.\n", __FILE__, __LINE__, __FUNCTION__, nTimeLapse);
+		LOG_INFO(logger,"Ctp td heartbeat overtime error, nTimeLapse="<<nTimeLapse);
 	}
 	///客户端认证响应
 	void CtpTDEngine::OnRspAuthenticate(CThostFtdcRspAuthenticateField *pRspAuthenticateField, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Td authentication failed. \n", __FILE__, __LINE__, __FUNCTION__);
+			LOG_ERROR(logger,"Ctp Td authentication failed.");
 		}
 		else{
 			estate_ = AUTHENTICATE_ACK;
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp TD authenticated. Continue to log in.\n", __FILE__, __LINE__, __FUNCTION__);
+			LOG_INFO(logger,"Ctp TD authenticated.");			
 		}
 	}
 	/// 登录请求响应
@@ -417,29 +428,29 @@ namespace StarQuant
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0)
 		{
 			string errormsgutf8;			
-			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );  
-			cout<<"login error: "<< errormsgutf8 <<endl;
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp broker server user login failed: ErrorID=%d, ErrorMsg=%s.\n",
-				__FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, errormsgutf8.c_str());
+			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+			LOG_ERROR(logger,"Ctp td login failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);  
 		}
 		else{
 			frontID_ = pRspUserLogin->FrontID;
 			sessionID_ = pRspUserLogin->SessionID;
-			cout<<"Ctp TD logged in "<<endl;
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Td server user logged in, TradingDay=%s, LoginTime=%s, BrokerID=%s, UserID=%s, frontID=%d, sessionID=%d, MaxOrderRef=%s\n.",
-				__FILE__, __LINE__, __FUNCTION__,
-				pRspUserLogin->TradingDay, pRspUserLogin->LoginTime, pRspUserLogin->BrokerID, pRspUserLogin->UserID, pRspUserLogin->FrontID, pRspUserLogin->SessionID, pRspUserLogin->MaxOrderRef);
-			if(needsettlementconfirm_){
+			LOG_INFO(logger,"Ctp Td server user logged in,"
+							<<"TradingDay="<<pRspUserLogin->TradingDay
+							<<" LoginTime="<<pRspUserLogin->LoginTime
+							<<" frontID="<<pRspUserLogin->FrontID
+							<<" sessionID="<<pRspUserLogin->SessionID
+							<<" MaxOrderRef="<<pRspUserLogin->MaxOrderRef
+			);
+			if(needsettlementconfirm_ && !issettleconfirmed_){
 				// 投资者结算结果确认
 				CThostFtdcSettlementInfoConfirmField myreq = CThostFtdcSettlementInfoConfirmField();
 				strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
 				strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 				int error = api_->ReqSettlementInfoConfirm(&myreq, reqId_++);
 				if (error != 0){
-					cout<<"Error: Ctp TD settlement confirming error "<<error<<endl;
+					LOG_ERROR(logger,"Ctp TD settlement confirming error");
 				}
-				cout<<"Ctp TD settlement confirming "<<endl;			
-				PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp TD settlement info comfirming.\n", __FILE__, __LINE__, __FUNCTION__);
+				LOG_INFO(logger,"Ctp TD settlement confirming...");
 			}
 			else{
 				estate_ = LOGIN_ACK;
@@ -451,17 +462,13 @@ namespace StarQuant
 	void CtpTDEngine::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
 			string errormsgutf8;			
-			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );  
-			cout<<"Settlement confirm error: "<< errormsgutf8 <<endl;
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp Td settlement confirm failed: ErrorID=%d, ErrorMsg=%s.\n",
-				__FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, errormsgutf8.c_str());
+			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" ); 
+			LOG_ERROR(logger,"Settlement confirm error: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
 		}
 		else{
 			estate_ = LOGIN_ACK;
 			issettleconfirmed_ = true;
-			cout<<"Settlement confirmed "<<endl;
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp broker server OnRspSettlementInfoConfirm, ConfirmDate=%s, ConfirmTime=%s.\n",
-				__FILE__, __LINE__, __FUNCTION__, pSettlementInfoConfirm->ConfirmDate, pSettlementInfoConfirm->ConfirmTime);
+			LOG_INFO(logger,"Ctp td Settlement confirmed.ConfirmDate="<<pSettlementInfoConfirm->ConfirmDate<<"ConfirmTime="<<pSettlementInfoConfirm->ConfirmTime);
 		}
 	}
 	///登出请求响应
@@ -469,15 +476,11 @@ namespace StarQuant
  		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" ); 
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp broker server user logout failed: ErrorID=%d, ErrorMsg=%s.\n",
-				__FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, errormsgutf8.c_str());
-			//sendGeneralMessage(string("CTP Trader Server OnRspUserLogout error:") +
-			//	SERIALIZATION_SEPARATOR + to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR + errormsgutf8);
+			LOG_ERROR(logger,"Ctp td logout failed: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
 		}
 		else{
 			estate_ = CONNECT_ACK;
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Td Logout, BrokerID=%s, UserID=%s.\n",
-				__FILE__, __LINE__, __FUNCTION__, pUserLogout->BrokerID, pUserLogout->UserID);
+			LOG_INFO(logger,"Ctp Td Logout,BrokerID="<<pUserLogout->BrokerID<<" UserID="<<pUserLogout->UserID);
 		}
 	}
 
@@ -488,10 +491,13 @@ namespace StarQuant
 		{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp Td OnRspOrderInsert: ErrorID=%d, ErrorMsg=%s.\n",
-				__FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, errormsgutf8.c_str());
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Td OnRspOrderInsert: OrderRef=%s, InstrumentID=%s, LimitPrice=%.2f, VolumeTotalOriginal=%d, Direction=%c.\n",
-				__FILE__, __LINE__, __FUNCTION__, pInputOrder->OrderRef, pInputOrder->InstrumentID, pInputOrder->LimitPrice, pInputOrder->VolumeTotalOriginal, pInputOrder->Direction);
+			LOG_ERROR(logger,"Ctp Td OnRspOrderInsert: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8
+				<<"[OrderRef="<<pInputOrder->OrderRef
+				<<"InstrumentID="<<pInputOrder->InstrumentID
+				<<"LimitPrice="<<pInputOrder->LimitPrice
+				<<"VolumeTotalOriginal="<<pInputOrder->VolumeTotalOriginal
+				<<"Direction="<<pInputOrder->Direction<<"]"
+			);
 			lock_guard<mutex> g(orderStatus_mtx);
 			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pInputOrder->OrderRef));
 			if (o != nullptr) {
@@ -501,24 +507,22 @@ namespace StarQuant
 					//SERIALIZATION_SEPARATOR + to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR + errormsgutf8);
 			}
 			else {
-				PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]ctp Trade server OnRspOrderInsert cant find order : OrderRef=%s\n",
-					__FILE__, __LINE__, __FUNCTION__, pInputOrder->OrderRef);
+				LOG_ERROR(logger,"OrderManager cannot find order,OrderRef="<<pInputOrder->OrderRef);
 			}
 		}
 		else
 		{
-			lock_guard<mutex> g(orderStatus_mtx);
-			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pInputOrder->OrderRef));
-			if (o != nullptr) {
-				o->orderStatus = OS_Error;			// rejected ?
-				//sendOrderStatus(o->serverOrderId);
-				//sendGeneralMessage(string("CTP Trader Server OnRspOrderInsert error:") +
-				//	SERIALIZATION_SEPARATOR + to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR + errormsgutf8);
-			}
-			else {
-				PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]tp broker server OnRspOrderInsert cant find order : OrderRef=%s\n",
-					__FILE__, __LINE__, __FUNCTION__, pInputOrder->OrderRef);
-			}			
+			//lock_guard<mutex> g(orderStatus_mtx);
+			//std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pInputOrder->OrderRef));
+			// if (o != nullptr) {
+			// 	o->orderStatus = OS_Error;			// rejected ?
+			// 	//sendOrderStatus(o->serverOrderId);
+			// 	//sendGeneralMessage(string("CTP Trader Server OnRspOrderInsert error:") +
+			// 	//	SERIALIZATION_SEPARATOR + to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR + errormsgutf8);
+			// }
+			// else {
+
+			// }			
 		}
 	}
 	///报单操作请求响应(参数不通过)	// 撤单错误（柜台）
@@ -528,14 +532,15 @@ namespace StarQuant
 		{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp broker server OnRspOrderAction failed: ErrorID=%d, ErrorMsg=%s.\n",
-				__FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, errormsgutf8.c_str());
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp broker server OnRspOrderAction: OrderRef=%s, InstrumentID=%s, ActionFlag=%c.\n",
-				__FILE__, __LINE__, __FUNCTION__, pInputOrderAction->OrderRef, pInputOrderAction->InstrumentID, pInputOrderAction->ActionFlag);
+			LOG_ERROR(logger,"Ctp Td OnRspOrderAction: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8
+				<<"[OrderRef="<<pInputOrderAction->OrderRef
+				<<"InstrumentID="<<pInputOrderAction->InstrumentID
+				<<"ActionFlag="<<pInputOrderAction->ActionFlag<<"]"
+			);
 		}
 		else
 		{
-			cout<<"OnRspOrderAction error = 0"<<endl;
+			//cout<<"OnRspOrderAction error = 0"<<endl;
 			//sendGeneralMessage(to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR + errormsgutf8);
 		}
 	}
@@ -546,13 +551,24 @@ namespace StarQuant
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult){
 			if(pInvestorPosition == nullptr){
-				cout<<"qry pos return nullptr"<<endl;
+				LOG_INFO(logger,"ctp on qry pos return nullptr");
 				return;
 			}
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp broker server OnRspQryInvestorPosition, InstrumentID=%s, InvestorID=%s, OpenAmount=%f, OpenVolume=%d, PosiDirection=%c, PositionProfit=%.2f, PositionCost=%.2f, UseMargin=%.2f, LongFrozen=%d, ShortFrozen=%d, TradingDay=%s, YdPosition=%d, last=%d\n",
-				__FILE__, __LINE__, __FUNCTION__, pInvestorPosition->InstrumentID, pInvestorPosition->InvestorID, pInvestorPosition->OpenAmount, pInvestorPosition->OpenVolume,
-				pInvestorPosition->PosiDirection, pInvestorPosition->PositionProfit, pInvestorPosition->PositionCost, pInvestorPosition->UseMargin,
-				pInvestorPosition->LongFrozen, pInvestorPosition->ShortFrozen, pInvestorPosition->TradingDay, pInvestorPosition->YdPosition, bIsLast);
+			LOG_INFO(logger,"Ctp broker server OnRspQryInvestorPosition:"
+				<<"InstrumentID="<<pInvestorPosition->InstrumentID
+				<<"InvestorID="<<pInvestorPosition->InvestorID
+				<<"OpenAmount="<<pInvestorPosition->OpenAmount
+				<<"OpenVolume="<<pInvestorPosition->OpenVolume
+				<<"PosiDirection="<<pInvestorPosition->PosiDirection
+				<<"PositionProfit="<<pInvestorPosition->PositionProfit
+				<<"PositionCost="<<pInvestorPosition->PositionCost
+				<<"UseMargin="<<pInvestorPosition->UseMargin
+				<<"LongFrozen="<<pInvestorPosition->LongFrozen
+				<<"ShortFrozen="<<pInvestorPosition->ShortFrozen
+				<<"TradingDay="<<pInvestorPosition->TradingDay
+				<<"YdPosition="<<pInvestorPosition->YdPosition
+				<<"islast="<<bIsLast		
+			);
 			if ((pInvestorPosition->Position != 0.0) && (pInvestorPosition->YdPosition != 0.0)){
 				Position pos;
 				pos._posNo = to_string(pInvestorPosition->SettlementID);
@@ -587,7 +603,7 @@ namespace StarQuant
 					+ SERIALIZATION_SEPARATOR + std::to_string(pos._closedpl)
 					+ SERIALIZATION_SEPARATOR + std::to_string(pos._openpl)
 					+ SERIALIZATION_SEPARATOR + ymdhmsf();
-				cout<<"Ctp TD send postion msg:"<<msg<<endl;
+				LOG_DEBUG(logger,"Ctp TD send postion msg:"<<msg);
 				lock_guard<mutex> g(IEngine::sendlock_);
 				IEngine::msgq_send_->sendmsg(msg);
 			}
@@ -596,7 +612,7 @@ namespace StarQuant
 		{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			cout<<"Ctp Td Qry pos error "<<pRspInfo->ErrorID<<":"<<errormsgutf8<<endl;
+			LOG_ERROR(logger,"Ctp Td Qry pos error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
 		}
 	}
 	///请求查询资金账户响应 
@@ -604,16 +620,26 @@ namespace StarQuant
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult){
 			if(pTradingAccount == nullptr){
-				cout<<"Ctp Td qry acc return nullptr"<<endl;
+				LOG_INFO(logger,"Ctp Td qry acc return nullptr");
 				return;
 			}
 			double balance = pTradingAccount->PreBalance - pTradingAccount->PreCredit - pTradingAccount->PreMortgage
 				+ pTradingAccount->Mortgage - pTradingAccount->Withdraw + pTradingAccount->Deposit
 				+ pTradingAccount->CloseProfit + pTradingAccount->PositionProfit + pTradingAccount->CashIn - pTradingAccount->Commission;
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp broker server OnRspQryTradingAccount: AccountID=%s, Available=%.2f, PreBalance=%.2f, Deposit=%.2f, Withdraw=%.2f, WithdrawQuota=%.2f, Commission=%.2f, CurrMargin=%.2f, FrozenMargin=%.2f, CloseProfit=%.2f, PositionProfit=%.2f, balance=%.2f.\n",
-				__FILE__, __LINE__, __FUNCTION__, pTradingAccount->AccountID, pTradingAccount->Available, pTradingAccount->PreBalance,
-				pTradingAccount->Deposit, pTradingAccount->Withdraw, pTradingAccount->WithdrawQuota, pTradingAccount->Commission,
-				pTradingAccount->CurrMargin, pTradingAccount->FrozenMargin, pTradingAccount->CloseProfit, pTradingAccount->PositionProfit, balance);
+			LOG_INFO(logger,"Ctp td OnRspQryTradingAccount:"
+				<<"AccountID="<<pTradingAccount->AccountID
+				<<"Available="<<pTradingAccount->Available
+				<<"PreBalance="<<pTradingAccount->PreBalance
+				<<"Deposit="<<pTradingAccount->Deposit
+				<<"Withdraw="<<pTradingAccount->Withdraw
+				<<"WithdrawQuota="<<pTradingAccount->WithdrawQuota
+				<<"Commission="<<pTradingAccount->Commission
+				<<"CurrMargin="<<pTradingAccount->CurrMargin
+				<<"FrozenMargin="<<pTradingAccount->FrozenMargin
+				<<"CloseProfit="<<pTradingAccount->CloseProfit
+				<<"PositionProfit="<<pTradingAccount->PositionProfit
+				<<"Balance="<<balance
+			);
 			AccountInfo accinfo;	
 			accinfo.AccountID = pTradingAccount->AccountID;
 			accinfo.PreviousDayEquityWithLoanValue = pTradingAccount->PreBalance;
@@ -636,14 +662,14 @@ namespace StarQuant
 				+ SERIALIZATION_SEPARATOR + std::to_string(accinfo.RealizedPnL)					// closed pnl
 				+ SERIALIZATION_SEPARATOR + std::to_string(accinfo.UnrealizedPnL)					// open pnl
 				+ SERIALIZATION_SEPARATOR + ymdhmsf();
-			cout<<"Ctp Td send account fund msg "<<msg<<endl;
+			LOG_DEBUG(logger,"Ctp Td send account fund msg "<<msg);
 			lock_guard<mutex> g(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(msg);
 		}
 		else {
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			cout<<"Ctp Td Qry Acc error "<<':'<<errormsgutf8<<endl;
+			LOG_ERROR(logger,"Ctp Td Qry Acc error:"<<errormsgutf8);
 		}
 	}
 	///请求查询合约响应
@@ -653,16 +679,25 @@ namespace StarQuant
 		if(bResult){
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			cout<<"Ctp Td Qry Instrument error "<<':'<<errormsgutf8<<endl;
+			LOG_ERROR(logger,"Ctp Td Qry Instrument error:"<<errormsgutf8);
 		}
 		else{
 			if(pInstrument == nullptr){
-				cout<<"Ctp Td qry Instrument return nullptr"<<endl;
+				LOG_INFO(logger,"Ctp Td qry Instrument return nullptr");
 				return;
 			}
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Td OnRspQryInstrument: InstrumentID=%s, InstrumentName=%s, ExchangeID=%s, ExchangeInstID=%s, VolumeMultiple=%d, PriceTick=%.2f, UnderlyingInstrID=%s, ProductClass=%c, ExpireDate=%s, LongMarginRatio=%.2f.\n",
-				__FILE__, __LINE__, __FUNCTION__, pInstrument->InstrumentID, pInstrument->InstrumentName, pInstrument->ExchangeID, pInstrument->ExchangeInstID,
-				pInstrument->VolumeMultiple, pInstrument->PriceTick, pInstrument->UnderlyingInstrID, pInstrument->ProductClass, pInstrument->ExpireDate, pInstrument->LongMarginRatio);
+			LOG_INFO(logger,"Ctp Td OnRspQryInstrument:"
+				<<"InstrumentID="<<pInstrument->InstrumentID
+				<<"InstrumentName="<<pInstrument->InstrumentName
+				<<"ExchangeID="<<pInstrument->ExchangeID
+				<<"ExchangeInstID="<<pInstrument->ExchangeInstID
+				<<"PriceTick="<<pInstrument->PriceTick
+				<<"VolumeMultiple="<<pInstrument->VolumeMultiple
+				<<"UnderlyingInstrID="<<pInstrument->UnderlyingInstrID
+				<<"ProductClass="<<pInstrument->ProductClass
+				<<"ExpireDate="<<pInstrument->ExpireDate
+				<<"LongMarginRatio="<<pInstrument->LongMarginRatio
+			);
 			string symbol = boost::to_upper_copy(string(pInstrument->InstrumentName));
 			auto it = DataManager::instance().securityDetails_.find(symbol);
 			if (it == DataManager::instance().securityDetails_.end()) {
@@ -681,7 +716,7 @@ namespace StarQuant
 				+ SERIALIZATION_SEPARATOR + pInstrument->InstrumentName
 				+ SERIALIZATION_SEPARATOR + std::to_string(pInstrument->PriceTick)
 				+ SERIALIZATION_SEPARATOR + to_string(pInstrument->VolumeMultiple);
-			cout << "Ctp td send contract msg:"<<msg<<endl;
+			LOG_DEBUG(logger,"Ctp td send contract msg:"<<msg);
 			lock_guard<mutex> g(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(msg);
 		}
@@ -692,15 +727,14 @@ namespace StarQuant
 			return;
 		string errormsgutf8;
 		errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-		PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp td server OnRspError: ErrorID=%d, ErrorMsg=%s.\n",
-			__FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, errormsgutf8.c_str());
+		LOG_ERROR(logger,"Ctp td server OnRspError: ErrorID="<<pRspInfo->ErrorID <<"ErrorMsg="<<errormsgutf8);
 //		sendGeneralMessage(string("CTP Trader Server OnRspError") +
 //			SERIALIZATION_SEPARATOR + to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR + errormsgutf8);
 	}
 	///报单通知
 	void CtpTDEngine::OnRtnOrder(CThostFtdcOrderField *pOrder) {
 		if(pOrder == nullptr){
-			cout<<"Ctp td onRtnOrder return nullptr"<<endl;
+			LOG_INFO(logger,"Ctp td onRtnOrder return nullptr");
 			return;
 		}
 		// pOrder->ExchangeID		交易所编号 
@@ -716,15 +750,29 @@ namespace StarQuant
 		// pOrder->OrderStatus		报单状态
 		// pOrder->InsertDate		报单日期
 		// pOrder->SequenceNo		序号
-		PRINT_TO_FILE("INFO:[%s,%d][%s]CTP trade server OnRtnOrder details: InstrumentID=%s, OrderRef=%s, ExchangeID=%s, InsertTime=%s, CancelTime=%s, FrontID=%d, SessionID=%d, Direction=%c, CombOffsetFlag=%s, OrderStatus=%c, OrderSubmitStatus=%c, StatusMsg=%s, LimitPrice=%f, VolumeTotalOriginal=%d, VolumeTraded=%d, OrderSysID=%s, SequenceNo=%d.\n",
-			__FILE__, __LINE__, __FUNCTION__, pOrder->InstrumentID, pOrder->OrderRef, pOrder->ExchangeID, pOrder->InsertTime, pOrder->CancelTime,
-			pOrder->FrontID, pOrder->SessionID, pOrder->Direction, pOrder->CombOffsetFlag, pOrder->OrderStatus, pOrder->OrderSubmitStatus, GBKToUTF8(pOrder->StatusMsg).c_str(),
-			pOrder->LimitPrice, pOrder->VolumeTotalOriginal, pOrder->VolumeTraded, pOrder->OrderSysID, pOrder->SequenceNo);	// TODO: diff between tradeid and orderref
-		cout<<"CTP trade server OnRtnOrder Status msg: "<<GBKToUTF8(pOrder->StatusMsg)<<endl;
+		LOG_INFO(logger,"CTP trade server OnRtnOrder details:"
+			<<"InstrumentID="<<pOrder->InstrumentID
+			<<"OrderRef="<<pOrder->OrderRef
+			<<"ExchangeID="<<pOrder->ExchangeID
+			<<"InsertTime="<<pOrder->InsertTime
+			<<"CancelTime="<<pOrder->CancelTime
+			<<"FrontID="<<pOrder->FrontID
+			<<"SessionID="<<pOrder->SessionID
+			<<"Direction="<<pOrder->Direction
+			<<"CombOffsetFlag="<<pOrder->CombOffsetFlag
+			<<"OrderStatus="<<pOrder->OrderStatus
+			<<"OrderSubmitStatus="<<pOrder->OrderSubmitStatus
+			<<"StatusMsg="<<GBKToUTF8(pOrder->StatusMsg)
+			<<"LimitPrice="<<pOrder->LimitPrice
+			<<"VolumeTotalOriginal="<<pOrder->VolumeTotalOriginal
+			<<"VolumeTraded="<<pOrder->VolumeTraded
+			<<"OrderSysID="<<pOrder->OrderSysID
+			<<"SequenceNo="<<pOrder->SequenceNo
+		);
 		long nOrderref = std::stol(pOrder->OrderRef);
 		shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(nOrderref);
 		if (o == nullptr) {			// create an order
-			PRINT_TO_FILE_AND_CONSOLE("Warning:[%s,%d][%s]Ctp return an untracted order", __FILE__, __LINE__, __FUNCTION__);
+			LOG_ERROR(logger,"Ctp return an untracted order");
 			lock_guard<mutex> g(oid_mtx);
 			std::shared_ptr<Order> o = make_shared<Order>();
 			o->account = ctpacc_.id;
@@ -742,7 +790,7 @@ namespace StarQuant
 			OrderManager::instance().trackOrder(o);
 			string msg = o->serialize() 
 				+ SERIALIZATION_SEPARATOR + ymdhmsf();
-			cout<<"Ctp td send orderestatus msg:"<<msg<<endl;
+			LOG_DEBUG(logger,"Ctp td send orderestatus msg:"<<msg);
 			lock_guard<mutex> g2(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(msg);
 		}
@@ -752,7 +800,7 @@ namespace StarQuant
 			o->orderNo = pOrder->OrderSysID;
 			string msg = o->serialize() 
 				+ SERIALIZATION_SEPARATOR + ymdhmsf();
-			cout<<"Ctp td send orderestatus msg:"<<msg<<endl;
+			LOG_DEBUG(logger,"Ctp td send orderestatus msg:"<<msg);	
 			lock_guard<mutex> g(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(msg);
 		}		
@@ -760,12 +808,20 @@ namespace StarQuant
 	/// 成交通知
 	void CtpTDEngine::OnRtnTrade(CThostFtdcTradeField *pTrade) {
 		if(pTrade == nullptr){
-			cout<<"Ctp td onRtnTrade return nullptr"<<endl;
+			LOG_INFO(logger,"Ctp td onRtnTrade return nullptr");
 			return;
 		}
-		PRINT_TO_FILE("INFO:[%s,%d][%s]CTP trade server OnRtnTrade details: TradeID=%s, OrderRef=%s, InstrumentID=%s, ExchangeID=%s, TradeTime=%s, OffsetFlag=%c, Direction=%c, Price=%f, Volume=%d.\n",
-			__FILE__, __LINE__, __FUNCTION__, pTrade->TradeID, pTrade->OrderRef, pTrade->InstrumentID, pTrade->ExchangeID, pTrade->TradeTime,
-			pTrade->OffsetFlag, pTrade->Direction, pTrade->Price, pTrade->Volume);		// TODO: diff between tradeid and orderref
+		LOG_INFO(logger,"CTP trade server OnRtnTrade details:"
+			<<"TradeID="<<pTrade->TradeID
+			<<"OrderRef="<<pTrade->OrderRef
+			<<"InstrumentID="<<pTrade->InstrumentID
+			<<"ExchangeID="<<pTrade->ExchangeID
+			<<"TradeTime="<<pTrade->TradeTime
+			<<"OffsetFlag="<<pTrade->OffsetFlag
+			<<"Direction="<<pTrade->Direction
+			<<"Price="<<pTrade->Price
+			<<"Volume="<<pTrade->Volume
+		);
 		Fill t;
 		t.fullSymbol = CConfig::instance().CtpSymbolToSecurityFullName(pTrade->InstrumentID);
 		t.tradetime = pTrade->TradeTime;
@@ -789,17 +845,17 @@ namespace StarQuant
 			// sendOrderStatus(o->serverOrderId);
 			string msg = t.serialize()
 				+ SERIALIZATION_SEPARATOR + ymdhmsf();
-			cout<<"Ctp td send fill msg:"<<msg<<endl;
+			LOG_DEBUG(logger,"Ctp td send fill msg:"<<msg);
 			lock_guard<mutex> g(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(msg);
 		}
 		else {
-			PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]fill order id is not tracked. OrderId= %s\n", __FILE__, __LINE__, __FUNCTION__, pTrade->OrderRef);
+			LOG_ERROR(logger,"fill order id is not tracked");
 			t.api = "others";
 			t.account = ctpacc_.id;
 			string msg = t.serialize()
 				+ SERIALIZATION_SEPARATOR + ymdhmsf();
-			cout<<"Ctp td send fill msg:"<<msg<<endl;
+			LOG_DEBUG(logger,"Ctp td send fill msg:"<<msg);
 			lock_guard<mutex> g(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(msg);
 		}		
@@ -809,31 +865,37 @@ namespace StarQuant
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if(bResult){
 			if (pInputOrder == nullptr){
-				cout<< "ctp td OnErrRtnOrderInsert return nullptr"<<endl;
+				LOG_INFO(logger,"ctp td OnErrRtnOrderInsert return nullptr");
 				return;
 			}
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp broker server OnErrRtnOrderInsert: ErrorID=%d, ErrorMsg=%s, OrderRef=%s, InstrumentID=%s, ExchangeID=%s, Direction=%c, CombOffsetFlag=%s, LimitPrice=%f, VolumeTotalOriginal=%d.\n",
-				__FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, errormsgutf8.c_str(),
-				pInputOrder->OrderRef, pInputOrder->InstrumentID, pInputOrder->ExchangeID,
-				pInputOrder->Direction, pInputOrder->CombOffsetFlag, pInputOrder->LimitPrice, pInputOrder->VolumeTotalOriginal);
+			LOG_INFO(logger,"CTP td OnErrRtnOrderinsert:"
+				<<"ErrorMsg:"<<errormsgutf8
+				<<"InstrumentID="<<pInputOrder->InstrumentID
+				<<"OrderRef="<<pInputOrder->OrderRef
+				<<"ExchangeID="<<pInputOrder->ExchangeID
+				<<"Direction="<<pInputOrder->Direction
+				<<"CombOffsetFlag="<<pInputOrder->CombOffsetFlag
+				<<"LimitPrice="<<pInputOrder->LimitPrice
+				<<"VolumeTotalOriginal="<<pInputOrder->VolumeTotalOriginal
+			);
 			lock_guard<mutex> g(orderStatus_mtx);
 			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pInputOrder->OrderRef));
 			if (o != nullptr) {
 				o->orderStatus = OS_Error;			// rejected
 				string msg = o->serialize() 
 					+ SERIALIZATION_SEPARATOR + ymdhmsf();
-				cout<<"Ctp td return order insert error: "<<msg<<endl;
+				LOG_DEBUG(logger,"Ctp td send order insert error: "<<msg);
 				lock_guard<mutex> g2(IEngine::sendlock_);
 				IEngine::msgq_send_->sendmsg(msg);
 			}
 			else {
-				PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]order id is not tracked. OrderId= %s\n", __FILE__, __LINE__, __FUNCTION__, pInputOrder->OrderRef);
+				LOG_ERROR(logger,"order id is not tracked");
 			}
 		}
 		else{
-			cout<<"ctp td OnErrRtnOrderInsert return no error"<<endl;
+			//cout<<"ctp td OnErrRtnOrderInsert return no error"<<endl;
 		}		
 	}
 
@@ -843,8 +905,7 @@ namespace StarQuant
 		if(bResult){
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp td OnErrRtnOrderAction: ErrorID=%d, ErrorMsg=%s.\n",
-				__FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, errormsgutf8.c_str());
+			LOG_ERROR(logger,"Ctp td OnErrRtnOrderAction: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);
 			string msg = "0"
 				+ SERIALIZATION_SEPARATOR + name_
 				+ SERIALIZATION_SEPARATOR + to_string(MSG_TYPE_INFO)
@@ -856,7 +917,7 @@ namespace StarQuant
 			IEngine::msgq_send_->sendmsg(msg);
 		}
 		else{
-			cout<<"ctp td OnErrRtnOrderAction return no error"<<endl;
+			//cout<<"ctp td OnErrRtnOrderAction return no error"<<endl;
 		}
 	}
 	////////////////////////////////////////////////////// end callback/incoming function ///////////////////////////////////////

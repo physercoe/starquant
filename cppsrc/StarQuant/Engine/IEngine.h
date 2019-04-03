@@ -27,9 +27,9 @@ public:
     static std::unique_ptr<CMsgq> msgq_send_;  //for md and td messenge to client, all engine share same msgq, usually publish mode
 
     std::unique_ptr<CMsgq> msgq_recv_;  //each engine has its own msgq, usually subscribe mode
-    EState estate_;
+    std::atomic<EState> estate_;
     IEngine();
-    ~IEngine();
+    virtual ~IEngine();
 
     virtual void init();
     virtual void start();

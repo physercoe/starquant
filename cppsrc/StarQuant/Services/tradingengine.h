@@ -7,9 +7,6 @@
 #include <Engine/IEngine.h>
 #include <Engine/CtpMDEngine.h>
 #include <Engine/CtpTDEngine.h>
-#include <Engine/TapMDEngine.h>
-#include <Engine/TapTDEngine.h>
-
 using namespace std;
 
 namespace StarQuant
@@ -20,28 +17,20 @@ namespace StarQuant
 		RUN_MODE mode = RUN_MODE::TRADE_MODE; //RUN_MODE::REPLAY_MODE;
 //		RUN_MODE mode = RUN_MODE::RECORD_MODE; //RUN_MODE::REPLAY_MODE;
 		BROKERS _broker = BROKERS::PAPER;
-		vector<std::thread> threads_;
+		vector<std::thread*> threads_;
+		//thread* tmd;
+		//thread* ttd;
 		vector<std::shared_ptr<IEngine>> pengines_; 
+		//std::shared_ptr<IEngine> ctpmdengine;
+		//std::shared_ptr<IEngine> ctptdengine;
+		//CtpTDEngine ctptdengine;
 		// CtpMDEngine ctpmdengine;  
 		// CtpTDEngine ctptdengine;
 		// TapMDEngine tapmdengine;  
 		// TapTDEngine taptdengine;
-		// shared_ptr<marketdatafeed> pmkdata_ib;
-		// shared_ptr<brokerage> pbrokerage_ib;
-		// shared_ptr<marketdatafeed> pmkdata_ctp;
-		// shared_ptr<brokerage> pbrokerage_ctp;
-		// shared_ptr<marketdatafeed> pmkdata_tap;
-		// shared_ptr<brokerage> pbrokerage_tap;
-		// shared_ptr<marketdatafeed> pmkdata_xtp;
-		// shared_ptr<brokerage> pbrokerage_xtp;
-		// shared_ptr<marketdatafeed> pmkdata_sina;
-		// shared_ptr<brokerage> pbrokerage_sina;
-		// shared_ptr<marketdatafeed> pmkdata_google;
-		// shared_ptr<brokerage> pbrokerage_google;
-
 		// std::unique_ptr<CMsgq> client_msg_pair_;
 		// std::shared_ptr<CMsgq> md_msg_pub_;
-
+		std::shared_ptr<SQLogger> logger;
 	public:
 
 		int run();

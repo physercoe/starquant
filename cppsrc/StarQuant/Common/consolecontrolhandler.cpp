@@ -42,6 +42,7 @@ namespace StarQuant
 	void ConsoleControlHandler(int sig) {
 		gShutdown = true;
 		PRINT_SHUTDOWN_MESSAGE;
+		//throw runtime_error("crl c");
 	}
 
 	std::atomic<bool>* setconsolecontrolhandler(void) {

@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <boost/locale.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include <Engine/CtpMDEngine.h>
@@ -28,7 +29,13 @@ namespace StarQuant
 	}
 
 	CtpMDEngine::~CtpMDEngine() {
-		stop();
+		if(estate_ != STOP)
+			stop();
+		if (api_ != nullptr) {
+			this->api_->RegisterSpi(nullptr);
+			this->api_->Release();// api must init() or will segfault
+			this->api_ = nullptr;
+		}
 	}
 
 	void CtpMDEngine::init(){
@@ -36,28 +43,32 @@ namespace StarQuant
 		// 	lock_guard<mutex> g(IEngine::sendlock_);
 		// 	IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
 		// }
-		cout<<"ctp md init"<<endl;
+		if(logger == nullptr){
+			logger = SQLogger::getLogger("MDEngine.CTP");
+		}	
 		if (msgq_recv_ == nullptr){
 			msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().SERVERSUB_URL);	
 		}	
 		name_ = "CTP_MD";
 		ctpacc_ = CConfig::instance()._apimap["CTP"];
-		string path = CConfig::instance().logDir() + "/ctp/";
+		string path = CConfig::instance().logDir() + "/ctp/md";
 		boost::filesystem::path dir(path.c_str());
 		boost::filesystem::create_directory(dir);
 		// 创建API对象
 		this->api_ = CThostFtdcMdApi::CreateFtdcMdApi(path.c_str());
 		this->api_->RegisterSpi(this);
+		string ctp_data_address = ctpacc_.md_ip + ":" + to_string(ctpacc_.md_port);	
+		this->api_->RegisterFront((char*)ctp_data_address.c_str());
+		this->api_->Init();
+		estate_ = CONNECTING;
+		LOG_DEBUG(logger,"CTP MD inited");
+
 	}
 
 	void CtpMDEngine::stop(){
 		int tmp = disconnect();
-		estate_ = EState::STOP; 	
-		if (api_ != NULL) {
-			this->api_->RegisterSpi(NULL);
-			this->api_->Release();
-			this->api_ = NULL;
-		}
+		estate_ = EState::STOP; 
+		LOG_DEBUG(logger,"CTP MD stoped");	
 	}
 
 	void CtpMDEngine::start(){
@@ -69,6 +80,7 @@ namespace StarQuant
 			vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
 			if (v[0] != name_) //filter message according to its destination
 				continue;
+			LOG_DEBUG(logger,"CTP MD recv msg:"<<msgin );	
 			bool tmp;
 			switch (msgintype)
 			{
@@ -83,7 +95,7 @@ namespace StarQuant
 						subscribe(v[2]);
 					}
 					else{
-						cout<<"md is not connected,can not subscribe! "<<endl;
+						LOG_DEBUG(logger,"CTP MD is not connected,can not subscribe!");
 						string msgout = to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR +"md is not connected,can not subscribe";
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
@@ -94,7 +106,7 @@ namespace StarQuant
 						unsubscribe(v[2]);
 					}
 					else{
-						cout<<"md is not connected,can not unsubscribe! "<<endl;
+						LOG_DEBUG(logger,"CTP MD is not connected,can not unsubscribe!");
 						string msgout = to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR +"md is not connected,can not unsubscribe";
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
@@ -120,20 +132,20 @@ namespace StarQuant
 		int count = 0;// count numbers of tries, two many tries ends
 		string ctp_data_address = ctpacc_.md_ip + ":" + to_string(ctpacc_.md_port);	
 		CThostFtdcReqUserLoginField loginField = CThostFtdcReqUserLoginField();		
-		while(estate_ != EState::LOGIN_ACK){
+		while(estate_ != EState::LOGIN_ACK && estate_ != STOP){
 			switch(estate_){
 				case EState::DISCONNECTED:
-					this->api_->RegisterFront((char*)ctp_data_address.c_str());
-					this->api_->Init();
-					estate_ = CONNECTING;
-					PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Md connecting to frontend...!\n", __FILE__, __LINE__, __FUNCTION__);
-					count++;
+					// this->api_->RegisterFront((char*)ctp_data_address.c_str());
+					// this->api_->Init();
+					// estate_ = CONNECTING;
+					// PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Md connecting to frontend...!\n", __FILE__, __LINE__, __FUNCTION__);
+					// count++;
 					break;
 				case EState::CONNECTING:
 					msleep(100);
 					break;
 				case EState::CONNECT_ACK:
-					PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Md logining ...\n", __FILE__, __LINE__, __FUNCTION__);
+					LOG_INFO(logger,"Ctp Md logining ...");
 					strcpy(loginField.BrokerID, ctpacc_.brokerid.c_str());
 					strcpy(loginField.UserID, ctpacc_.userid.c_str());
 					strcpy(loginField.Password, ctpacc_.password.c_str());
@@ -142,7 +154,7 @@ namespace StarQuant
 					count++;
 					estate_ = EState::LOGINING;
 					if (error != 0){
-						cout<<"Ctp login error : "<<error<<endl;//TODO: send error msg to client
+						LOG_ERROR(logger,"Ctp login error : "<<error);//TODO: send error msg to client
 						estate_ = EState::CONNECT_ACK;
 						msleep(1000);
 					}
@@ -155,7 +167,7 @@ namespace StarQuant
 					break;
 			}
 			if(count >10){
-				cout<<"too many tries fails, give up connecting"<<endl;
+				LOG_ERROR(logger,"too many tries fails, give up connecting");
 				//estate_ = EState::DISCONNECTED;
 				return false;
 			}
@@ -165,21 +177,21 @@ namespace StarQuant
 
 	bool CtpMDEngine::disconnect() {
 		if (estate_ == LOGIN_ACK){
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Md logouting ...\n", __FILE__, __LINE__, __FUNCTION__);
+			LOG_INFO(logger,"Ctp md logouting ..");
 			CThostFtdcUserLogoutField logoutField = CThostFtdcUserLogoutField();
 			strcpy(logoutField.BrokerID, ctpacc_.brokerid.c_str());
 			strcpy(logoutField.UserID, ctpacc_.userid.c_str());
 			int error = this->api_->ReqUserLogout(&logoutField, loginReqId_);
 			estate_ = EState::LOGOUTING;
 			if (error != 0){
-				cout<<"Ctp md logout error : "<<error<<endl;//TODO: send error msg to client
+				LOG_ERROR(logger,"ctp md logout error:"<<error);//TODO: send error msg to client
 				estate_ = EState::LOGIN_ACK;
 				return false;
 				}		
 			return true;
 		}
 		else{
-			cout<<"ctp md is not connected(logined), can not disconnect! "<<endl;
+			LOG_DEBUG(logger,"ctp md is not connected(logined), cannot disconnect!");
 			return false;
 		}
 	}
@@ -189,10 +201,10 @@ namespace StarQuant
 		string ctbticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol);			
 		char* buffer = (char*)ctbticker.c_str();
 		char* myreq[1] = { buffer };
-		cout<<"subcribe "<<myreq<<endl;
+		LOG_INFO(logger,"ctp md subcribe "<<myreq);
 		error = this->api_->SubscribeMarketData(myreq, 1);
 		if (error != 0){
-			cout<<"subscribe  error "<<error<<endl;
+			LOG_ERROR(logger,"ctp md subscribe  error "<<error);
 		}		
 	}
 
@@ -202,10 +214,10 @@ namespace StarQuant
 		string ctbticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol);			
 		char* buffer = (char*)ctbticker.c_str();
 		char* myreq[1] = { buffer };
-		cout<<"unsubcribe "<<myreq<<endl;
+		LOG_INFO(logger,"ctp md unsubcribe "<<myreq);
 		error = this->api_->UnSubscribeMarketData(myreq, 1);
 		if (error != 0){
-			cout<<"unsubscribe  error "<<error<<endl;
+			LOG_ERROR(logger,"ctp md unsubscribe  error "<<error);
 		}		
 	}
 
@@ -214,38 +226,50 @@ namespace StarQuant
 	////////////////////////////////////////////////////// callback  function ///////////////////////////////////////
 	
 	void CtpMDEngine::OnFrontConnected() {
-		 estate_ = CONNECT_ACK;			// not used
-		cout<< "Ctp md frontend connected "<<endl;
-		PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp md frontend is connected.\n", __FILE__, __LINE__, __FUNCTION__);
+		estate_ = CONNECT_ACK;			// not used
+		LOG_INFO(logger,"Ctp md frontend connected. ");		
 	}
+
 	void CtpMDEngine::OnFrontDisconnected(int nReason) {
 		estate_ = DISCONNECTED;			// not used
-		PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp md frontend is  disconnected, nReason=%d.\n", __FILE__, __LINE__, __FUNCTION__, nReason);
+		LOG_INFO(logger,"Ctp md frontend is  disconnected, nReason="<<nReason);			
 	}
+
 	void CtpMDEngine::OnHeartBeatWarning(int nTimeLapse) {
-		PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp data server heartbeat overtime error, nTimeLapse=%d.\n", __FILE__, __LINE__, __FUNCTION__, nTimeLapse);
+		LOG_INFO(logger,"Ctp md heartbeat overtime error, nTimeLapse="<<nTimeLapse);
 	}
+
 	void CtpMDEngine::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
-		PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp data server error: ErrorID=%d, ErrorMsg=%s.\n", __FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, GBKToUTF8(pRspInfo->ErrorMsg).c_str());		
+		LOG_ERROR(logger,"Ctp md OnRspError: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));  
 	}
+
 	void CtpMDEngine::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp md user login failed: ErrorID=%d, ErrorMsg=%s.\n", __FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, GBKToUTF8(pRspInfo->ErrorMsg).c_str());	
+			string errormsgutf8;			
+			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+			LOG_ERROR(logger,"Ctp md login failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);
 		}
 		else{
 			estate_ = EState::LOGIN_ACK;
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp data server user logged in; TradingDay=%s, LoginTime=%s, BrokerID=%s, UserID=%s.\n", __FILE__, __LINE__, __FUNCTION__,
-				pRspUserLogin->TradingDay, pRspUserLogin->LoginTime, pRspUserLogin->BrokerID, pRspUserLogin->UserID);
+			LOG_INFO(logger,"Ctp md server user logged in,"
+				<<"TradingDay="<<pRspUserLogin->TradingDay
+				<<"LoginTime="<<pRspUserLogin->LoginTime
+				<<"frontID="<<pRspUserLogin->FrontID
+				<<"sessionID="<<pRspUserLogin->SessionID
+			);
 		}
 
 	}
 	void CtpMDEngine::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp data server user logout failed: ErrorID=%d, ErrorMsg=%s.\n", __FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, GBKToUTF8(pRspInfo->ErrorMsg).c_str());	
+			string errormsgutf8;
+			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" ); 
+			LOG_ERROR(logger,"Ctp Md logout failed: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
+
 		}
 		else {
 			estate_ = EState::CONNECT_ACK;
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp data server user logged out; BrokerID=%s, UserID=%s.\n", __FILE__, __LINE__, __FUNCTION__, pUserLogout->BrokerID, pUserLogout->UserID);
+			LOG_INFO(logger,"Ctp Md Logout,BrokerID="<<pUserLogout->BrokerID<<" UserID="<<pUserLogout->UserID);
 		}
 	}
 
@@ -253,10 +277,10 @@ namespace StarQuant
 	void CtpMDEngine::OnRspSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo !=nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult) {
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp md OnRspSubMarketData: InstrumentID=%s.\n", __FILE__, __LINE__, __FUNCTION__, pSpecificInstrument->InstrumentID);
+			LOG_INFO(logger,"Ctp md OnRspSubMarketData:InstrumentID="<<pSpecificInstrument->InstrumentID);
 		}
 		else {
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp md OnRspSubMarketData failed: ErrorID=%d, ErrorMsg=%s.\n", __FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, GBKToUTF8(pRspInfo->ErrorMsg).c_str());
+			LOG_ERROR(logger,"Ctp md OnRspSubMarketData failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
 		}
 
 	}
@@ -265,10 +289,10 @@ namespace StarQuant
 	void CtpMDEngine::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo !=nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult) {
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp md OnRspUnSubMarketData: InstrumentID=%s.\n", __FILE__, __LINE__, __FUNCTION__, pSpecificInstrument->InstrumentID);
+			LOG_INFO(logger,"Ctp md OnRspUnSubMarketData:InstrumentID="<<pSpecificInstrument->InstrumentID);
 		}
 		else {
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp md OnRspUnSubMarketData failed: ErrorID=%d, ErrorMsg=%s.\n", __FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, GBKToUTF8(pRspInfo->ErrorMsg).c_str());
+			LOG_ERROR(logger,"Ctp md OnRspUnSubMarketData failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
 		}
 	}
 
@@ -276,10 +300,10 @@ namespace StarQuant
 	void CtpMDEngine::OnRspSubForQuoteRsp(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo !=nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult) {
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp md OnRspSubForQuoteRsp: InstrumentID=%s.\n", __FILE__, __LINE__, __FUNCTION__, pSpecificInstrument->InstrumentID);
+			LOG_INFO(logger,"Ctp md OnRspSubForQuoteRsp:InstrumentID="<<pSpecificInstrument->InstrumentID);
 		}
 		else {
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp md OnRspSubForQuoteRsp failed: ErrorID=%d, ErrorMsg=%s.\n", __FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, GBKToUTF8(pRspInfo->ErrorMsg).c_str());
+			LOG_ERROR(logger,"Ctp md OnRspSubForQuotoRsp failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
 		}
 	}
 
@@ -287,37 +311,36 @@ namespace StarQuant
 	void CtpMDEngine::OnRspUnSubForQuoteRsp(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult) {
-			PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp md OnRspUnSubForQuoteRsp: InstrumentID=%s.\n", __FILE__, __LINE__, __FUNCTION__, pSpecificInstrument->InstrumentID);
+			LOG_INFO(logger,"Ctp md OnRspUnSubForQuoteRsp:InstrumentID="<<pSpecificInstrument->InstrumentID);
 		}
 		else {
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]Ctp md OnRspUnSubForQuoteRsp failed: ErrorID=%d, ErrorMsg=%s.\n", __FILE__, __LINE__, __FUNCTION__, pRspInfo->ErrorID, GBKToUTF8(pRspInfo->ErrorMsg).c_str());
+			LOG_ERROR(logger,"Ctp md OnRspUnSubForQuoteRsp failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
 		}
 	}
 
 	void CtpMDEngine::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData) {
 		if (pDepthMarketData == nullptr){
+			LOG_DEBUG(logger,"ctp md OnRtnDepthMarketData is nullptr");
 			return;
 		}
-			
-		cout<<"quote return at"<< ymdhmsf6() <<endl;
+		LOG_DEBUG(logger,"Ctp md OnRtnDepthMarketData at"<<ymdhmsf6()
+			<<"InstrumentID="<<pDepthMarketData->InstrumentID
+			<<"LastPrice="<<pDepthMarketData->LastPrice
+			<<"Volume="<<pDepthMarketData->Volume
+			<<"BidPrice1="<<pDepthMarketData->BidPrice1
+			<<"BidVolume1="<<pDepthMarketData->BidVolume1
+			<<"AskPrice1="<<pDepthMarketData->AskPrice1
+			<<">AskVolume1="<<pDepthMarketData->AskVolume1
+			<<"OpenInterest="<<pDepthMarketData->OpenInterest
+			<<"OpenPrice="<<pDepthMarketData->OpenPrice
+			<<"HighestPrice="<<pDepthMarketData->HighestPrice
+			<<"LowestPrice="<<pDepthMarketData->LowestPrice
+			<<"PreClosePrice="<<pDepthMarketData->PreClosePrice
+			<<"UpperLimitPrice="<<pDepthMarketData->UpperLimitPrice
+			<<"LowerLimitPrice="<<pDepthMarketData->LowerLimitPrice
+			<<"UpdateTime="<<pDepthMarketData->UpdateTime<<"."<<pDepthMarketData->UpdateMillisec
+		);
 		Tick_L1 k;
-		cout<<pDepthMarketData->ExchangeID<<' '<<pDepthMarketData->ExchangeInstID<<" "<<pDepthMarketData->InstrumentID<<" price "
-			<<pDepthMarketData->LastPrice<<" vol "
-			<<pDepthMarketData->Volume<<" bidprice "
-			<<pDepthMarketData->BidPrice1<<" bidvol "
-			<<pDepthMarketData->BidVolume1<<" askprice "
-			<<pDepthMarketData->AskPrice1<<" askvol "
-			<<pDepthMarketData->AskVolume1<<" openi "
-			<<pDepthMarketData->OpenInterest<<" openprice "
-			<<pDepthMarketData->OpenPrice<<" hp "
-			<<pDepthMarketData->HighestPrice<<" lp "
-			<<pDepthMarketData->LowestPrice<<" pcp "
-			<<pDepthMarketData->PreClosePrice<<" ulp "
-			<<pDepthMarketData->UpperLimitPrice<<" llp "
-			<<pDepthMarketData->LowerLimitPrice<<" updatime "
-			<<pDepthMarketData->UpdateTime<<" updatemillis"
-			<<pDepthMarketData->UpdateMillisec<<" "
-			<<endl;
 		//k.time_ = ymdhmsf();
 		char buf[64];
 		char a[9];
@@ -327,10 +350,8 @@ namespace StarQuant
         std::sprintf(buf, "%c%c%c%c-%c%c-%c%c %c%c:%c%c:%c%c.%.3d", a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],b[0],b[1],b[3],b[4],b[6],b[7],pDepthMarketData->UpdateMillisec );
 		//k.time_ = string(pDepthMarketData->ActionDay) + " " + string(pDepthMarketData->UpdateTime) + "." + to_string(pDepthMarketData->UpdateMillisec);
 		k.time_ = buf;
-		//cout<<"time "<<pDepthMarketData->ActionDay<< k.time_<<endl;
 		k.msgtype_ = MSG_TYPE::MSG_TYPE_TICK_L1;
 		k.fullsymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pDepthMarketData->InstrumentID);
-		//cout<< "quote fullsymbol"<<k.fullsymbol_<<endl;;
 		k.price_ = pDepthMarketData->LastPrice;
 		k.size_ = pDepthMarketData->Volume;			// not valid without volume
 		k.bidprice_L1_ = pDepthMarketData->BidPrice1;
@@ -344,18 +365,19 @@ namespace StarQuant
 		k.pre_close_ = pDepthMarketData->PreClosePrice;
 		k.upper_limit_price_ = pDepthMarketData->UpperLimitPrice;
 		k.lower_limit_price_ = pDepthMarketData->LowerLimitPrice;
-		
 		lock_guard<mutex> g(IEngine::sendlock_);
 		IEngine::msgq_send_->sendmsg(k.serialize());
-
 	}
 
 	///询价通知
 	void CtpMDEngine::OnRtnForQuoteRsp(CThostFtdcForQuoteRspField *pForQuoteRsp) {
-		PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp md OnRtnForQuoteRsp; TradingDay=%s, ExchangeID=%s, InstrumentID=%s, ForQuoteSysID=%s.\n", __FILE__, __LINE__, __FUNCTION__,
-			pForQuoteRsp->TradingDay, pForQuoteRsp->ExchangeID, pForQuoteRsp->InstrumentID, pForQuoteRsp->ForQuoteSysID);
+		LOG_INFO(logger,"Ctp md OnRtnForQuoteRsp:"
+			<<"TradingDay="<<pForQuoteRsp->TradingDay
+			<<"ExchangeID="<<pForQuoteRsp->ExchangeID
+			<<"InstrumentID="<<pForQuoteRsp->InstrumentID
+			<<"ForQuoteSysID="<<pForQuoteRsp->ForQuoteSysID
+		);
 	}
 	/////////////////////////////////////////////// end of callback ///////////////////////////////////////
-
 
 }

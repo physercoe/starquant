@@ -1,5 +1,5 @@
 #include <Common/config.h>
-#include <Data/tick.h>
+#include <Common/tick.h>
 
 namespace StarQuant
 {

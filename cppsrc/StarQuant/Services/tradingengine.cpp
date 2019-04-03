@@ -29,7 +29,6 @@ namespace StarQuant
 	void startengine(shared_ptr<IEngine> pe){
 		pe->start();
 	}
-
 	tradingengine::tradingengine() {
 		CConfig::instance();
 		//cout<<"config done "<<endl;
@@ -39,18 +38,22 @@ namespace StarQuant
 		// TODO: check if there is an StarQuant instance running already
 		_broker = CConfig::instance()._broker;
 		mode = CConfig::instance()._mode;
+		if(logger == nullptr){
+			logger = SQLogger::getLogger("SYS");
+		}
 		if (IEngine::msgq_send_ == nullptr){
 			IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
-			cout<<"finish msgqsend"<<endl;
 		}
+		//CtpTDEngine ctptdengine;
 		//cout<<"trading engine inited "<<endl;
 		//client_msg_pair_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PAIR, CConfig::instance().API_PORT);
 		//md_msg_pub_=  std::make_shared<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().API_ZMQ_DATA_PORT,false);
 	}
 
-	tradingengine::~tradingengine() {
-		for (auto e: pengines_){
+	tradingengine::~tradingengine() {		
+		for (auto& e: pengines_){
 			while ( (e != nullptr) && (e->estate_ != STOP) ){
+				e->stop();
 				msleep(100);
 			}
 		}
@@ -59,11 +62,13 @@ namespace StarQuant
 		}
 		if (CConfig::instance()._msgq == MSGQ::NANOMSG)
 			nn_term();
-		for (auto& t : threads_){
-			if (t.joinable())
-				t.join();
+		for (thread* t : threads_){
+			if (t->joinable()){
+				t->join();
+				delete t;
+			}	
 		}
-		PRINT_TO_FILE("INFO:[%s,%d][%s]Exit trading engine.\n", __FILE__, __LINE__, __FUNCTION__);
+		LOG_DEBUG(logger,"Exit trading engine");		
 	}
 
 	int tradingengine::run() {
@@ -72,34 +77,31 @@ namespace StarQuant
 		try {
 			auto fu1 = async(launch::async, check_gshutdown, true);
 			if (mode == RUN_MODE::RECORD_MODE) {
-				printf("RECORD_MODE\n");
+				LOG_INFO(logger,"RECORD_MODE");
 				//threads_.push_back(new thread(TickRecordingService));
 				}
 			else if (mode == RUN_MODE::REPLAY_MODE) {
-				printf("REPLAY_MODE\n");
+				LOG_INFO(logger,"REPLAY_MODE");
 				// threads_.push_back(new thread(TickReplayService, CConfig::instance().filetoreplay,CConfig::instance()._tickinterval));
 				// threads_.push_back(new thread(DataBoardService));
 				// //threads_.push_back(new thread(StrategyManagerService));
 			}
 			else if (mode == RUN_MODE::TRADE_MODE) {
-				printf("TRADE_MODE\n");
-				//threads_.push_back(new thread(TickRecordingService));
+				LOG_INFO(logger,"TRADE_MODE");
+					//threads_.push_back(new thread(TickRecordingService));
 				if (CConfig::instance()._loadapi["CTP"]){
 					std::shared_ptr<IEngine> ctpmdengine = make_shared<CtpMDEngine>();
 					std::shared_ptr<IEngine> ctptdengine = make_shared<CtpTDEngine>();
-					threads_.push_back(std::thread(startengine,ctpmdengine));
-					threads_.push_back(std::thread(startengine,ctptdengine));
+					threads_.push_back(new std::thread(startengine,ctpmdengine));
+					threads_.push_back(new std::thread(startengine,ctptdengine));
 					pengines_.push_back(ctpmdengine);
 					pengines_.push_back(ctptdengine);
-					cout<<threads_.size()<< " "<<pengines_.size()<< endl;
-					
-					//threads_.push_back(std::thread(&CtpTDEngine::start,std::ref(ctptdengine)));
 				}
 				if (CConfig::instance()._loadapi["TAP"]){
 					std::shared_ptr<IEngine> tapmdengine = make_shared<TapMDEngine>();
 					std::shared_ptr<IEngine> taptdengine = make_shared<TapTDEngine>();
-					threads_.push_back(std::thread(startengine,tapmdengine));
-					threads_.push_back(std::thread(startengine,taptdengine));
+					threads_.push_back(new std::thread(startengine,tapmdengine));
+					threads_.push_back(new std::thread(startengine,taptdengine));
 					pengines_.push_back(tapmdengine);
 					pengines_.push_back(taptdengine);		
 				}
@@ -107,28 +109,20 @@ namespace StarQuant
 				}
 			}
 			else {
-				PRINT_TO_FILE("EXIT:[%s,%d][%s]Mode %d doesn't exist.\n", __FILE__, __LINE__, __FUNCTION__, mode);
+				LOG_ERROR(logger,"Mode doesn't exist,exit.");				
 				return 1;
 			}
-			fu1.get(); //block here
-			// for (auto e: pengines_){
-			// 	e->stop();
-			// }
+			fu1.get(); 
 		}
 		catch (exception& e) {
-			printf("Thanks for using StarQuant. GoodBye: %s\n", e.what());
+			LOG_DEBUG(logger,e.what());
 		}
 		catch (...) {
-			printf("StarQuant terminated in error!\n");
+			LOG_ERROR(logger,"StarQuant terminated in error!");
 		}
 		for (const auto& e: pengines_){
-			cout << pengines_.size();
-			int i = 0;
-			cout<<i++;
 			e->stop();
 		}
-
-		
 		return 0;
 	}
 
