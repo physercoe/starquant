@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from queue import Queue, Empty
 from threading import Thread
-from nanomsg import Socket, PAIR, SUB, SUB_SUBSCRIBE, AF_SP
+from nanomsg import Socket, PAIR, SUB, PUB, SUB_SUBSCRIBE, AF_SP
 from source.data.tick_event import TickEvent, TickType
 from source.order.order_status_event import OrderStatusEvent
 from source.order.fill_event import FillEvent
@@ -17,7 +17,7 @@ class ClientMq(object):
         self._ui_event_engine = ui_event_engine
         self._outgoing_quue = outgoing_quue
         self._tick_sock = Socket(SUB)
-        self._msg_sock = Socket(PAIR)
+        self._msg_sock = Socket(PUB)
 
         self._active = False
         self._thread = Thread(target=self._run)
@@ -42,7 +42,7 @@ class ClientMq(object):
 
             try:
                 # response msg from server
-                msg2 = self._msg_sock.recv(flags=1)
+                msg2 = self._tick_sock.recv(flags=1)
                 msg2 = msg2.decode("utf-8")
                 if msg2 is not None and msg2.index('|') > 0:
                     print('client rec broker msg:',msg2)
@@ -51,7 +51,7 @@ class ClientMq(object):
                     if msg2[-1] == '\x00':
                         msg2 = msg2[:-1]
                     v = msg2.split('|')
-                    msg2type = MSG_TYPE(int(v[0]))
+                    msg2type = MSG_TYPE(int(v[2]))
                     if msg2type == MSG_TYPE.MSG_TYPE_RTN_ORDER:
                        m = OrderStatusEvent()
                        m.deserialize(msg2)
@@ -106,7 +106,8 @@ class ClientMq(object):
 
         #self._msg_sock.connect('tcp://localhost:55558')
         #self._msg_sock.connect(b'tcp://127.0.0.1:55558')
-        self._msg_sock.connect('tcp://127.0.0.1:55556')
+        self._msg_sock.bind('tcp://127.0.0.1:55558')
+        # self._msg_sock.connect('tcp://127.0.0.1:55558')
         self._active = True
 
         if not self._thread.isAlive():

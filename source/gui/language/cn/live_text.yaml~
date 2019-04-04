@@ -1,5 +1,5 @@
 Region: cn      # TODO: cn uptick is red, downtick is green; us is opposite
-Prog_Name: 量化交易平台（测试版v0.1，Python）
+Prog_Name: 易数量化交易系统（StarQuant,version=0.1）
 File: 文件
 Folder: 文件夹
 Open_Folder: 打开文件夹

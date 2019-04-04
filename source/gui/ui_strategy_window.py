@@ -68,6 +68,33 @@ class StrategyWindow(QtWidgets.QTableWidget):
 
     def add_table(self, row, string):
         pass
+    
+    def reload_table(self):
+        for key, value in self._strategy_manager._strategy_dict.items():
+            if key in self.sids:
+                row = self.sids.index(key)
+                self.setItem(row, 1, QtWidgets.QTableWidgetItem(str(value.name)))
+                self.setItem(row, 7, QtWidgets.QTableWidgetItem('active' if value.active else 'inactive'))
+                continue
+            try:
+                self.sids.insert(0,key)
+                self.insertRow(0)
+                self.setItem(0, 0, QtWidgets.QTableWidgetItem(str(key)))
+                self.setItem(0, 1, QtWidgets.QTableWidgetItem(str(value.name)))
+                self.setItem(0, 2, QtWidgets.QTableWidgetItem('0'))
+                self.setItem(0, 3, QtWidgets.QTableWidgetItem('0'))               
+                self.setItem(0, 4, QtWidgets.QTableWidgetItem('0'))
+                self.setItem(0, 5, QtWidgets.QTableWidgetItem('0.0'))
+                self.setItem(0, 6, QtWidgets.QTableWidgetItem('0.0'))
+                self.setItem(0, 7, QtWidgets.QTableWidgetItem('active' if value.active else 'inactive'))
+            except:
+                pass
+        #倒序删除不存在的策略 
+        for i in range(len(self.sids)-1,-1,-1):
+            key = self.sids[i]
+            if key not in self._strategy_manager._strategy_dict:
+                self.removeRow(i)
+                self.sids.remove(key)
 
     def update_status(self, row, active):
         sid = int(self.item(row,0).text())

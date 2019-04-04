@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from source.strategy.mystrategy import strategy_list
+from mystrategy import strategy_list,strategy_list_reload
 
 class StrategyManager(object):
     def __init__(self, config_client, outgoing_request_event_engine, order_manager, portfolio_manager):
@@ -29,37 +29,64 @@ class StrategyManager(object):
         self.sid_closepnl_dict.clear()   
 
     def load_strategy(self):
-        for s in self._config_client['strategy']:
-            strategyClass = strategy_list.get(s, None)
-            if not strategyClass:
-                print(u'can not find strategy：%s' % s)
-            else:
-                strategy = strategyClass(self._outgoing_request_event_engine,self._order_manager,self._portfolio_manager)
-                strategy.id = self._strategy_id
-                strategy.name = s          # assign class name to the strategy
+        # for s in self._config_client['strategy']:
+        #     strategyClass = strategy_list.get(s, None)
+        #     if not strategyClass:
+        #         print(u'can not find strategy：%s' % s)
+        #     else:
+        #         strategy = strategyClass(self._outgoing_request_event_engine,self._order_manager,self._portfolio_manager)
+        #         # strategy.id = self._strategy_id
+        #         strategy.name = s          # assign class name to the strategy
 
-                # init strategy
-                strategy.on_init(self._config_client['strategy'][s])
-                for sym in strategy.symbols:
-                    if sym in self._tick_strategy_dict:
-                        self._tick_strategy_dict[sym].append(self._strategy_id)
-                    else:
-                        self._tick_strategy_dict[sym] = [self._strategy_id]
+        #         # init strategy
+        #         strategy.on_init(self._config_client['strategy'][s])
+        #         for sym in strategy.symbols:
+        #             if sym in self._tick_strategy_dict:
+        #                 self._tick_strategy_dict[sym].append(strategy.id)
+        #             else:
+        #                 self._tick_strategy_dict[sym] = [strategy.id]
 
-                strategy.active = False
-                self._strategy_dict[self._strategy_id] = strategy
-                self.sid_oid_dict[self._strategy_id] =[]
-                self._strategy_id = self._strategy_id+1
-                
+        #         strategy.active = False
+        #         self._strategy_dict[strategy.id] = strategy
+        #         self.sid_oid_dict[strategy.id] =[]
+                # self._strategy_id = self._strategy_id+1
+        for key,value in strategy_list.items():
+            strategyClass = value
+            strategy = strategyClass(self._outgoing_request_event_engine,self._order_manager,self._portfolio_manager)
+            strategy.name = key          # assign class name to the strategy
+            for sym in strategy.symbols:
+                if sym in self._tick_strategy_dict:
+                    self._tick_strategy_dict[sym].append(strategy.id)
+                else:
+                    self._tick_strategy_dict[sym] = [strategy.id]
+            strategy.active = False
+            self._strategy_dict[strategy.id] = strategy
+            if (strategy.id not in self.sid_oid_dict):
+                self.sid_oid_dict[strategy.id] =[]   
+
+    def reload_strategy(self):
+        strategy_list_reload()
+        self._strategy_dict.clear()
+        for key,value in strategy_list.items():
+            strategyClass = value
+            strategy = strategyClass(self._outgoing_request_event_engine,self._order_manager,self._portfolio_manager)
+            strategy.name = key          # assign class name to the strategy
+            for sym in strategy.symbols:
+                if sym in self._tick_strategy_dict:
+                    self._tick_strategy_dict[sym].append(strategy.id)
+                else:
+                    self._tick_strategy_dict[sym] = [strategy.id]
+            strategy.active = False
+            self._strategy_dict[strategy.id] = strategy
+            if (strategy.id not in self.sid_oid_dict):
+                self.sid_oid_dict[strategy.id] =[]
+            
 
     def start_strategy(self, sid):
         self._strategy_dict[sid].on_start()
 
     def stop_strategy(self, sid):
         self._strategy_dict[sid].on_stop()
-
-    def pause_strategy(self, sid):
-        pass
 
     def flat_strategy(self, sid):
         pass

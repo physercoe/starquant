@@ -1,5 +1,5 @@
 Region: cn      # TODO: cn uptick is red, downtick is green; us is opposite
-Prog_Name: 量化交易平台（测试版v0.1，Python）
+Prog_Name: 易数量化交易系统（StarQuant, version=0.1）
 File: 文件
 Folder: 文件夹
 Open_Folder: 打开文件夹
@@ -105,6 +105,6 @@ nsellHoldings: 持空仓数量
 nTrades: 成交数
 SStatus: 状态
 Start_Strat: 开启策略
-Pause_Strat: 暂停策略
+Load_Strat: 重新加载策略
 Stop_Strat: 停止策略
 Liquidate_Strat: 清仓策略

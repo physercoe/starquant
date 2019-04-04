@@ -100,7 +100,7 @@ nsellHoldings: nsellHoldings
 nTrades: nTrades
 SStatus: Status
 Start_Strat: Start Strat
-Pause_Strat: Pause Strat
+Load_Strat: ReLoad Strat
 Stop_Strat: Stop Strat
 Liquidate_Strat: Liquidate Strat
 

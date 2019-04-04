@@ -19,7 +19,7 @@ from .ui_closeposition_window import ClosePositionWindow
 from .ui_account_window import AccountWindow
 from .ui_strategy_window import StrategyWindow
 from .ui_log_window import LogWindow
-from source.strategy.mystrategy import strategy_list
+from mystrategy import strategy_list
 from source.data.data_board import DataBoard
 from source.order.order_manager import OrderManager
 from source.strategy.strategy_manager import StrategyManager
@@ -41,7 +41,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._current_time = None
         self._config_server = config_server
         self._config_client = config_client
-        self._symbols =  config_server[config_server['accounts'][0]]['tickers']
+        self._symbols =  config_server['tickers']
         self._lang_dict = lang_dict
         self._font = lang_dict['font']
         self._widget_dict = {}
@@ -145,7 +145,7 @@ class MainWindow(QtWidgets.QMainWindow):
             o.order_size = int(q) if (n == 0) else -1 * int(q)
             o.order_flag = OrderFlag(f)
             o.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
-            o.account = self._config_client['account']
+            # o.account = self._config_client['account']
             
             if (t == 0):
                 o.order_type = OrderType.MKT
@@ -166,11 +166,13 @@ class MainWindow(QtWidgets.QMainWindow):
         except:
             print('place order error')
 
+
+    def reload_strategy(self):
+        self._strategy_manager.reload_strategy()
+        self.strategy_window.reload_table()
+
     def start_strategy(self):
         self.strategy_window.update_status(self.strategy_window.currentRow(), True)
-
-    def pause_strategy(self):
-        pass
 
     def stop_strategy(self):
         self.strategy_window.update_status(self.strategy_window.currentRow(), False)
@@ -425,18 +427,18 @@ class MainWindow(QtWidgets.QMainWindow):
         bottomright.setFont(self._font)
         strategy_manager_layout = QtWidgets.QFormLayout()
         self.strategy_window = StrategyWindow(self._lang_dict, self._strategy_manager)
+        self.btn_strat_reload = QtWidgets.QPushButton(self._lang_dict['Load_Strat'])
+        self.btn_strat_reload.clicked.connect(self.reload_strategy)
         self.btn_strat_start = QtWidgets.QPushButton(self._lang_dict['Start_Strat'])
         self.btn_strat_start.clicked.connect(self.start_strategy)
-        self.btn_strat_pause = QtWidgets.QPushButton(self._lang_dict['Pause_Strat'])
-        self.btn_strat_pause.clicked.connect(self.pause_strategy)
         self.btn_strat_stop = QtWidgets.QPushButton(self._lang_dict['Stop_Strat'])
         self.btn_strat_stop.clicked.connect(self.stop_strategy)
         self.btn_strat_liquidate = QtWidgets.QPushButton(self._lang_dict['Liquidate_Strat'])
         btn_strat_layout = QtWidgets.QHBoxLayout()
         btn_strat_layout.addWidget(self.btn_strat_start)
-        btn_strat_layout.addWidget(self.btn_strat_pause)
         btn_strat_layout.addWidget(self.btn_strat_stop)
         btn_strat_layout.addWidget(self.btn_strat_liquidate)
+        btn_strat_layout.addWidget(self.btn_strat_reload)
 
         strategy_manager_layout.addRow(QtWidgets.QLabel(self._lang_dict['Automatic']))
         strategy_manager_layout.addRow(self.strategy_window)
