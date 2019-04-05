@@ -54,6 +54,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.closeposition_window = None
         self.account_window = None
         self.strategy_window = None
+        self.manualorderid = 0
 
         #  0. order_manager; some of ui_windows uses order_manager
         self._order_manager = OrderManager()
@@ -81,12 +82,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._strategy_manager.load_strategy()
 
         ## 8. client mq
-        self._client_mq = ClientMq(self._ui_events_engine, self._outgoing_queue)
+        self._client_mq = ClientMq(self._config_server,self._ui_events_engine, self._outgoing_queue)
 
         # 1. set up gui windows
         self.setGeometry(50, 50, 600, 400)
         self.setWindowTitle(lang_dict['Prog_Name'])
-        self.setWindowIcon(QtGui.QIcon("gui/image/logo.ico"))
+        self.setWindowIcon(QtGui.QIcon("logo.png"))       
         self.init_menu()
         self.init_status_bar()
         self.init_central_area()
@@ -99,11 +100,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self._ui_events_engine.register_handler(EventType.ACCOUNT, self._account_event_handler)
         self._ui_events_engine.register_handler(EventType.CONTRACT, self._contract_event_handler)
         self._ui_events_engine.register_handler(EventType.HISTORICAL, self._historical_event_handler)
-        self._ui_events_engine.register_handler(EventType.GENERAL, self.log_window.msg_signal.emit)
+        self._ui_events_engine.register_handler(EventType.INFO, self.log_window.msg_signal.emit)
+        # TODO:add info and error handler
 
         self._outgoing_request_events_engine.register_handler(EventType.ORDER, self._outgoing_order_request_handler)
         self._outgoing_request_events_engine.register_handler(EventType.QRY_ACCOUNT, self._outgoing_account_request_handler)
         self._outgoing_request_events_engine.register_handler(EventType.QRY_POS, self._outgoing_position_request_handler)
+        self._outgoing_request_events_engine.register_handler(EventType.SUBSCRIBE, self._outgoing_general_request_handler)
         self._outgoing_request_events_engine.register_handler(EventType.GENERAL_REQ, self._outgoing_general_request_handler)
         self._flowrate_timer.timeout.connect(self.risk_manager.reset)   #timer event to reset riskmanager flow rate count
         ## 10. start
@@ -121,13 +124,21 @@ class MainWindow(QtWidgets.QMainWindow):
         webbrowser.open('.')
 
     def send_cmd(self):
-        cmdstr= str(self.cmd.text())
+        cmdstr= str(self.cmd.text()) + '|' + str(datetime.now())
         try:
             gr = GeneralReqEvent()
             gr.req = cmdstr
             self._outgoing_request_events_engine.put(gr)   
         except:
             print('send cmd error')
+
+    def subsrcibe(self):
+        ss = SubscribeEvent()
+        ss.api = self.account.currentText()+'_MD'
+        ss.content = str(self.sym.text())
+        ss.source = 0
+        self._outgoing_request_events_engine.put(ss)
+
 
     def place_order(self):
         s = str(self.sym.text())
@@ -136,11 +147,15 @@ class MainWindow(QtWidgets.QMainWindow):
         p = str(self.order_price.text())
         q = str(self.order_quantity.text())
         t = self.order_type.currentIndex()
+        a = self.account.currentText() + '_TD'
         #print("manual order ",s,n,f,p,q,t)
         # to be checked by risk manger
         try:
             o = OrderEvent()
-            o.source = 1
+            o.api = a
+            o.source = 0
+            o.client_order_id = self.manualorderid
+            self.manualorderid = self.manualorderid + 1
             o.full_symbol = s
             o.order_size = int(q) if (n == 0) else -1 * int(q)
             o.order_flag = OrderFlag(f)
@@ -350,12 +365,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.exchange.addItems(['郑商所ZCE','大商所DCE','中金所CFFEX','上期所SHFE','能源INE','期权OPTION','上证SSE'])
         self.account = QtWidgets.QComboBox()
         # self.account.addItems(['FROM', 'CONFIG'])
-        self.account.addItems([str(element) for element in self._config_server['accounts']])
+        self.account.addItems([str(element) for element in self._config_server['apis']])
         self.btn_order = QtWidgets.QPushButton(self._lang_dict['Place_Order'])
-        self.btn_order.clicked.connect(self.place_order)
-
+        self.btn_order.clicked.connect(self.place_order)     # insert order
+        self.sym.returnPressed.connect(self.subsrcibe)  # subscbre market data
         self.cmd = QtWidgets.QLineEdit()
-        self.btn_cmd = QtWidgets.QPushButton('Send CMD')
+        self.btn_cmd = QtWidgets.QPushButton('Enter')
         self.btn_cmd.clicked.connect(self.send_cmd)
         
         place_order_layout.addRow(QtWidgets.QLabel(self._lang_dict['Discretionary']))
@@ -370,8 +385,8 @@ class MainWindow(QtWidgets.QMainWindow):
         place_order_layout.addRow(self._lang_dict['Exchange'], self.exchange)
         place_order_layout.addRow(self._lang_dict['Account'], self.account)
         place_order_layout.addRow(self.btn_order)
-        place_order_layout.addRow(QtWidgets.QLabel('Server Request'))
-        place_order_layout.addRow('cmd',self.cmd)
+        place_order_layout.addRow(QtWidgets.QLabel('Console'))
+        place_order_layout.addRow('Command',self.cmd)
         place_order_layout.addRow(self.btn_cmd)
         topright.setLayout(place_order_layout)
 
@@ -499,13 +514,14 @@ class AboutWidget(QtWidgets.QDialog):
         self.setWindowTitle('Star Quant')
 
         text = u"""
-            Open Platform for Traders
-            Developed based on EliteQuant, vnpy.
+            StarQuant
+            易数量化交易系统
+            Lightweight Algorithmic Trading System            
             Language: C++,Python
             Author : Wubin
-            Email: dr.wubin@foxmail.com
+            Email: dr.wb@qq.com
             License：MIT
-            
+     
             """
 
         label = QtWidgets.QLabel()

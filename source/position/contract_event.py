@@ -11,10 +11,11 @@ class ContractEvent(Event):
         self.event_type = EventType.CONTRACT
         self.full_symbol = ''
         self.local_name = ''
-        self.mininum_tick = ''
+        self.mininum_tick = 0.0
+        self.mulitples = 1
 
     def deserialize(self, msg):
         v = msg.split('|')
-        self.full_symbol = v[1]
-        self.local_name = v[2]
-        self.mininum_tick = v[3]
+        self.local_name = v[3]
+        self.mininum_tick = float(v[4])
+        self.mulitples = int(v[5])

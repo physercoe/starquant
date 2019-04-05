@@ -1,17 +1,14 @@
 #include <Common/config.h>
-#include <Common/tick.h>
+#include <Data/tick.h>
 
 namespace StarQuant
 {
 	string Tick::serialize() const
 	{
-		// TODO: which one is more efficient?
-		//char msg[128] = {};
-		//sprintf(msg, "%s|%d|%.2f", fullsymbol_.c_str(), msgtype_, price_, size_, depth_);
-		//return msg;
-
 		string s;
-		s = to_string(msgtype_) 
+		s = destination_ 
+			+ SERIALIZATION_SEPARATOR + source_
+			+ SERIALIZATION_SEPARATOR + to_string(msgtype_)
 			+ SERIALIZATION_SEPARATOR +	fullsymbol_ 
 			+ SERIALIZATION_SEPARATOR + time_
 			+ SERIALIZATION_SEPARATOR + to_string(price_)
@@ -19,12 +16,13 @@ namespace StarQuant
 		return s;
 	}
 
-
 	string Tick_L1::serialize() const
 	{
 
 		string s;
-		s = to_string(msgtype_)
+		s = destination_ 
+			+ SERIALIZATION_SEPARATOR + source_
+			+ SERIALIZATION_SEPARATOR + to_string(msgtype_)
 			+ SERIALIZATION_SEPARATOR +	fullsymbol_
 			+ SERIALIZATION_SEPARATOR + time_
 			+ SERIALIZATION_SEPARATOR + to_string(price_)
@@ -43,14 +41,13 @@ namespace StarQuant
 		return s;
 	}
 
-
-
-
 	string Tick_L5::serialize() const
 	{
 
 		string s;
-		s = to_string(msgtype_)
+		s = destination_ 
+			+ SERIALIZATION_SEPARATOR + source_
+			+ SERIALIZATION_SEPARATOR + to_string(msgtype_)
 			+ SERIALIZATION_SEPARATOR +	fullsymbol_
 			+ SERIALIZATION_SEPARATOR + time_
 			+ SERIALIZATION_SEPARATOR + to_string(price_)

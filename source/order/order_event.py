@@ -40,19 +40,19 @@ class OrderEvent(Event):
     def serialize(self):
         msg = ''
         if self.order_type == OrderType.MKT:
-            msg = str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|'+ str(self.source) + '|' + str(self.client_order_id) + '|' \
+            msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|'+ str(self.client_order_id) + '|' \
                   + str(OrderType.MKT.value) + '|' + self.full_symbol + '|' + str(self.order_size) + '|' + '0.0' +'|' \
                   + str(self.order_flag.value)  + '|' + self.tag
         elif self.order_type == OrderType.LMT:
-            msg = str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|' + str(self.source) + '|' + str(self.client_order_id) + '|' \
+            msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|' + str(self.client_order_id) + '|' \
                   + str(OrderType.LMT.value)+ '|' + self.full_symbol + '|' + str(self.order_size) + '|' + str(self.limit_price) + '|' \
                   + str(self.order_flag.value) + '|' + self.tag
         elif self.order_type == OrderType.STP:
-            msg = str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|'+ str(self.source) + '|' + str(self.client_order_id) + '|' \
+            msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|' + str(self.client_order_id) + '|' \
                   + str(OrderType.STP.value) + '|' + self.full_symbol + '|' + str(self.order_size) + '|' + '0.0' +'|' \
                   + str(self.order_flag.value)     + '|' + self.tag          
         elif self.order_type == OrderType.STPLMT:
-            msg = str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|' + str(self.source) + '|' + str(self.client_order_id) + '|' \
+            msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|' + str(self.client_order_id) + '|' \
                   + str(OrderType.STPLMT.value)+ '|' + self.full_symbol + '|' + str(self.order_size) + '|' + str(self.stop_price) + '|' \
                   + str(self.order_flag.value) + '|' + self.tag
         else:

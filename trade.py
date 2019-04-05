@@ -21,7 +21,7 @@ def main():
     config_server = None
     try:
         path = os.path.abspath(os.path.dirname(__file__))
-        config_file = os.path.join(path, 'config_server.yaml')
+        config_file = os.path.join(path, 'etc/config_server.yaml')
         with open(os.path.expanduser(config_file), encoding='utf8') as fd:
             config_server = yaml.load(fd)
     except IOError:
@@ -30,7 +30,7 @@ def main():
     config_client = None
     try:
         path = os.path.abspath(os.path.dirname(__file__))
-        config_file = os.path.join(path, 'config_client.yaml')
+        config_file = os.path.join(path, 'etc/config_client.yaml')
         with open(os.path.expanduser(config_file), encoding='utf8') as fd:
             config_client = yaml.load(fd)
     except IOError:
@@ -40,10 +40,10 @@ def main():
     font = None
     try:
         path = os.path.abspath(os.path.dirname(__file__))
-        config_file = os.path.join(path, 'source/language/en/live_text.yaml')
+        config_file = os.path.join(path, 'source/gui/language/en/live_text.yaml')
         font = QtGui.QFont('Microsoft Sans Serif', 10)
         if config_client['language'] == 'cn':
-            config_file = os.path.join(path, 'source/language/cn/live_text.yaml')
+            config_file = os.path.join(path, 'source/gui/language/cn/live_text.yaml')
             font = QtGui.QFont(u'微软雅黑', 10)
         with open(os.path.expanduser(config_file), encoding='utf8') as fd:
             lang_dict = yaml.load(fd)

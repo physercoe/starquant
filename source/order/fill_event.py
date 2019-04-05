@@ -49,17 +49,17 @@ class FillEvent(Event):
 
     def deserialize(self, msg):
         v = msg.split('|')
-        self.server_order_id = int(v[1])
-        self.client_order_id = int(v[2])
-        self.broker_order_id = int(v[3])
-        self.orderNo = v[4]
-        self.broker_fill_id = v[5]
-        self.fill_time = v[6]
-        self.full_symbol = v[7]
-        self.fill_price = float(v[8])
-        self.fill_size = int(v[9])
-        self.fill_flag = OrderFlag(int(v[10]))
-        self.commission = float(v[11])
-        self.account = v[12]
-        self.api = v[13]
-        self.source = int(v[14])
+        self.server_order_id = int(v[3])
+        self.client_order_id = int(v[4])
+        self.broker_order_id = int(v[5])
+        self.orderNo = v[6]
+        self.broker_fill_id = v[7]
+        self.fill_time = v[8]
+        self.full_symbol = v[9]
+        self.fill_price = float(v[10])
+        self.fill_size = int(v[11])
+        self.fill_flag = OrderFlag(int(v[12]))
+        self.commission = float(v[13])
+        self.account = v[14]
+        self.api = v[15]
+        self.source = int(v[16])

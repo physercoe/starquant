@@ -41,25 +41,25 @@ class OrderStatusEvent(Event):
 
     def deserialize(self, msg):
         v = msg.split('|')
-        self.server_order_id = int(v[1])
-        self.client_order_id = int(v[2])
-        self.broker_order_id = int(v[3])
-        self.full_symbol = v[4]
-        self.order_size = int(v[5])
-        self.order_flag = OrderFlag((int(v[6])))
-        self.order_type = OrderType(int(v[7]))
-        self.price = float(v[8])
-        self.fill_size = int(v[9])
-        self.fill_price = float(v[10])
-        self.create_time = v[11]
-        self.cancel_time = v[12]
-        self.account = v[13]
-        self.source = int(v[14])
-        self.api = v[15]
-        self.tag = v[16]
-        self.orderNo = v[17]
-        self.order_status = OrderStatus(int(v[18]))
-        self.timestamp = v[19]
+        self.server_order_id = int(v[3])
+        self.client_order_id = int(v[4])
+        self.broker_order_id = int(v[5])
+        self.full_symbol = v[6]
+        self.order_size = int(v[7])
+        self.order_flag = OrderFlag((int(v[8])))
+        self.order_type = OrderType(int(v[9]))
+        self.price = float(v[10])
+        self.fill_size = int(v[11])
+        self.fill_price = float(v[12])
+        self.create_time = v[13]
+        self.cancel_time = v[14]
+        self.account = v[15]
+        self.source = int(v[16])
+        self.api = v[17]
+        self.tag = v[18]
+        self.orderNo = v[19]
+        self.order_status = OrderStatus(int(v[20]))
+        self.timestamp = v[21]
 
     def to_order(self):
         o = OrderEvent()

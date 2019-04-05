@@ -33,23 +33,23 @@ class PositionEvent(Event):
 
     def deserialize(self, msg):
         v = msg.split('|')
-        self.type =v[1]     
-        self.account = v[2]
-        self.posno = v[3]
-        self.openorderNo = v[4]
-        self.openapi = v[5]
-        self.opensource = int(v[6])
-        self.closeorderNo = v[7]
-        self.closeapi = v[8]
-        self.closesource = int(v[9])        
-        self.full_symbol = v[10]
-        self.average_cost = float(v[11])
-        self.size = int(v[12])
-        self.pre_size = int(v[13])
-        self.freezed_size = int(v[14])
-        self.realized_pnl = float(v[15])
-        self.unrealized_pnl = float(v[16])
-        self.timestamp = v[17]
+        self.type =v[3]     
+        self.account = v[4]
+        self.posno = v[5]
+        self.openorderNo = v[6]
+        self.openapi = v[7]
+        self.opensource = int(v[8])
+        self.closeorderNo = v[9]
+        self.closeapi = v[10]
+        self.closesource = int(v[11])        
+        self.full_symbol = v[12]
+        self.average_cost = float(v[13])
+        self.size = int(v[14])
+        self.pre_size = int(v[15])
+        self.freezed_size = int(v[16])
+        self.realized_pnl = float(v[17])
+        self.unrealized_pnl = float(v[18])
+        self.timestamp = v[19]
 
     def to_position(self):
 

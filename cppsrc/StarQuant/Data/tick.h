@@ -15,6 +15,8 @@ namespace StarQuant {
 			, price_(0.0)
 			, size_(0)
 			, depth_(1)		// default is L1 or 1
+			, source_("0")
+			, destination_("0")
 		{
 		}
 
@@ -28,6 +30,8 @@ namespace StarQuant {
 		double price_;
 		int size_;
 		int depth_;
+		string source_;
+		string destination_;
 
 		virtual string serialize() const;
 	};

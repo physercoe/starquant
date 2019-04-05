@@ -39,11 +39,11 @@ namespace StarQuant
 		void insertOrder(const vector<string>& msgv);
 		//void cancelOrder(const string& msgorder);
 		void cancelOrder(const vector<string>& msgv);
-		void cancelOrder(int oid);
-		void cancelOrders(const string & ono);
-		void queryAccount();
-		void queryOrder(const string& msgorder_);
-		void queryPosition();
+		void cancelOrder(long oid,const string& source );
+		void cancelOrders(const string & ono,const string& source);
+		void queryAccount(const string& source);
+		void queryOrder(const string& msgorder_,const string& source);
+		void queryPosition(const string& source);
 
 	public:
 		virtual void OnFrontConnected();

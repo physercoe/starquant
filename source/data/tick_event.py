@@ -7,34 +7,34 @@ import time
 import pandas as pd
 class TickType(Enum):
     # same as msg_type
-    Tick_L1 = 100
-    Tick_L5 = 101
-    Tick_L10 =102
-    Tick_L20 = 103
-    Bar_1min = 111
-    Bar_5min = 112
-    Bar_15min = 113
-    Bar_1h = 114
-    Bar_1d = 115
-    Bar_1w = 116
-    Bar_1m = 117
-    Trade = 160		
-    Bid = 161
-    Ask = 162
-    Full = 163
-    BidPrice = 164
-    BidSize = 165
-    AskPrice = 166
-    AskSize = 167
-    Price = 168
-    TradeSize = 169
-    OpenPrice = 170
-    HighPrice = 171
-    LowPrice = 172
-    ClosePrice = 173
-    Volume = 174
-    OpenInterest = 175
-    Bar = 176
+    Tick_L1 = 1000
+    Tick_L5 = 1001
+    Tick_L10 =1002
+    Tick_L20 = 1003
+    Bar_1min = 1011
+    Bar_5min = 1012
+    Bar_15min = 1013
+    Bar_1h = 1014
+    Bar_1d = 1015
+    Bar_1w = 1016
+    Bar_1m = 1017
+    Trade = 1060		
+    Bid = 1061
+    Ask = 1062
+    Full = 1063
+    BidPrice = 1064
+    BidSize = 1065
+    AskPrice = 1066
+    AskSize = 1067
+    Price = 1068
+    TradeSize = 1069
+    OpenPrice = 1070
+    HighPrice = 1071
+    LowPrice = 1072
+    ClosePrice = 1073
+    Volume = 1074
+    OpenInterest = 1075
+    Bar = 1076
 
 
 
@@ -53,6 +53,8 @@ class TickEvent(Event):
         """
         self.event_type = EventType.TICK
         self.tick_type = TickType.Trade
+        self.source = ''
+        self.destination = ''
         self.timestamp = Timestamp('1970-01-01', tz='UTC')
         self.full_symbol = ''
         self.price = 0.0
@@ -94,55 +96,57 @@ class TickEvent(Event):
         # print('begin deserial tick')
         try:
             v = msg.split('|')
-            self.tick_type = TickType(int(v[0]))
+            self.destination = v[0]
+            self.source = v[1]
+            self.tick_type = TickType(int(v[2]))
             # print('tick type',self.tick_type,self.tick_type == TickType.Tick_L1)
-            self.full_symbol = v[1]
+            self.full_symbol = v[3]
             #self.timestamp = time.mktime(time.strptime(v[1],'%Y-%m-%d %H:%M:%S.%f'))
-            self.timestamp =pd.to_datetime(v[2])
-            self.price = float(v[3])
-            self.size = int(v[4])
+            self.timestamp =pd.to_datetime(v[4])
+            self.price = float(v[5])
+            self.size = int(v[6])
 
             if (self.tick_type == TickType.Tick_L1):
                 # print('tickl1 deserialize')
-                self.bid_price_L1 = float(v[5])
-                self.bid_size_L1 = int(v[6])
-                self.ask_price_L1 = float(v[7])
-                self.ask_size_L1 = int(v[8])
-                self.open_interest = int(v[9])
-                self.open = float(v[10])
-                self.high = float(v[11])
-                self.low = float(v[12])
-                self.pre_close = float(v[13])
-                self.upper_limit_price = float(v[14])
-                self.lower_limit_price = float(v[15])
+                self.bid_price_L1 = float(v[7])
+                self.bid_size_L1 = int(v[8])
+                self.ask_price_L1 = float(v[9])
+                self.ask_size_L1 = int(v[10])
+                self.open_interest = int(v[11])
+                self.open = float(v[12])
+                self.high = float(v[13])
+                self.low = float(v[14])
+                self.pre_close = float(v[15])
+                self.upper_limit_price = float(v[16])
+                self.lower_limit_price = float(v[17])
             elif (self.tick_type == TickType.Tick_L5):
-                self.bid_price_L1 = float(v[5])
-                self.bid_size_L1 = int(v[6])
-                self.ask_price_L1 = float(v[7])
-                self.ask_size_L1 = int(v[8])
-                self.bid_price_L2 = float(v[9])
-                self.bid_size_L2 = int(v[10])
-                self.ask_price_L2 = float(v[11])
-                self.ask_size_L2 = int(v[12])
-                self.bid_price_L3 = float(v[13])
-                self.bid_size_L3 = int(v[14])
-                self.ask_price_L3 = float(v[15])
-                self.ask_size_L3 = int(v[16])
-                self.bid_price_L4 = float(v[17])
-                self.bid_size_L4 = int(v[18])
-                self.ask_price_L4 = float(v[19])
-                self.ask_size_L4 = int(v[20])
-                self.bid_price_L5 = float(v[21])
-                self.bid_size_L5 = int(v[22])
-                self.ask_price_L5 = float(v[23])
-                self.ask_size_L5 = int(v[24])
-                self.open_interest = int(v[25])
-                self.open = float(v[26])
-                self.high = float(v[27])
-                self.low = float(v[28])
-                self.pre_close = float(v[29])
-                self.upper_limit_price = float(v[30])
-                self.lower_limit_price = float(v[31])
+                self.bid_price_L1 = float(v[7])
+                self.bid_size_L1 = int(v[8])
+                self.ask_price_L1 = float(v[9])
+                self.ask_size_L1 = int(v[10])
+                self.bid_price_L2 = float(v[11])
+                self.bid_size_L2 = int(v[12])
+                self.ask_price_L2 = float(v[13])
+                self.ask_size_L2 = int(v[14])
+                self.bid_price_L3 = float(v[15])
+                self.bid_size_L3 = int(v[16])
+                self.ask_price_L3 = float(v[17])
+                self.ask_size_L3 = int(v[18])
+                self.bid_price_L4 = float(v[19])
+                self.bid_size_L4 = int(v[20])
+                self.ask_price_L4 = float(v[21])
+                self.ask_size_L4 = int(v[22])
+                self.bid_price_L5 = float(v[23])
+                self.bid_size_L5 = int(v[24])
+                self.ask_price_L5 = float(v[25])
+                self.ask_size_L5 = int(v[26])
+                self.open_interest = int(v[27])
+                self.open = float(v[28])
+                self.high = float(v[29])
+                self.low = float(v[30])
+                self.pre_close = float(v[31])
+                self.upper_limit_price = float(v[32])
+                self.lower_limit_price = float(v[33])
         except:
             pass
 

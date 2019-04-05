@@ -143,10 +143,10 @@ void TapTDEngine::start(){
 		bool tmp;
 		switch (msgintype)
 		{
-			case MSG_TYPE_TD_ENGINE_OPEN:
+			case MSG_TYPE_ENGINE_CONNECT:
 				tmp = connect();
 				break;
-			case MSG_TYPE_TD_ENGINE_CLOSE:
+			case MSG_TYPE_ENGINE_DISCONNECT:
 				tmp = disconnect();
 				break;
 			case MSG_TYPE_ORDER:

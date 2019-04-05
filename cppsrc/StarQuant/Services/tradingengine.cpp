@@ -31,11 +31,9 @@ namespace StarQuant
 	}
 	tradingengine::tradingengine() {
 		CConfig::instance();
-		//cout<<"config done "<<endl;
 		DataManager::instance();
 		OrderManager::instance();
 		PortfolioManager::instance();
-		// TODO: check if there is an StarQuant instance running already
 		_broker = CConfig::instance()._broker;
 		mode = CConfig::instance()._mode;
 		if(logger == nullptr){
@@ -44,8 +42,6 @@ namespace StarQuant
 		if (IEngine::msgq_send_ == nullptr){
 			IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
 		}
-		//CtpTDEngine ctptdengine;
-		//cout<<"trading engine inited "<<endl;
 		//client_msg_pair_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PAIR, CConfig::instance().API_PORT);
 		//md_msg_pub_=  std::make_shared<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().API_ZMQ_DATA_PORT,false);
 	}

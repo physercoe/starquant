@@ -38,8 +38,7 @@ namespace StarQuant
 			this->api_->RegisterSpi(nullptr);
 			this->api_->Release();// api must init() or will segfault
 			this->api_ = nullptr;
-		}
-		cout<<"exit ctp td"<<endl;
+		}		
 	}
 
 	void CtpTDEngine::init(){
@@ -52,7 +51,6 @@ namespace StarQuant
 		if (msgq_recv_ == nullptr){
 			msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().SERVERSUB_URL);	
 		}
-		//LOG_DEBUG(logger,"CTP TD initiated");	
 		name_ = "CTP_TD";
 		ctpacc_ = CConfig::instance()._apimap["CTP"];
 		string path = CConfig::instance().logDir() + "/ctp/td";
@@ -96,10 +94,16 @@ namespace StarQuant
 			bool tmp;
 			switch (msgintype)
 			{
-				case MSG_TYPE_TD_ENGINE_OPEN:
-					tmp = connect();
+				case MSG_TYPE_ENGINE_CONNECT:
+					if (connect()){
+						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+							+ name_ + SERIALIZATION_SEPARATOR 
+							+ to_string(MSG_TYPE_INFO_ENGINE_TDCONNECTED);
+						lock_guard<std::mutex> g(IEngine::sendlock_);
+						IEngine::msgq_send_->sendmsg(msgout);
+					}
 					break;
-				case MSG_TYPE_TD_ENGINE_CLOSE:
+				case MSG_TYPE_ENGINE_DISCONNECT:
 					tmp = disconnect();
 					break;
 				case MSG_TYPE_ORDER:
@@ -107,8 +111,11 @@ namespace StarQuant
 						insertOrder(v);
 					}
 					else{
-						LOG_DEBUG(logger,"CTP_TD is not connected,can not place order!");
-						string msgout = to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR +"CTP_TD is not connected,can not place order";
+						LOG_DEBUG(logger,"CTP_TD is not connected,can not insert order!");
+						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+							+ name_ + SERIALIZATION_SEPARATOR 
+							+ to_string(MSG_TYPE_ERROR_ENGINENOTCONNECTED) 	+ SERIALIZATION_SEPARATOR 
+							+ "ctp td is not connected,can not insert order";
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
 					}
@@ -119,38 +126,61 @@ namespace StarQuant
 					}
 					else{
 						LOG_DEBUG(logger,"CTP_TD is not connected,can not cancel order!");
-						string msgout = to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR +"CTP_TD is not connected,can not cancel order";
+						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+							+ name_ + SERIALIZATION_SEPARATOR 
+							+ to_string(MSG_TYPE_ERROR_ENGINENOTCONNECTED) 	+ SERIALIZATION_SEPARATOR 
+							+ "ctp td is not connected,can not cancel order";
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
 					}
 					break;
 				case MSG_TYPE_QRY_POS:
 					if (estate_ == LOGIN_ACK){
-						queryPosition();//TODO:区分不同来源，回报中添加目的地信息
+						queryPosition(v[1]);//TODO:区分不同来源，回报中添加目的地信息
 					}
 					else{
 						LOG_DEBUG(logger,"CTP_TD is not connected,can not qry pos!");
-						string msgout = to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR +"CTP_TD is not connected,can not cancel order";
+						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+							+ name_ + SERIALIZATION_SEPARATOR 
+							+ to_string(MSG_TYPE_ERROR_ENGINENOTCONNECTED) 	+ SERIALIZATION_SEPARATOR 
+							+ "ctp td is not connected,can not qry pos";
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
 					}
 					break;
 				case MSG_TYPE_QRY_ACCOUNT:
 					if (estate_ == LOGIN_ACK){
-						queryAccount();
+						queryAccount(v[1]);
 					}
 					else{
 						LOG_DEBUG(logger,"CTP_TD is not connected,can not qry acc!");
-						string msgout = to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR +"CTP_TD is not connected,can not cancel order";
+						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+							+ name_ + SERIALIZATION_SEPARATOR 
+							+ to_string(MSG_TYPE_ERROR_ENGINENOTCONNECTED) 	+ SERIALIZATION_SEPARATOR 
+							+ "ctp td is not connected,can not qry acc";
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
 					}
 					break;
 				case MSG_TYPE_ENGINE_STATUS:
 					{
-						string msgout = to_string(MSG_TYPE_ENGINE_STATUS) + SERIALIZATION_SEPARATOR + to_string(estate_);
+						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+							+ name_ + SERIALIZATION_SEPARATOR 
+							+ to_string(MSG_TYPE_ENGINE_STATUS) + SERIALIZATION_SEPARATOR 
+							+ to_string(estate_);
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
+					}
+					break;
+				case MSG_TYPE_TEST:
+					{						
+						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+							+ name_ + SERIALIZATION_SEPARATOR 
+							+ to_string(MSG_TYPE_TEST) + SERIALIZATION_SEPARATOR 
+							+ ymdhmsf6();
+						lock_guard<std::mutex> g(IEngine::sendlock_);
+						IEngine::msgq_send_->sendmsg(msgout);
+						LOG_DEBUG(logger,"CTP_TD return test msg!");
 					}
 					break;
 				default:
@@ -263,11 +293,12 @@ namespace StarQuant
 		o->brokerOrderId = m_brokerOrderId_++;
 		o->createTime = ymdhmsf();	
 		o->orderStatus = OrderStatus::OS_NewBorn;	
-		o->api = v[0];// = name_;	
+
+		o->api = name_;// = name_;	
 		o->source = stoi(v[1]);
 		o->clientId = stoi(v[1]);
-		o->account = v[3];
-		o->clientOrderId = stoi(v[4]);
+		o->account = ctpacc_.userid;
+		o->clientOrderId = stol(v[4]);
 		o->orderType = static_cast<OrderType>(stoi(v[5]));
 		o->fullSymbol = v[6];
 		o->orderSize = stoi(v[7]);
@@ -305,15 +336,27 @@ namespace StarQuant
 		//orderfield.TimeCondition = THOST_FTDC_TC_IOC;
 		//orderfield.VolumeCondition = THOST_FTDC_VC_CV;				// FAK; FOK uses THOST_FTDC_VC_AV
 		LOG_INFO(logger,"Insert Order: clientorderid ="<<o->clientOrderId<<"fullsymbol = "<<o->fullSymbol);
-		lock_guard<mutex> g2(orderStatus_mtx);
+		lock_guard<mutex> gs(orderStatus_mtx);
 		int i = api_->ReqOrderInsert(&orderfield, reqId_++);
 		o->orderStatus = OrderStatus::OS_Submitted;
 		if (i != 0){
-			LOG_ERROR(logger,"Ctp TD order insert error "<<i);
 			o->orderStatus = OrderStatus::OS_Error;
-			//sendOrderStatus(order->serverOrderId);
+			//send error msg
+			string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_INSERTORDER) + SERIALIZATION_SEPARATOR
+				+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
+				+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
+				+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
+				+ to_string(i) + SERIALIZATION_SEPARATOR
+				+ "ReqOrderinsert return != 0";
+			lock_guard<std::mutex> ge(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);
+			LOG_ERROR(logger,"Ctp TD order insert error: "<<i);
 		}
-		//sendOrderStatus(order->serverOrderId);
+		//send OrderStatus
+		lock_guard<std::mutex> ge(IEngine::sendlock_);
+		IEngine::msgq_send_->sendmsg(o->serialize());
 	}
 	
 	void CtpTDEngine::cancelOrder(const vector<string>& v){
@@ -334,16 +377,39 @@ namespace StarQuant
 			//myreq.OrderActionRef = int(m_brokerOrderId_++);//TODO: int <-> long is unsafe, use another way
 			int i = this->api_->ReqOrderAction(&myreq, reqId_++);
 			if (i != 0){
+				string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+					+ name_ + SERIALIZATION_SEPARATOR 
+					+ to_string(MSG_TYPE_ERROR_CANCELORDER) + SERIALIZATION_SEPARATOR
+					+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
+					+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
+					+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
+					+ to_string(i) + SERIALIZATION_SEPARATOR
+					+ "cancelorder return != 0";
+				lock_guard<std::mutex> g(IEngine::sendlock_);
+				IEngine::msgq_send_->sendmsg(msgout);
 				LOG_ERROR(logger,"Ctp TD cancle order error "<<i);
+				return;
 			}
+			// send cancel info through orderstatus
+			lock_guard<mutex> g2(orderStatus_mtx);
+			o->orderStatus = OrderStatus::OS_PendingCancel;
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(o->serialize());
 		}
 		else{
-			LOG_ERROR(logger,"ordermanager cannot find order!");
+			string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_ORGANORDER ) + SERIALIZATION_SEPARATOR
+				+ v[1] + SERIALIZATION_SEPARATOR 
+				+ v[3];
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);
+			LOG_ERROR(logger,"cancel order ordermanager cannot find order!");
 		}
 
 	}
-
-	void CtpTDEngine::cancelOrder(int oid) {
+	
+	void CtpTDEngine::cancelOrder(long oid,const string& source) {
 		LOG_INFO(logger,"Cancel Order serverorderid = "<<oid);		
 		CThostFtdcInputOrderActionField myreq = CThostFtdcInputOrderActionField();
 		std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(oid);
@@ -359,44 +425,75 @@ namespace StarQuant
 			strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
 			int i = this->api_->ReqOrderAction(&myreq, reqId_++);
 			if (i != 0){
+				string msgout = source + SERIALIZATION_SEPARATOR 
+					+ name_ + SERIALIZATION_SEPARATOR 
+					+ to_string(MSG_TYPE_ERROR_CANCELORDER) + SERIALIZATION_SEPARATOR
+					+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
+					+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
+					+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
+					+ to_string(i) + SERIALIZATION_SEPARATOR
+					+ "cancelorder return != 0";
+				lock_guard<std::mutex> g(IEngine::sendlock_);
+				IEngine::msgq_send_->sendmsg(msgout);
 				LOG_ERROR(logger,"Ctp TD cancle order error "<<i);
+				return;
 			}
+			lock_guard<mutex> g2(orderStatus_mtx);
+			o->orderStatus = OrderStatus::OS_PendingCancel;
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(o->serialize());
 		}
 		else{
-			LOG_ERROR(logger,"ordermanager cannot find order!");
+			string msgout = source + SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_ORGANORDER ) + SERIALIZATION_SEPARATOR
+				+ source + SERIALIZATION_SEPARATOR 
+				+ to_string(oid);
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);
+			LOG_ERROR(logger,"Cancel Order ordermanager cannot find order!");
 		}
 	}
 
-	void CtpTDEngine::cancelOrders(const string& symbol) {		
+	void CtpTDEngine::cancelOrders(const string& symbol,const string& source) {		
 	}
 
 	// 查询账户
-	void CtpTDEngine::queryAccount() {
+	void CtpTDEngine::queryAccount(const string& source) {
 		CThostFtdcQryTradingAccountField myreq = CThostFtdcQryTradingAccountField();
 		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
 		int error = api_->ReqQryTradingAccount(&myreq, reqId_++);
 		LOG_INFO(logger,"Ctp Td requests account information");			
 		if (error != 0){
+			string msgout = source + SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_QRY_ACC );
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);
 			LOG_ERROR(logger,"Ctp td qry acc error "<<error);
 		}
 	}
 
-	void CtpTDEngine::queryOrder(const string& msgorder_){
+	void CtpTDEngine::queryOrder(const string& msgorder_,const string& source){
 	}
 
 	/// 查询pos
-	void CtpTDEngine::queryPosition() {
+	void CtpTDEngine::queryPosition(const string& source) {
 		CThostFtdcQryInvestorPositionField myreq = CThostFtdcQryInvestorPositionField();
 		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
 		int error = this->api_->ReqQryInvestorPosition(&myreq, reqId_++);
 		LOG_INFO(logger,"Ctp td requests positions");		
 		if (error != 0){
+			string msgout = source + SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_QRY_POS );
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);
 			LOG_ERROR(logger,"Ctp td qry pos error "<<error);
 		}
 	}
-
 	////////////////////////////////////////////////////// begin callback/incoming function ///////////////////////////////////////
 	///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
 	void CtpTDEngine::OnFrontConnected() {
@@ -406,16 +503,32 @@ namespace StarQuant
 	}
 
 	void CtpTDEngine::OnFrontDisconnected(int nReason) {
+		string msgout = "0"+ SERIALIZATION_SEPARATOR 
+			+ name_ + SERIALIZATION_SEPARATOR 
+			+ to_string(MSG_TYPE_INFO_ENGINE_TDDISCONNECTED);
+		lock_guard<std::mutex> g(IEngine::sendlock_);
+		IEngine::msgq_send_->sendmsg(msgout);
 		LOG_INFO(logger,"Ctp td disconnected, nReason="<<nReason);
 		estate_ = DISCONNECTED;
+
 	}
 	///心跳超时警告。当长时间未收到报文时，该方法被调用。
 	void CtpTDEngine::OnHeartBeatWarning(int nTimeLapse) {
+		string msgout = "0"+ SERIALIZATION_SEPARATOR 
+			+ name_ + SERIALIZATION_SEPARATOR 
+			+ to_string(MSG_TYPE_INFO_HEARTBEAT_WARNING);
+		lock_guard<std::mutex> g(IEngine::sendlock_);
+		IEngine::msgq_send_->sendmsg(msgout);
 		LOG_INFO(logger,"Ctp td heartbeat overtime error, nTimeLapse="<<nTimeLapse);
 	}
 	///客户端认证响应
 	void CtpTDEngine::OnRspAuthenticate(CThostFtdcRspAuthenticateField *pRspAuthenticateField, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
+			string msgout = "0"+ SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_CONNECT) ;
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);
 			LOG_ERROR(logger,"Ctp Td authentication failed.");
 		}
 		else{
@@ -427,6 +540,11 @@ namespace StarQuant
 	void CtpTDEngine::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0)
 		{
+			string msgout = "0"+ SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_CONNECT) ;
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);
 			string errormsgutf8;			
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
 			LOG_ERROR(logger,"Ctp td login failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);  
@@ -448,6 +566,11 @@ namespace StarQuant
 				strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 				int error = api_->ReqSettlementInfoConfirm(&myreq, reqId_++);
 				if (error != 0){
+					string msgout = "0"+ SERIALIZATION_SEPARATOR 
+						+ name_ + SERIALIZATION_SEPARATOR 
+						+ to_string(MSG_TYPE_ERROR_CONNECT) ;
+					lock_guard<std::mutex> g(IEngine::sendlock_);
+					IEngine::msgq_send_->sendmsg(msgout);
 					LOG_ERROR(logger,"Ctp TD settlement confirming error");
 				}
 				LOG_INFO(logger,"Ctp TD settlement confirming...");
@@ -461,6 +584,11 @@ namespace StarQuant
 	///投资者结算结果确认响应
 	void CtpTDEngine::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
+			string msgout = "0"+ SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_CONNECT) ;
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);
 			string errormsgutf8;			
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" ); 
 			LOG_ERROR(logger,"Settlement confirm error: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
@@ -474,11 +602,21 @@ namespace StarQuant
 	///登出请求响应
 	void CtpTDEngine::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
  		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
+			string msgout = "0"+ SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_DISCONNECT) ;
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);			 
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" ); 
 			LOG_ERROR(logger,"Ctp td logout failed: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
 		}
 		else{
+			string msgout = "0"+ SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_INFO_ENGINE_TDDISCONNECTED) ;
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);	
 			estate_ = CONNECT_ACK;
 			LOG_INFO(logger,"Ctp Td Logout,BrokerID="<<pUserLogout->BrokerID<<" UserID="<<pUserLogout->UserID);
 		}
@@ -491,6 +629,32 @@ namespace StarQuant
 		{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pInputOrder->OrderRef));
+			if (o != nullptr) {
+				lock_guard<mutex> g(orderStatus_mtx);
+				o->orderStatus = OS_Error;	
+				string msgout = to_string(o->source)+ SERIALIZATION_SEPARATOR 
+					+ name_ + SERIALIZATION_SEPARATOR 
+					+ to_string(MSG_TYPE_ERROR_INSERTORDER) + SERIALIZATION_SEPARATOR
+					+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
+					+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
+					+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
+					+ to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR
+					+ errormsgutf8;
+				lock_guard<std::mutex> g2(IEngine::sendlock_);
+				IEngine::msgq_send_->sendmsg(msgout);  //send error msg
+				IEngine::msgq_send_->sendmsg(o->serialize());	//send order status		
+			}
+			else {//not record this order yet
+				string msgout = "0"+ SERIALIZATION_SEPARATOR 
+					+ name_ + SERIALIZATION_SEPARATOR 
+					+ to_string(MSG_TYPE_ERROR_ORGANORDER ) + SERIALIZATION_SEPARATOR
+					+ "0"  + SERIALIZATION_SEPARATOR 
+					+ pInputOrder->OrderRef;
+				lock_guard<std::mutex> g(IEngine::sendlock_);
+				IEngine::msgq_send_->sendmsg(msgout);
+				LOG_ERROR(logger,"onRspOrder Insert, OrderManager cannot find order,OrderRef="<<pInputOrder->OrderRef);
+			}
 			LOG_ERROR(logger,"Ctp Td OnRspOrderInsert: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8
 				<<"[OrderRef="<<pInputOrder->OrderRef
 				<<"InstrumentID="<<pInputOrder->InstrumentID
@@ -498,31 +662,9 @@ namespace StarQuant
 				<<"VolumeTotalOriginal="<<pInputOrder->VolumeTotalOriginal
 				<<"Direction="<<pInputOrder->Direction<<"]"
 			);
-			lock_guard<mutex> g(orderStatus_mtx);
-			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pInputOrder->OrderRef));
-			if (o != nullptr) {
-				o->orderStatus = OS_Error;		
-				//sendOrderStatus(o->serverOrderId);
-				//sendGeneralMessage(string("CTP Trade Server OnRspOrderInsert:") +
-					//SERIALIZATION_SEPARATOR + to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR + errormsgutf8);
-			}
-			else {
-				LOG_ERROR(logger,"OrderManager cannot find order,OrderRef="<<pInputOrder->OrderRef);
-			}
 		}
-		else
+		else //unknown yet, can this happen?
 		{
-			//lock_guard<mutex> g(orderStatus_mtx);
-			//std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pInputOrder->OrderRef));
-			// if (o != nullptr) {
-			// 	o->orderStatus = OS_Error;			// rejected ?
-			// 	//sendOrderStatus(o->serverOrderId);
-			// 	//sendGeneralMessage(string("CTP Trader Server OnRspOrderInsert error:") +
-			// 	//	SERIALIZATION_SEPARATOR + to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR + errormsgutf8);
-			// }
-			// else {
-
-			// }			
 		}
 	}
 	///报单操作请求响应(参数不通过)	// 撤单错误（柜台）
@@ -532,6 +674,32 @@ namespace StarQuant
 		{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+			long oid = std::stol(pInputOrderAction->OrderRef);
+			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(oid);
+			if (o != nullptr) {
+				string msgout = to_string(o->source) + SERIALIZATION_SEPARATOR 
+					+ name_ + SERIALIZATION_SEPARATOR 
+					+ to_string(MSG_TYPE_ERROR_CANCELORDER) + SERIALIZATION_SEPARATOR
+					+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
+					+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
+					+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
+					+ to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR
+					+ errormsgutf8;
+				lock_guard<std::mutex> g(IEngine::sendlock_);
+				IEngine::msgq_send_->sendmsg(msgout);
+				LOG_ERROR(logger,"Ctp TD OnRsp cancel order error:"<<pRspInfo->ErrorID<<errormsgutf8);
+			}
+			else
+			{
+				string msgout = "0"+ SERIALIZATION_SEPARATOR 
+					+ name_ + SERIALIZATION_SEPARATOR 
+					+ to_string(MSG_TYPE_ERROR_ORGANORDER ) + SERIALIZATION_SEPARATOR
+					+ "0"  + SERIALIZATION_SEPARATOR 
+					+ pInputOrderAction->OrderRef;
+				lock_guard<std::mutex> g(IEngine::sendlock_);
+				IEngine::msgq_send_->sendmsg(msgout);
+				LOG_ERROR(logger,"OnRspOrderAction OrderManager cannot find order,OrderRef="<<pInputOrderAction->OrderRef);
+			}
 			LOG_ERROR(logger,"Ctp Td OnRspOrderAction: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8
 				<<"[OrderRef="<<pInputOrderAction->OrderRef
 				<<"InstrumentID="<<pInputOrderAction->InstrumentID
@@ -540,8 +708,6 @@ namespace StarQuant
 		}
 		else
 		{
-			//cout<<"OnRspOrderAction error = 0"<<endl;
-			//sendGeneralMessage(to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR + errormsgutf8);
 		}
 	}
 	///请求查询投资者持仓响应
@@ -554,21 +720,6 @@ namespace StarQuant
 				LOG_INFO(logger,"ctp on qry pos return nullptr");
 				return;
 			}
-			LOG_INFO(logger,"Ctp broker server OnRspQryInvestorPosition:"
-				<<"InstrumentID="<<pInvestorPosition->InstrumentID
-				<<"InvestorID="<<pInvestorPosition->InvestorID
-				<<"OpenAmount="<<pInvestorPosition->OpenAmount
-				<<"OpenVolume="<<pInvestorPosition->OpenVolume
-				<<"PosiDirection="<<pInvestorPosition->PosiDirection
-				<<"PositionProfit="<<pInvestorPosition->PositionProfit
-				<<"PositionCost="<<pInvestorPosition->PositionCost
-				<<"UseMargin="<<pInvestorPosition->UseMargin
-				<<"LongFrozen="<<pInvestorPosition->LongFrozen
-				<<"ShortFrozen="<<pInvestorPosition->ShortFrozen
-				<<"TradingDay="<<pInvestorPosition->TradingDay
-				<<"YdPosition="<<pInvestorPosition->YdPosition
-				<<"islast="<<bIsLast		
-			);
 			if ((pInvestorPosition->Position != 0.0) && (pInvestorPosition->YdPosition != 0.0)){
 				Position pos;
 				pos._posNo = to_string(pInvestorPosition->SettlementID);
@@ -607,11 +758,31 @@ namespace StarQuant
 				lock_guard<mutex> g(IEngine::sendlock_);
 				IEngine::msgq_send_->sendmsg(msg);
 			}
+			LOG_INFO(logger,"Ctp broker server OnRspQryInvestorPosition:"
+				<<"InstrumentID="<<pInvestorPosition->InstrumentID
+				<<"InvestorID="<<pInvestorPosition->InvestorID
+				<<"OpenAmount="<<pInvestorPosition->OpenAmount
+				<<"OpenVolume="<<pInvestorPosition->OpenVolume
+				<<"PosiDirection="<<pInvestorPosition->PosiDirection
+				<<"PositionProfit="<<pInvestorPosition->PositionProfit
+				<<"PositionCost="<<pInvestorPosition->PositionCost
+				<<"UseMargin="<<pInvestorPosition->UseMargin
+				<<"LongFrozen="<<pInvestorPosition->LongFrozen
+				<<"ShortFrozen="<<pInvestorPosition->ShortFrozen
+				<<"TradingDay="<<pInvestorPosition->TradingDay
+				<<"YdPosition="<<pInvestorPosition->YdPosition
+				<<"islast="<<bIsLast		
+			);			
 		}
 		else
 		{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+			string msgout = "0" + SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_QRY_POS);
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);
 			LOG_ERROR(logger,"Ctp Td Qry pos error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
 		}
 	}
@@ -626,20 +797,6 @@ namespace StarQuant
 			double balance = pTradingAccount->PreBalance - pTradingAccount->PreCredit - pTradingAccount->PreMortgage
 				+ pTradingAccount->Mortgage - pTradingAccount->Withdraw + pTradingAccount->Deposit
 				+ pTradingAccount->CloseProfit + pTradingAccount->PositionProfit + pTradingAccount->CashIn - pTradingAccount->Commission;
-			LOG_INFO(logger,"Ctp td OnRspQryTradingAccount:"
-				<<"AccountID="<<pTradingAccount->AccountID
-				<<"Available="<<pTradingAccount->Available
-				<<"PreBalance="<<pTradingAccount->PreBalance
-				<<"Deposit="<<pTradingAccount->Deposit
-				<<"Withdraw="<<pTradingAccount->Withdraw
-				<<"WithdrawQuota="<<pTradingAccount->WithdrawQuota
-				<<"Commission="<<pTradingAccount->Commission
-				<<"CurrMargin="<<pTradingAccount->CurrMargin
-				<<"FrozenMargin="<<pTradingAccount->FrozenMargin
-				<<"CloseProfit="<<pTradingAccount->CloseProfit
-				<<"PositionProfit="<<pTradingAccount->PositionProfit
-				<<"Balance="<<balance
-			);
 			AccountInfo accinfo;	
 			accinfo.AccountID = pTradingAccount->AccountID;
 			accinfo.PreviousDayEquityWithLoanValue = pTradingAccount->PreBalance;
@@ -665,10 +822,29 @@ namespace StarQuant
 			LOG_DEBUG(logger,"Ctp Td send account fund msg "<<msg);
 			lock_guard<mutex> g(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(msg);
+			LOG_INFO(logger,"Ctp td OnRspQryTradingAccount:"
+				<<"AccountID="<<pTradingAccount->AccountID
+				<<"Available="<<pTradingAccount->Available
+				<<"PreBalance="<<pTradingAccount->PreBalance
+				<<"Deposit="<<pTradingAccount->Deposit
+				<<"Withdraw="<<pTradingAccount->Withdraw
+				<<"WithdrawQuota="<<pTradingAccount->WithdrawQuota
+				<<"Commission="<<pTradingAccount->Commission
+				<<"CurrMargin="<<pTradingAccount->CurrMargin
+				<<"FrozenMargin="<<pTradingAccount->FrozenMargin
+				<<"CloseProfit="<<pTradingAccount->CloseProfit
+				<<"PositionProfit="<<pTradingAccount->PositionProfit
+				<<"Balance="<<balance
+			);
 		}
-		else {
+		else {			
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+			string msgout = "0" + SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_QRY_ACC );
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);
 			LOG_ERROR(logger,"Ctp Td Qry Acc error:"<<errormsgutf8);
 		}
 	}
@@ -679,6 +855,11 @@ namespace StarQuant
 		if(bResult){
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+			string msgout = "0" + SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_QRY_CONTRACT );
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);
 			LOG_ERROR(logger,"Ctp Td Qry Instrument error:"<<errormsgutf8);
 		}
 		else{
@@ -686,18 +867,6 @@ namespace StarQuant
 				LOG_INFO(logger,"Ctp Td qry Instrument return nullptr");
 				return;
 			}
-			LOG_INFO(logger,"Ctp Td OnRspQryInstrument:"
-				<<"InstrumentID="<<pInstrument->InstrumentID
-				<<"InstrumentName="<<pInstrument->InstrumentName
-				<<"ExchangeID="<<pInstrument->ExchangeID
-				<<"ExchangeInstID="<<pInstrument->ExchangeInstID
-				<<"PriceTick="<<pInstrument->PriceTick
-				<<"VolumeMultiple="<<pInstrument->VolumeMultiple
-				<<"UnderlyingInstrID="<<pInstrument->UnderlyingInstrID
-				<<"ProductClass="<<pInstrument->ProductClass
-				<<"ExpireDate="<<pInstrument->ExpireDate
-				<<"LongMarginRatio="<<pInstrument->LongMarginRatio
-			);
 			string symbol = boost::to_upper_copy(string(pInstrument->InstrumentName));
 			auto it = DataManager::instance().securityDetails_.find(symbol);
 			if (it == DataManager::instance().securityDetails_.end()) {
@@ -719,17 +888,34 @@ namespace StarQuant
 			LOG_DEBUG(logger,"Ctp td send contract msg:"<<msg);
 			lock_guard<mutex> g(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(msg);
+						LOG_INFO(logger,"Ctp Td OnRspQryInstrument:"
+				<<"InstrumentID="<<pInstrument->InstrumentID
+				<<"InstrumentName="<<pInstrument->InstrumentName
+				<<"ExchangeID="<<pInstrument->ExchangeID
+				<<"ExchangeInstID="<<pInstrument->ExchangeInstID
+				<<"PriceTick="<<pInstrument->PriceTick
+				<<"VolumeMultiple="<<pInstrument->VolumeMultiple
+				<<"UnderlyingInstrID="<<pInstrument->UnderlyingInstrID
+				<<"ProductClass="<<pInstrument->ProductClass
+				<<"ExpireDate="<<pInstrument->ExpireDate
+				<<"LongMarginRatio="<<pInstrument->LongMarginRatio
+			);
 		}
 	}
 	///错误应答
 	void CtpTDEngine::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
-		if(pRspInfo == nullptr)
-			return;
-		string errormsgutf8;
-		errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-		LOG_ERROR(logger,"Ctp td server OnRspError: ErrorID="<<pRspInfo->ErrorID <<"ErrorMsg="<<errormsgutf8);
-//		sendGeneralMessage(string("CTP Trader Server OnRspError") +
-//			SERIALIZATION_SEPARATOR + to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR + errormsgutf8);
+		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
+		if (bResult){
+			string errormsgutf8;
+			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+			string msgout = "0" + SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR
+				+ to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR
+				+ errormsgutf8;
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			LOG_ERROR(logger,"Ctp td server OnRspError: ErrorID="<<pRspInfo->ErrorID <<"ErrorMsg="<<errormsgutf8);
+		}
 	}
 	///报单通知
 	void CtpTDEngine::OnRtnOrder(CThostFtdcOrderField *pOrder) {
@@ -737,19 +923,46 @@ namespace StarQuant
 			LOG_INFO(logger,"Ctp td onRtnOrder return nullptr");
 			return;
 		}
-		// pOrder->ExchangeID		交易所编号 
-		// pOrder->InstrumentID		合约代码
-		// pOrder->OrderRef			报单引用
-		// pOrder->Direction		买卖方向
-		// pOrder->CombOffsetFlag	组合开平标志
-		// pOrder->LimitPrice		价格
-		// pOrder->VolumeTotalOriginal		数量
-		// pOrder->VolumeTraded		今成交数量
-		// pOrder->VolumeTotal		剩余数量
-		// Order->OrderSysID		报单编号（交易所的）
-		// pOrder->OrderStatus		报单状态
-		// pOrder->InsertDate		报单日期
-		// pOrder->SequenceNo		序号
+		long nOrderref = std::stol(pOrder->OrderRef);
+		shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(nOrderref);
+		if (o == nullptr) {			// create an order
+			lock_guard<mutex> g(oid_mtx);
+			std::shared_ptr<Order> o = make_shared<Order>();
+			o->account = ctpacc_.id;
+			o->api = "others";
+			o->fullSymbol = CConfig::instance().CtpSymbolToSecurityFullName(pOrder->InstrumentID);
+			o->orderSize = (pOrder->Direction == '0'? 1 : -1) * pOrder->VolumeTotalOriginal;
+			o->limitPrice = pOrder->LimitPrice;
+			o->stopPrice = 0.0;
+			o->orderStatus = CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
+			o->orderFlag = CtpComboOffsetFlagToOrderFlag(pOrder->CombOffsetFlag[0]);
+			o->orderNo = pOrder->OrderSysID;
+			o->serverOrderId = m_serverOrderId++;
+			o->createTime = ymdhmsf();
+			o->orderType = OrderType::OT_Limit;					// assumed
+			OrderManager::instance().trackOrder(o);
+			string msg = o->serialize() ;
+			lock_guard<mutex> g2(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msg);			
+			string msgout = "0"+ SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_ORGANORDER ) + SERIALIZATION_SEPARATOR
+				+ "0"  + SERIALIZATION_SEPARATOR 
+				+ pOrder->OrderRef;
+			IEngine::msgq_send_->sendmsg(msgout);
+			LOG_ERROR(logger,"OnRtnOrder OrderManager cannot find orderref:"<<pOrder->OrderRef);	
+			LOG_DEBUG(logger,"Ctp td send orderestatus msg:"<<msg);
+		}
+		else {
+			o->orderStatus = CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
+			o->orderFlag = CtpComboOffsetFlagToOrderFlag(pOrder->CombOffsetFlag[0]);
+			o->orderNo = pOrder->OrderSysID;
+			string msg = o->serialize() ;
+			LOG_DEBUG(logger,"Ctp td send orderestatus msg:"<<msg);	
+			lock_guard<mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msg);
+
+		}
 		LOG_INFO(logger,"CTP trade server OnRtnOrder details:"
 			<<"InstrumentID="<<pOrder->InstrumentID
 			<<"OrderRef="<<pOrder->OrderRef
@@ -768,42 +981,7 @@ namespace StarQuant
 			<<"VolumeTraded="<<pOrder->VolumeTraded
 			<<"OrderSysID="<<pOrder->OrderSysID
 			<<"SequenceNo="<<pOrder->SequenceNo
-		);
-		long nOrderref = std::stol(pOrder->OrderRef);
-		shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(nOrderref);
-		if (o == nullptr) {			// create an order
-			LOG_ERROR(logger,"Ctp return an untracted order");
-			lock_guard<mutex> g(oid_mtx);
-			std::shared_ptr<Order> o = make_shared<Order>();
-			o->account = ctpacc_.id;
-			o->api = "others";
-			o->fullSymbol = CConfig::instance().CtpSymbolToSecurityFullName(pOrder->InstrumentID);
-			o->orderSize = (pOrder->Direction == '0'? 1 : -1) * pOrder->VolumeTotalOriginal;
-			o->limitPrice = pOrder->LimitPrice;
-			o->stopPrice = 0.0;
-			o->orderStatus = CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
-			o->orderFlag = CtpComboOffsetFlagToOrderFlag(pOrder->CombOffsetFlag[0]);
-			o->orderNo = pOrder->OrderSysID;
-			o->serverOrderId = m_serverOrderId++;
-			o->createTime = ymdhmsf();
-			o->orderType = OrderType::OT_Limit;					// assumed
-			OrderManager::instance().trackOrder(o);
-			string msg = o->serialize() 
-				+ SERIALIZATION_SEPARATOR + ymdhmsf();
-			LOG_DEBUG(logger,"Ctp td send orderestatus msg:"<<msg);
-			lock_guard<mutex> g2(IEngine::sendlock_);
-			IEngine::msgq_send_->sendmsg(msg);
-		}
-		else {
-			o->orderStatus = CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
-			o->orderFlag = CtpComboOffsetFlagToOrderFlag(pOrder->CombOffsetFlag[0]);
-			o->orderNo = pOrder->OrderSysID;
-			string msg = o->serialize() 
-				+ SERIALIZATION_SEPARATOR + ymdhmsf();
-			LOG_DEBUG(logger,"Ctp td send orderestatus msg:"<<msg);	
-			lock_guard<mutex> g(IEngine::sendlock_);
-			IEngine::msgq_send_->sendmsg(msg);
-		}		
+		);		
 	}
 	/// 成交通知
 	void CtpTDEngine::OnRtnTrade(CThostFtdcTradeField *pTrade) {
@@ -811,17 +989,6 @@ namespace StarQuant
 			LOG_INFO(logger,"Ctp td onRtnTrade return nullptr");
 			return;
 		}
-		LOG_INFO(logger,"CTP trade server OnRtnTrade details:"
-			<<"TradeID="<<pTrade->TradeID
-			<<"OrderRef="<<pTrade->OrderRef
-			<<"InstrumentID="<<pTrade->InstrumentID
-			<<"ExchangeID="<<pTrade->ExchangeID
-			<<"TradeTime="<<pTrade->TradeTime
-			<<"OffsetFlag="<<pTrade->OffsetFlag
-			<<"Direction="<<pTrade->Direction
-			<<"Price="<<pTrade->Price
-			<<"Volume="<<pTrade->Volume
-		);
 		Fill t;
 		t.fullSymbol = CConfig::instance().CtpSymbolToSecurityFullName(pTrade->InstrumentID);
 		t.tradetime = pTrade->TradeTime;
@@ -842,35 +1009,77 @@ namespace StarQuant
 			t.api = o->api;
 			o->fillNo = t.tradeNo;
 			OrderManager::instance().gotFill(t);
-			// sendOrderStatus(o->serverOrderId);
-			string msg = t.serialize()
-				+ SERIALIZATION_SEPARATOR + ymdhmsf();
+			string msg = t.serialize();
 			LOG_DEBUG(logger,"Ctp td send fill msg:"<<msg);
 			lock_guard<mutex> g(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(msg);
 		}
 		else {
-			LOG_ERROR(logger,"fill order id is not tracked");
 			t.api = "others";
 			t.account = ctpacc_.id;
-			string msg = t.serialize()
-				+ SERIALIZATION_SEPARATOR + ymdhmsf();
-			LOG_DEBUG(logger,"Ctp td send fill msg:"<<msg);
+			string msg = t.serialize();
 			lock_guard<mutex> g(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(msg);
-		}		
+			string msgout = "0"+ SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_ORGANORDER ) + SERIALIZATION_SEPARATOR
+				+ "0"  + SERIALIZATION_SEPARATOR 
+				+ pTrade->OrderRef;
+			IEngine::msgq_send_->sendmsg(msgout);
+			LOG_DEBUG(logger,"Ctp td send fill msg:"<<msg);
+			LOG_ERROR(logger,"OnRtnTrade ordermanager cannot find orderref"<<pTrade->OrderRef);
+		}	
+		LOG_INFO(logger,"CTP trade server OnRtnTrade details:"
+			<<"TradeID="<<pTrade->TradeID
+			<<"OrderRef="<<pTrade->OrderRef
+			<<"InstrumentID="<<pTrade->InstrumentID
+			<<"ExchangeID="<<pTrade->ExchangeID
+			<<"TradeTime="<<pTrade->TradeTime
+			<<"OffsetFlag="<<pTrade->OffsetFlag
+			<<"Direction="<<pTrade->Direction
+			<<"Price="<<pTrade->Price
+			<<"Volume="<<pTrade->Volume
+		);	
 	}
-	///报单录入错误回报
+	///交易所报单录入错误回报
 	void CtpTDEngine::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) {
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if(bResult){
 			if (pInputOrder == nullptr){
 				LOG_INFO(logger,"ctp td OnErrRtnOrderInsert return nullptr");
 				return;
-			}
+			}			
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			LOG_INFO(logger,"CTP td OnErrRtnOrderinsert:"
+			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pInputOrder->OrderRef));
+			if (o != nullptr) {
+				lock_guard<mutex> g(orderStatus_mtx);
+				o->orderStatus = OS_Error;			// rejected
+				string msg = o->serialize();
+				lock_guard<mutex> g2(IEngine::sendlock_);
+				IEngine::msgq_send_->sendmsg(msg);  //send orderstatus
+				string msgout = to_string(o->source)+ SERIALIZATION_SEPARATOR 
+					+ name_ + SERIALIZATION_SEPARATOR 
+					+ to_string(MSG_TYPE_ERROR_INSERTORDER) + SERIALIZATION_SEPARATOR
+					+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
+					+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
+					+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
+					+ to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR
+					+ errormsgutf8;
+				IEngine::msgq_send_->sendmsg(msgout); //send error_insert order msg
+				LOG_DEBUG(logger,"Ctp td send order insert error: "<<msg);
+			}
+			else {
+				string msgout = "0"+ SERIALIZATION_SEPARATOR 
+					+ name_ + SERIALIZATION_SEPARATOR 
+					+ to_string(MSG_TYPE_ERROR_ORGANORDER ) + SERIALIZATION_SEPARATOR
+					+ "0"  + SERIALIZATION_SEPARATOR 
+					+ pInputOrder->OrderRef;
+				lock_guard<mutex> g(IEngine::sendlock_);	
+				IEngine::msgq_send_->sendmsg(msgout);
+				LOG_ERROR(logger,"OnErrRtnOrderInsert ordermanager cannot find orderref:"<<pInputOrder->OrderRef);
+			}
+			LOG_ERROR(logger,"CTP td OnErrRtnOrderinsert:"
 				<<"ErrorMsg:"<<errormsgutf8
 				<<"InstrumentID="<<pInputOrder->InstrumentID
 				<<"OrderRef="<<pInputOrder->OrderRef
@@ -880,41 +1089,44 @@ namespace StarQuant
 				<<"LimitPrice="<<pInputOrder->LimitPrice
 				<<"VolumeTotalOriginal="<<pInputOrder->VolumeTotalOriginal
 			);
-			lock_guard<mutex> g(orderStatus_mtx);
-			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pInputOrder->OrderRef));
-			if (o != nullptr) {
-				o->orderStatus = OS_Error;			// rejected
-				string msg = o->serialize() 
-					+ SERIALIZATION_SEPARATOR + ymdhmsf();
-				LOG_DEBUG(logger,"Ctp td send order insert error: "<<msg);
-				lock_guard<mutex> g2(IEngine::sendlock_);
-				IEngine::msgq_send_->sendmsg(msg);
-			}
-			else {
-				LOG_ERROR(logger,"order id is not tracked");
-			}
 		}
 		else{
 			//cout<<"ctp td OnErrRtnOrderInsert return no error"<<endl;
 		}		
 	}
 
-	///撤单操作错误回报,TODO:考虑撤单的信息反馈给client，目前只是返回日志
+	///交易所撤单操作错误回报
 	void CtpTDEngine::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo) {
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if(bResult){
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+			long oid = std::stol(pOrderAction->OrderRef);
+			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(oid);
+			if (o != nullptr) {
+				string msgout = to_string(o->source) + SERIALIZATION_SEPARATOR 
+					+ name_ + SERIALIZATION_SEPARATOR 
+					+ to_string(MSG_TYPE_ERROR_CANCELORDER) + SERIALIZATION_SEPARATOR
+					+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
+					+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
+					+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
+					+ to_string(pRspInfo->ErrorID) + SERIALIZATION_SEPARATOR
+					+ errormsgutf8;
+				lock_guard<std::mutex> g(IEngine::sendlock_);
+				IEngine::msgq_send_->sendmsg(msgout);
+			}
+			else
+			{
+				string msgout = "0"+ SERIALIZATION_SEPARATOR 
+					+ name_ + SERIALIZATION_SEPARATOR 
+					+ to_string(MSG_TYPE_ERROR_ORGANORDER ) + SERIALIZATION_SEPARATOR
+					+ "0"  + SERIALIZATION_SEPARATOR 
+					+ pOrderAction->OrderRef;
+				lock_guard<std::mutex> g(IEngine::sendlock_);
+				IEngine::msgq_send_->sendmsg(msgout);
+				LOG_ERROR(logger,"OnErrRtnOrderAction OrderManager cannot find order,OrderRef="<<pOrderAction->OrderRef);
+			}
 			LOG_ERROR(logger,"Ctp td OnErrRtnOrderAction: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);
-			string msg = "0"
-				+ SERIALIZATION_SEPARATOR + name_
-				+ SERIALIZATION_SEPARATOR + to_string(MSG_TYPE_INFO)
-				+ SERIALIZATION_SEPARATOR + "CTP Trader Server OnErrRtnOrderAction"
-				+ SERIALIZATION_SEPARATOR + to_string(pRspInfo->ErrorID)
-				+ SERIALIZATION_SEPARATOR + errormsgutf8
-				+ SERIALIZATION_SEPARATOR + ymdhmsf();
-			lock_guard<mutex> g(IEngine::sendlock_);
-			IEngine::msgq_send_->sendmsg(msg);
 		}
 		else{
 			//cout<<"ctp td OnErrRtnOrderAction return no error"<<endl;

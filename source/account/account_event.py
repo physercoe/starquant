@@ -23,12 +23,12 @@ class AccountEvent(Event):
 
     def deserialize(self, msg):
         v = msg.split('|')
-        self.account_id = v[1]
-        self.preday_balance = float(v[2])
-        self.balance = float(v[3])
-        self.available = float(v[4])
-        self.commission = float(v[5])
-        self.margin = float(v[6])
-        self.closed_pnl = float(v[7])
-        self.open_pnl = float(v[8])
-        self.timestamp = v[9]
+        self.account_id = v[3]
+        self.preday_balance = float(v[4])
+        self.balance = float(v[5])
+        self.available = float(v[6])
+        self.commission = float(v[7])
+        self.margin = float(v[8])
+        self.closed_pnl = float(v[9])
+        self.open_pnl = float(v[10])
+        self.timestamp = v[11]

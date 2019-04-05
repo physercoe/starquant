@@ -84,41 +84,67 @@ namespace StarQuant
 			bool tmp;
 			switch (msgintype)
 			{
-				case MSG_TYPE_MD_ENGINE_OPEN:
-					tmp = connect();
+				case MSG_TYPE_ENGINE_CONNECT:
+					if (connect()){
+						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+							+ name_ + SERIALIZATION_SEPARATOR 
+							+ to_string(MSG_TYPE_INFO_ENGINE_MDCONNECTED);
+						lock_guard<std::mutex> g(IEngine::sendlock_);
+						IEngine::msgq_send_->sendmsg(msgout);
+					}
 					break;
-				case MSG_TYPE_MD_ENGINE_CLOSE:
+				case MSG_TYPE_ENGINE_DISCONNECT:
 					tmp = disconnect();
 					break;
 				case MSG_TYPE_SUBSCRIBE_MARKET_DATA:
 					if (estate_ == LOGIN_ACK){
-						subscribe(v[2]);
+						subscribe(v[3]);
 					}
 					else{
 						LOG_DEBUG(logger,"CTP MD is not connected,can not subscribe!");
-						string msgout = to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR +"md is not connected,can not subscribe";
+						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+							+ name_ + SERIALIZATION_SEPARATOR 
+							+ to_string(MSG_TYPE_ERROR_ENGINENOTCONNECTED) 	+ SERIALIZATION_SEPARATOR 
+							+ "ctp md is not connected,can not subscribe";
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
 					}
 					break;
 				case MSG_TYPE_UNSUBSCRIBE:
 					if (estate_ == LOGIN_ACK){
-						unsubscribe(v[2]);
+						unsubscribe(v[3]);
 					}
 					else{
 						LOG_DEBUG(logger,"CTP MD is not connected,can not unsubscribe!");
-						string msgout = to_string(MSG_TYPE_ERROR) + SERIALIZATION_SEPARATOR +"md is not connected,can not unsubscribe";
+						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+							+ name_ + SERIALIZATION_SEPARATOR  
+							+ to_string(MSG_TYPE_ERROR_ENGINENOTCONNECTED) + SERIALIZATION_SEPARATOR 
+							+ "ctp md is not connected,can not subscribe";
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
 					}
 					break;
 				case MSG_TYPE_ENGINE_STATUS:
 					{
-						string msgout = to_string(MSG_TYPE_ENGINE_STATUS) + SERIALIZATION_SEPARATOR + to_string(estate_);
+						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+							+ name_ + SERIALIZATION_SEPARATOR 
+							+ to_string(MSG_TYPE_ENGINE_STATUS) + SERIALIZATION_SEPARATOR 
+							+ to_string(estate_);
 						lock_guard<std::mutex> g(IEngine::sendlock_);
 						IEngine::msgq_send_->sendmsg(msgout);
 					}
 					break;
+				case MSG_TYPE_TEST:
+					{						
+						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
+							+ name_ + SERIALIZATION_SEPARATOR 
+							+ to_string(MSG_TYPE_TEST) + SERIALIZATION_SEPARATOR 
+							+ ymdhmsf6();
+						lock_guard<std::mutex> g(IEngine::sendlock_);
+						IEngine::msgq_send_->sendmsg(msgout);
+						LOG_DEBUG(logger,"CTP_MD return test msg!");
+					}
+					break;					
 				default:
 					break;
 			}
@@ -154,7 +180,7 @@ namespace StarQuant
 					count++;
 					estate_ = EState::LOGINING;
 					if (error != 0){
-						LOG_ERROR(logger,"Ctp login error : "<<error);//TODO: send error msg to client
+						LOG_ERROR(logger,"Ctp md login error : "<<error);//TODO: send error msg to client
 						estate_ = EState::CONNECT_ACK;
 						msleep(1000);
 					}
@@ -280,6 +306,11 @@ namespace StarQuant
 			LOG_INFO(logger,"Ctp md OnRspSubMarketData:InstrumentID="<<pSpecificInstrument->InstrumentID);
 		}
 		else {
+			string msgout = "0"+ SERIALIZATION_SEPARATOR 
+				+ name_ + SERIALIZATION_SEPARATOR 
+				+ to_string(MSG_TYPE_ERROR_SUBSCRIBE);
+			lock_guard<std::mutex> g(IEngine::sendlock_);
+			IEngine::msgq_send_->sendmsg(msgout);
 			LOG_ERROR(logger,"Ctp md OnRspSubMarketData failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
 		}
 
@@ -323,7 +354,33 @@ namespace StarQuant
 			LOG_DEBUG(logger,"ctp md OnRtnDepthMarketData is nullptr");
 			return;
 		}
-		LOG_DEBUG(logger,"Ctp md OnRtnDepthMarketData at"<<ymdhmsf6()
+		string arrivetime = ymdhmsf6();
+		Tick_L1 k;
+		char buf[64];
+		char a[9];
+		char b[9];
+		strcpy(a,pDepthMarketData->ActionDay);
+		strcpy(b,pDepthMarketData->UpdateTime);
+        std::sprintf(buf, "%c%c%c%c-%c%c-%c%c %c%c:%c%c:%c%c.%.3d", a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],b[0],b[1],b[3],b[4],b[6],b[7],pDepthMarketData->UpdateMillisec );
+		k.time_ = buf;
+		k.msgtype_ = MSG_TYPE::MSG_TYPE_TICK_L1;
+		k.fullsymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pDepthMarketData->InstrumentID);
+		k.price_ = pDepthMarketData->LastPrice;
+		k.size_ = pDepthMarketData->Volume;			
+		k.bidprice_L1_ = pDepthMarketData->BidPrice1;
+		k.bidsize_L1_ = pDepthMarketData->BidVolume1;
+		k.askprice_L1_ = pDepthMarketData->AskPrice1;
+		k.asksize_L1_ = pDepthMarketData->AskVolume1;
+		k.open_interest = pDepthMarketData->OpenInterest;
+		k.open_ = pDepthMarketData->OpenPrice;
+		k.high_ = pDepthMarketData->HighestPrice;
+		k.low_ = pDepthMarketData->LowestPrice;
+		k.pre_close_ = pDepthMarketData->PreClosePrice;
+		k.upper_limit_price_ = pDepthMarketData->UpperLimitPrice;
+		k.lower_limit_price_ = pDepthMarketData->LowerLimitPrice;
+		lock_guard<mutex> g(IEngine::sendlock_);
+		IEngine::msgq_send_->sendmsg(k.serialize());
+		LOG_DEBUG(logger,"Ctp md OnRtnDepthMarketData at"<<arrivetime
 			<<"InstrumentID="<<pDepthMarketData->InstrumentID
 			<<"LastPrice="<<pDepthMarketData->LastPrice
 			<<"Volume="<<pDepthMarketData->Volume
@@ -340,33 +397,8 @@ namespace StarQuant
 			<<"LowerLimitPrice="<<pDepthMarketData->LowerLimitPrice
 			<<"UpdateTime="<<pDepthMarketData->UpdateTime<<"."<<pDepthMarketData->UpdateMillisec
 		);
-		Tick_L1 k;
-		//k.time_ = ymdhmsf();
-		char buf[64];
-		char a[9];
-		char b[9];
-		strcpy(a,pDepthMarketData->ActionDay);
-		strcpy(b,pDepthMarketData->UpdateTime);
-        std::sprintf(buf, "%c%c%c%c-%c%c-%c%c %c%c:%c%c:%c%c.%.3d", a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],b[0],b[1],b[3],b[4],b[6],b[7],pDepthMarketData->UpdateMillisec );
-		//k.time_ = string(pDepthMarketData->ActionDay) + " " + string(pDepthMarketData->UpdateTime) + "." + to_string(pDepthMarketData->UpdateMillisec);
-		k.time_ = buf;
-		k.msgtype_ = MSG_TYPE::MSG_TYPE_TICK_L1;
-		k.fullsymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pDepthMarketData->InstrumentID);
-		k.price_ = pDepthMarketData->LastPrice;
-		k.size_ = pDepthMarketData->Volume;			// not valid without volume
-		k.bidprice_L1_ = pDepthMarketData->BidPrice1;
-		k.bidsize_L1_ = pDepthMarketData->BidVolume1;
-		k.askprice_L1_ = pDepthMarketData->AskPrice1;
-		k.asksize_L1_ = pDepthMarketData->AskVolume1;
-		k.open_interest = pDepthMarketData->OpenInterest;
-		//k.open_ = pDepthMarketData->OpenPrice;
-		//k.high_ = pDepthMarketData->HighestPrice;
-		//k.low_ = pDepthMarketData->LowestPrice;
-		k.pre_close_ = pDepthMarketData->PreClosePrice;
-		k.upper_limit_price_ = pDepthMarketData->UpperLimitPrice;
-		k.lower_limit_price_ = pDepthMarketData->LowerLimitPrice;
-		lock_guard<mutex> g(IEngine::sendlock_);
-		IEngine::msgq_send_->sendmsg(k.serialize());
+
+
 	}
 
 	///询价通知

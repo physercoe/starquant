@@ -4,6 +4,8 @@
 #include <mutex>
 #include <memory>
 #include <string>
+#include <Common/logger.h>
+
 #ifdef _WIN32
 #include <nanomsg/src/nn.h>
 #include <nanomsg/src/pubsub.h>
@@ -30,10 +32,12 @@ enum class MSGQ_PROTOCOL : uint8_t {
 	protected:
 		MSGQ_PROTOCOL protocol_;
 		string url_;
+		std::shared_ptr<SQLogger> logger;
 	public:
 		CMsgq(MSGQ_PROTOCOL protocol, string url);
-		virtual void sendmsg(const string& str) = 0;
-		virtual void sendmsg(const char* str) = 0;
+		virtual ~CMsgq(){};
+		virtual void sendmsg(const string& str,int dontwait = 1) = 0;
+		virtual void sendmsg(const char* str,int dontwait = 1) = 0;
 		virtual string recmsg(int blockingflags = 1) = 0;
 	};
 
@@ -46,9 +50,9 @@ enum class MSGQ_PROTOCOL : uint8_t {
 		CMsgqNanomsg(MSGQ_PROTOCOL protocol, string url, bool binding=true);
 		~CMsgqNanomsg();
 
-		void sendmsg(const string& str);
-		void sendmsg(const char* str);
-		string recmsg(int blockingflags = 1);
+		virtual void sendmsg(const string& str,int dontwait = 1);
+		virtual void sendmsg(const char* str,int dontwait = 1);
+		virtual string recmsg(int blockingflags = 1);
 	};
 
 	class CMsgqZmq : public CMsgq {
@@ -62,9 +66,9 @@ enum class MSGQ_PROTOCOL : uint8_t {
 		CMsgqZmq(MSGQ_PROTOCOL protocol, string url, bool binding = true);
 		~CMsgqZmq();
 
-		void sendmsg(const string& str);
-		void sendmsg(const char* str);
-		string recmsg(int blockingflags = 1);
+		virtual void sendmsg(const string& str,int dontwait = 1);
+		virtual void sendmsg(const char* str,int dontwait = 1);
+		virtual string recmsg(int blockingflags = 1);
 	};
 	class MsgCenter{
 		public:

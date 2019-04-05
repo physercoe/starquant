@@ -88,7 +88,8 @@ namespace StarQuant
 				+ SERIALIZATION_SEPARATOR + std::to_string(commission)
 				+ SERIALIZATION_SEPARATOR + account
 				+ SERIALIZATION_SEPARATOR + api
-				+ SERIALIZATION_SEPARATOR + std::to_string(source);				
+				+ SERIALIZATION_SEPARATOR + std::to_string(source)
+				+ SERIALIZATION_SEPARATOR + ymdhms();				
 			return str;
 		}
 

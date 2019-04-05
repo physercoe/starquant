@@ -149,10 +149,10 @@ namespace StarQuant
 			bool tmp;
 			switch (msgintype)
 			{
-				case MSG_TYPE_MD_ENGINE_OPEN:
+				case MSG_TYPE_ENGINE_CONNECT:
 					tmp = connect();
 					break;
-				case MSG_TYPE_MD_ENGINE_CLOSE:
+				case MSG_TYPE_ENGINE_DISCONNECT:
 					tmp = disconnect();
 					break;
 				case MSG_TYPE_SUBSCRIBE_MARKET_DATA:

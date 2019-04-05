@@ -23,6 +23,7 @@ namespace StarQuant {
 	CMsgq::CMsgq(MSGQ_PROTOCOL protocol, string url) {
 		protocol_ = protocol;
 		url_ = url;
+		logger = SQLogger::getLogger("SYS");
 	}
 
 	CMsgqNanomsg::CMsgqNanomsg(MSGQ_PROTOCOL protocol, string url, bool binding)
@@ -59,7 +60,8 @@ namespace StarQuant {
 			eid_ = nn_connect(sock_, endpoint_.c_str());
 		}
 		if (eid_ < 0 || sock_ < 0) {
-			PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]Unable to connect to message queue: %s,%d\n", __FILE__, __LINE__, __FUNCTION__, url.c_str(), binding);
+			LOG_ERROR(logger,"Nanomsg connect sock "<<endpoint_<<"error");
+			//PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]Unable to connect to message queue: %s,%d\n", __FILE__, __LINE__, __FUNCTION__, url.c_str(), binding);
 		}
 	}
 
@@ -69,17 +71,18 @@ namespace StarQuant {
 		nn_close(sock_);
 	}
 
-	void CMsgqNanomsg::sendmsg(const string& msg) {
+	void CMsgqNanomsg::sendmsg(const string& msg,int dontwait) {
 		// if (!msg.empty()) 
-		int bytes = nn_send(sock_, msg.c_str(), msg.size() + 1, 0);			// TODO: size or size+1
+		int bytes = nn_send(sock_, msg.c_str(), msg.size() + 1, dontwait);			// TODO: size or size+1
 
-		/*if (bytes != msg.size()){
-			PRINT_TO_FILE("INFO:[%s,%d][%s]NANOMSG ERROR, %s\n", __FILE__, __LINE__, __FUNCTION__, msg.c_str());
-		}*/
+		if (bytes != msg.size()+1){
+			LOG_ERROR(logger,"Nanomsg send msg error, return:"<<bytes);
+			// PRINT_TO_FILE("INFO:[%s,%d][%s]NANOMSG ERROR, %s\n", __FILE__, __LINE__, __FUNCTION__, msg.c_str());
+		}
 	}
 
-	void CMsgqNanomsg::sendmsg(const char* msg) {
-		int bytes = nn_send(sock_, msg, strlen(msg) + 1, 0);
+	void CMsgqNanomsg::sendmsg(const char* msg,int dontwait) {
+		int bytes = nn_send(sock_, msg, strlen(msg) + 1, dontwait);
 	}
 
 	string CMsgqNanomsg::recmsg(int blockingflags) {
@@ -141,11 +144,11 @@ namespace StarQuant {
 	}
 
 	// zmq doesn't have global nn_term(), has to be set non-blocking, ZMQ_DONTWAIT
-	void CMsgqZmq::sendmsg(const string& msg) {
+	void CMsgqZmq::sendmsg(const string& msg,int dontwait) {
 		// int bytes = zmq_send(socket_, msg.c_str(), msg.size() + 1, 0);		// TODO: size or size+1
 	}
 
-	void CMsgqZmq::sendmsg(const char* msg) {
+	void CMsgqZmq::sendmsg(const char* msg,int dontwait) {
 		// int bytes = zmq_send(socket_, msg, strlen(msg)+1, 0);
 	}
 

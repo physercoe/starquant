@@ -114,7 +114,8 @@ namespace StarQuant
 				+ SERIALIZATION_SEPARATOR + api
 				+ SERIALIZATION_SEPARATOR + tag
 				+ SERIALIZATION_SEPARATOR + orderNo
-				+ SERIALIZATION_SEPARATOR + std::to_string(orderStatus);
+				+ SERIALIZATION_SEPARATOR + std::to_string(orderStatus)
+				+ SERIALIZATION_SEPARATOR + ymdhms();
 			return str;
 		}
 
