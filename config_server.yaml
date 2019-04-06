@@ -23,8 +23,8 @@ CTP: # SimNow仿真
   api: CTP
   intid: 1
   brokerid: 9999
-  userid: 122699
-  password: ss92h2uj7t
+  userid: 
+  password: 
   auth_code: NA             # NA or actual auth code
   user_prod_info: NA        # NA or actual user info
   md_ip: tcp://180.168.146.187 #10010/11/13/56 218.202.237.33:10012
