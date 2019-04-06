@@ -28,8 +28,8 @@ namespace StarQuant
 		// CtpTDEngine ctptdengine;
 		// TapMDEngine tapmdengine;  
 		// TapTDEngine taptdengine;
-		// std::unique_ptr<CMsgq> client_msg_pair_;
-		// std::shared_ptr<CMsgq> md_msg_pub_;
+		std::unique_ptr<CMsgq> msg_pull_;
+		std::shared_ptr<CMsgq> msg_pub_;
 		std::shared_ptr<SQLogger> logger;
 	public:
 

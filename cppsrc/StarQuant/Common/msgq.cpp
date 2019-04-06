@@ -8,9 +8,13 @@
 #ifdef _WIN32
 #include <nanomsg/src/nn.h>
 #include <nanomsg/src/pair.h>
+#include <nanomsg/src/pubsub.h>
+#include <nanomsg/src/pipeline.h>
 #else
 #include <nanomsg/nn.h>
 #include <nanomsg/pair.h>
+#include <nanomsg/pubsub.h>
+#include <nanomsg/pipeline.h>
 // #include <zmq.h>
 #endif
 
@@ -59,6 +63,18 @@ namespace StarQuant {
 			nn_setsockopt(sock_, NN_SUB, NN_SUB_SUBSCRIBE, "", 0);		// subscribe to topic
 			eid_ = nn_connect(sock_, endpoint_.c_str());
 		}
+		else if (protocol_ == MSGQ_PROTOCOL::PUSH){
+			sock_ = nn_socket(AF_SP, NN_PUSH);
+			assert(sock_ >= 0);
+			eid_ = nn_connect(sock_, endpoint_.c_str());
+		}
+		else if (protocol_ == MSGQ_PROTOCOL::PULL)
+		{
+			sock_ = nn_socket(AF_SP, NN_PULL);
+			assert(sock_ >= 0);
+			eid_ = nn_bind(sock_, endpoint_.c_str());
+		}
+		
 		if (eid_ < 0 || sock_ < 0) {
 			LOG_ERROR(logger,"Nanomsg connect sock "<<endpoint_<<"error");
 			//PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]Unable to connect to message queue: %s,%d\n", __FILE__, __LINE__, __FUNCTION__, url.c_str(), binding);
@@ -85,9 +101,9 @@ namespace StarQuant {
 		int bytes = nn_send(sock_, msg, strlen(msg) + 1, dontwait);
 	}
 
-	string CMsgqNanomsg::recmsg(int blockingflags) {
+	string CMsgqNanomsg::recmsg(int dontwait) {
 		char* buf = nullptr;
-		int bytes = nn_recv(sock_, &buf, NN_MSG, blockingflags);		//NN_DONTWAIT
+		int bytes = nn_recv(sock_, &buf, NN_MSG, dontwait);		//NN_DONTWAIT
 
 		if (bytes > 0 && buf != nullptr) {
 			string msg(buf, bytes);

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from queue import Queue, Empty
 from threading import Thread
-from nanomsg import Socket, PAIR, SUB, PUB, SUB_SUBSCRIBE, AF_SP
+from nanomsg import Socket, PAIR, SUB, PUB, PUSH,SUB_SUBSCRIBE, AF_SP
 from source.data.tick_event import TickEvent, TickType
 from source.order.order_status_event import OrderStatusEvent
 from source.order.fill_event import FillEvent
@@ -12,18 +12,21 @@ from source.position.contract_event import ContractEvent
 from source.data.historical_event import HistoricalEvent
 from source.account.account_event import AccountEvent
 from datetime import datetime
+import os
 class ClientMq(object):
     def __init__(self, config, ui_event_engine, outgoing_quue):
         self._ui_event_engine = ui_event_engine
         self._outgoing_quue = outgoing_quue
         self._recv_sock = Socket(SUB)
-        self._send_sock = Socket(PUB)
+        self._send_sock = Socket(PUSH)
+        self._monitor_sock = Socket(SUB)
         self._config = config
 
         self._active = False
         self._thread = Thread(target=self._run)
 
     def _run(self):
+        # os.system("taskset -cp 5 %d " % os.getpid())
         while self._active:
             try:
                 # response msg from server
@@ -75,7 +78,7 @@ class ClientMq(object):
             try:
                 # request, qry msg to server
                 msgout = self._outgoing_quue.get(False)
-                print('outgoing get msg,begin send',msgout)
+                print('outgoing get msg,begin send',msgout,datetime.now())
                 # self._send_sock.send(bytes(msgout,"ascii"), flags=0)
                 self._send_sock.send(msgout, flags=1)
             except Exception as e:
@@ -88,7 +91,8 @@ class ClientMq(object):
         
         self._recv_sock.connect(self._config['serverpub_url'])
         self._recv_sock.set_string_option(SUB, SUB_SUBSCRIBE, '')  # receive msg start with all
-        self._send_sock.bind(self._config['serversub_url'])
+        self._send_sock.connect(self._config['serverpull_url'])
+        self._monitor_sock.connect(self._config['serversub_url'])
         self._active = True
         if not self._thread.isAlive():
             self._thread.start()

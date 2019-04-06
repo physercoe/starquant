@@ -83,7 +83,7 @@ namespace StarQuant
 
 	void CtpTDEngine::start(){
 		while(estate_ != EState::STOP){
-			string msgin = msgq_recv_->recmsg(1);
+			string msgin = msgq_recv_->recmsg(0);
 			if (msgin.empty())
 				continue;
 			MSG_TYPE msgintype = MsgType(msgin);

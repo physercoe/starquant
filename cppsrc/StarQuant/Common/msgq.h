@@ -25,7 +25,7 @@ enum class MSGQ : uint8_t {
 };
 
 enum class MSGQ_PROTOCOL : uint8_t {
-	PAIR = 0, REQ, REP, PUB, SUB, PIPELINE
+	PAIR = 0, REQ, REP, PUB, SUB, PUSH,PULL
 };
 
 	class CMsgq {

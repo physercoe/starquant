@@ -278,12 +278,14 @@ printf("%s ",ymdhmsf().c_str());printf(__VA_ARGS__);\
 		/**************************************** End of Database ******************************************/
 
 		/******************************************* Message Queue ***********************************************/
-		string SERVERPUB_URL = "tcp://localhost:55555";
-		string SERVERSUB_URL = "tcp://localhost:55556";
-	
+		string SERVERPUB_URL = "tcp://localhost:55555";  //to all clients
+		string SERVERSUB_URL = "tcp://localhost:55556";  // pub the requests to engines(which subscribe)
+		string SERVERPULL_URL = "tcp://localhost:55557"; //listen all the requests from clients
+
+
 		string MKT_DATA_PUBSUB_PORT = "55555";				// market/tick data
 		string BROKERAGE_PAIR_PORT = "55556";				// brokerage order, account, etc
-		string BAR_AGGREGATOR_PUBSUB_PORT = "55557";		// bar from aggregation service
+		string BAR_AGGREGATOR_PUBSUB_PORT = "ipc://bar";		// bar from aggregation service
 		string API_PORT = "55558";							// client port
 		string API_ZMQ_DATA_PORT = "55559";					// client port
 				

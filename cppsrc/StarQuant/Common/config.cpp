@@ -89,7 +89,8 @@ namespace StarQuant {
 		 
 		SERVERPUB_URL = config["serverpub_url"].as<std::string>();
 		SERVERSUB_URL = config["serversub_url"].as<std::string>();
-
+		SERVERPULL_URL = config["serverpull_url"].as<std::string>();
+		
 		const std::vector<string> apis = config["apis"].as<std::vector<string>>();
 		for (auto s : apis){
 			_loadapi[s] = true;

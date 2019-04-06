@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <pthread.h> 
 
 #include <Services/tradingengine.h>
 #include <Common/config.h>
@@ -42,6 +43,9 @@ namespace StarQuant
 		if (IEngine::msgq_send_ == nullptr){
 			IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
 		}
+		LOG_DEBUG(logger,CConfig::instance().SERVERPULL_URL);
+		msg_pull_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PULL, CConfig::instance().SERVERPULL_URL);
+		msg_pub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERSUB_URL);
 		//client_msg_pair_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PAIR, CConfig::instance().API_PORT);
 		//md_msg_pub_=  std::make_shared<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().API_ZMQ_DATA_PORT,false);
 	}
@@ -108,6 +112,44 @@ namespace StarQuant
 				LOG_ERROR(logger,"Mode doesn't exist,exit.");				
 				return 1;
 			}
+			// set thread affinity
+			//engine thread
+			int num_cpus = std::thread::hardware_concurrency();
+			for (int i = 0; i< threads_.size();i ++){
+				cpu_set_t cpuset;
+				CPU_ZERO(&cpuset);
+				CPU_SET(i%num_cpus,&cpuset);
+				int rc = pthread_setaffinity_np(threads_[i]->native_handle(),sizeof(cpu_set_t),&cpuset);
+				if (rc != 0) {
+      				std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
+    			}
+			}
+			//main thread
+			cpu_set_t cpuset;
+			CPU_ZERO(&cpuset);
+			CPU_SET(threads_.size()%num_cpus,&cpuset);
+			int rc = pthread_setaffinity_np(pthread_self(),sizeof(cpu_set_t),&cpuset);
+				if (rc != 0) {
+      				std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
+    		}		
+
+			while(!gShutdown){
+				string msgpull = msg_pull_->recmsg(0);
+				if (msgpull.empty())
+					continue;
+				cout<<"recv msg at"<<ymdhmsf6();	
+				if (msgpull[0] == '.'){ //特殊标志，表明消息让策略进程收到
+					lock_guard<std::mutex> g(IEngine::sendlock_);
+					IEngine::msgq_send_->sendmsg(msgpull);		//将消息发回，让策略进程收到			
+				}
+				else
+				{
+					msg_pub_->sendmsg(msgpull); //转发消息到各个engine
+				}
+			}
+
+
+
 			fu1.get(); 
 		}
 		catch (exception& e) {
