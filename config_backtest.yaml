@@ -1,4 +1,4 @@
-strategy: TestStrategy
+strategy: BreakThroughStrategy
 cash: 500000.00
 tickers:
   #- AMZN
@@ -6,13 +6,13 @@ tickers:
   #- 600000
   #- AL01
   #- SRX05
-  - RU01
+  - RB10
   #- TAMI
   #- MA05
   #- MAMI
 benchmark:            # or leave it empty
-start_date: 2018-04-10 09:00:00
-end_date: 2018-04-27 15:00:00
-datasource: local   # local, quandl, tushare
-hist_dir: /home/wubin/EliteQuant_Python/hist
-output_dir: /home/wubin/EliteQuant_Python/out
+start_date: 2018-04-02 09:00:00
+end_date: 2018-04-20 15:00:00
+datasource: local   # localcsv, localmongodb,quandl, tushare
+hist_dir: ./data
+output_dir: ./result
