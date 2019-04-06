@@ -6,6 +6,17 @@ from datetime import datetime
 from ..order.order_event import OrderEvent
 from ..order.order_type import OrderType
 from ..order.order_flag import OrderFlag
+from ..data.tick_event import TickEvent, TickType
+from ..order.order_status_event import OrderStatusEvent
+from ..order.fill_event import FillEvent
+from ..event.event import InfoEvent,MSG_TYPE
+from ..position.position_event import PositionEvent
+from ..position.contract_event import ContractEvent
+from ..data.historical_event import HistoricalEvent
+from ..account.account_event import AccountEvent
+from ..event.event import *
+
+
 class StrategyBase(metaclass=ABCMeta):
     """
     Base strategy class
@@ -44,6 +55,22 @@ class StrategyBase(metaclass=ABCMeta):
                 except:
                     pass
 
+    # used for trade engine run 
+    def register_event(self):
+        self._events_engine.register_handler(EventType.TICK, self.on_tick)
+        self._events_engine.register_handler(EventType.ORDERSTATUS, self.on_order_status)
+        self._events_engine.register_handler(EventType.FILL, self.on_fill)
+        self._events_engine.register_handler(EventType.POSITION, self.on_pos)
+        self._events_engine.register_handler(EventType.ACCOUNT, self.on_acc)
+        self._events_engine.register_handler(EventType.CONTRACT, self.on_contract)
+        self._events_engine.register_handler(EventType.HISTORICAL, self.on_bar)
+        self._events_engine.register_handler(EventType.INFO, self.on_info)
+        self._events_engine.register_handler(EventType.GENERAL_REQ, self.on_req)
+
+
+
+
+
     def on_start(self):
         self.active = True
 
@@ -62,7 +89,7 @@ class StrategyBase(metaclass=ABCMeta):
         """
         pass
 
-    def on_order_status(self):
+    def on_order_status(self,event):
         """
         on order acknowledged
         :return:
@@ -70,28 +97,55 @@ class StrategyBase(metaclass=ABCMeta):
         #raise NotImplementedError("Should implement on_order()")
         pass
 
-    def on_cancel(self):
+    def on_cancel(self,event):
         """
         on order canceled
         :return:
         """
         pass
 
-    def on_fill(self):
+    def on_fill(self,event):
         """
         on order filled
         :return:
         """
         pass
 
+    def on_pos(self,event):
+        pass
+    
+    def on_acc(self,event):
+        pass
+
+    def on_contract(self,event):
+        pass
+
+    def on_info(self,event):
+        pass
+
+
+    def on_req(self,event):
+        pass
+
+
+
+
+
+
     def place_order(self, o):
         o.source = self.id         # identify source
         o.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
         if (self.active):
             self._events_engine.put(o)
+
+
+
+
+
     # wrapper function for easy use   
-    def buy_open(self,symbol,size,type='mkt',price = 0.0):
+    def buy_open(self,symbol,size,type='mkt',price = 0.0,api = 'CTP_TD'):
         o = OrderEvent()
+        o.api = api
         o.full_symbol = symbol
         o.account = self.account
         o.order_flag = OrderFlag.OPEN
@@ -107,8 +161,9 @@ class StrategyBase(metaclass=ABCMeta):
         #print('place order buy open')
         self.place_order(o)
 
-    def buy_close(self,symbol,size,type='mkt',price = 0.0,closetoday = False):
+    def buy_close(self,symbol,size,type='mkt',price = 0.0,closetoday = False, api = 'CTP_TD'):
         o = OrderEvent()
+        o.api = api
         o.full_symbol = symbol
         o.account = self.account
         if closetoday:
@@ -132,8 +187,9 @@ class StrategyBase(metaclass=ABCMeta):
         #print('place order buy close')
         self.place_order(o)
 
-    def sell_open(self,symbol,size,type='mkt',price = 0.0):
+    def sell_open(self,symbol,size,type='mkt',price = 0.0,api = 'CTP_TD'):
         o = OrderEvent()
+        o.api = api
         o.full_symbol = symbol
         o.account = self.account
         o.order_flag = OrderFlag.OPEN
@@ -149,8 +205,9 @@ class StrategyBase(metaclass=ABCMeta):
         #print('place order sell open')
         self.place_order(o)  
 
-    def sell_close(self,symbol,size,type='mkt',price = 0.0,closetoday = False):
+    def sell_close(self,symbol,size,type='mkt',price = 0.0,closetoday = False,api = 'CTP_TD'):
         o = OrderEvent()
+        o.api = api
         o.full_symbol = symbol
         o.account = self.account
         if closetoday:
@@ -184,6 +241,9 @@ class StrategyBase(metaclass=ABCMeta):
         :return:
         """
         pass
+
+
+
 
 class Strategies(StrategyBase):
     """

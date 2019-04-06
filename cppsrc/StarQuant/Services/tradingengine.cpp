@@ -137,7 +137,7 @@ namespace StarQuant
 				string msgpull = msg_pull_->recmsg(0);
 				if (msgpull.empty())
 					continue;
-				cout<<"recv msg at"<<ymdhmsf6();	
+				// cout<<"recv msg at"<<ymdhmsf6();	
 				if (msgpull[0] == '.'){ //特殊标志，表明消息让策略进程收到
 					lock_guard<std::mutex> g(IEngine::sendlock_);
 					IEngine::msgq_send_->sendmsg(msgpull);		//将消息发回，让策略进程收到			
@@ -147,8 +147,6 @@ namespace StarQuant
 					msg_pub_->sendmsg(msgpull); //转发消息到各个engine
 				}
 			}
-
-
 
 			fu1.get(); 
 		}

@@ -47,7 +47,7 @@ class LiveEventEngine(object):
                 #print('Empty event queue')
             except Exception as e:
                 print("Error {0}".format(str(e.args[0])).encode("utf-8"))
-            time.sleep(0.2)
+            # time.sleep(0.2)
 
     #----------------------------- end of private functions ---------------------------#
 
