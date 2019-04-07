@@ -6,7 +6,7 @@ import os
 import webbrowser
 import psutil
 from queue import Queue, Empty
-from PyQt5 import QtCore, QtWidgets, QtGui
+from PyQt5 import QtCore, QtWidgets, QtGui, QtWebEngineWidgets
 from datetime import datetime
 
 from source.event.event import *   #EventType
@@ -515,13 +515,171 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter3.addWidget(splitter1)
         splitter3.addWidget(splitter2)
         splitter3.setSizes([400, 100])
-
         hbox.addWidget(splitter3)
         tradewidget.setLayout(hbox)
-#---------Backtest ----------------------------
-        backtestwidget = MarketWindow(self._symbols, self._lang_dict)
 
+#---------Backtest ----------------------------------------
+        backtestwidget = QtWidgets.QWidget()
+        bt_hbox = QtWidgets.QHBoxLayout()
+      # bt top left---result
+        bt_topleft = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        # bt_topleft_layout = QtWidgets.QHBoxLayout()
+        # bt_topleft1 = QtWidgets.QColumnView()
+        bt_topleft1 = QtWidgets.QTreeView()
+        model = QtWidgets.QFileSystemModel()
+        model.setRootPath(QtCore.QDir.rootPath())
+        bt_topleft1.setModel(model)
+        bt_topleft1.setRootIndex(model.index(QtCore.QDir.homePath()))
         
+        bt_topleft2 = QtWidgets.QTabWidget()
+        # bt_web_addr = QtWidgets.QLineEdit()
+        # bt_web_btn_go = QtWidgets.QPushButton('Go') 
+        # bt_web_tablayout =  bt_sym_layout = QtWidgets.QHBoxLayout()
+        # bt_web_tablayout.addWidget(QtWidgets.QLabel('URL'))
+        # bt_web_tablayout.addWidget(bt_web_addr)
+        # bt_web_tablayout.addWidget(bt_web_btn_go)
+        # bt_web =  QtWebEngineWidgets.QWebEngineView()
+        # # bt_web.load(QtCore.QUrl("http://www.baidu.com"))
+        # bt_topleft = QtWidgets.QFrame()
+        # bt_topleft_layout = QtWidgets.QFormLayout()
+        # bt_topleft_layout.addRow(bt_web_tablayout)
+        # bt_topleft_layout.addRow(bt_web)
+        # bt_topleft.setLayout(bt_topleft_layout)
+        # bt_web_btn_go.clicked.connect(showurl)
+        bt_topleft2.setDocumentMode(True)
+        bt_topleft2.setMovable(True)
+        bt_topleft2.setTabsClosable(True)
+        bt_resulttab1 = QtWidgets.QTextBrowser()
+        bt_topleft2.addTab(bt_resulttab1, 'Result')
+
+        bt_topleft.addWidget(bt_topleft1)
+        bt_topleft.addWidget(bt_topleft2)
+        
+
+
+    #   bt top right setting
+        bt_topright = QtWidgets.QFrame()
+        bt_topright.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        bt_topright.setFont(self._font)
+        bt_setting_layout = QtWidgets.QFormLayout()
+        bt_sym = QtWidgets.QLineEdit()
+        bt_sym_multi = QtWidgets.QLineEdit()
+        bt_sym_layout = QtWidgets.QHBoxLayout()
+        bt_sym_layout.addWidget(QtWidgets.QLabel('Symbol'))
+        bt_sym_layout.addWidget(bt_sym)  
+        bt_sym_layout.addWidget(QtWidgets.QLabel('Mulitpliers'))
+        bt_sym_layout.addWidget(bt_sym_multi)
+
+        bt_margin = QtWidgets.QLineEdit()
+        bt_commision = QtWidgets.QLineEdit()
+        bt_margin_layout = QtWidgets.QHBoxLayout()
+        bt_margin_layout.addWidget(QtWidgets.QLabel('Margin'))
+        bt_margin_layout.addWidget(bt_margin)  
+        bt_margin_layout.addWidget(QtWidgets.QLabel('Commision'))
+        bt_margin_layout.addWidget(bt_commision)
+
+        bt_starttime = QtWidgets.QDateTimeEdit()
+        bt_starttime.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
+        bt_starttime.setCalendarPopup(True)
+        bt_endtime = QtWidgets.QDateTimeEdit()
+        bt_endtime.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
+        bt_endtime.setCalendarPopup(True)
+        bt_time_layout = QtWidgets.QHBoxLayout()         
+        bt_time_layout.addWidget(QtWidgets.QLabel('Start time'))
+        bt_time_layout.addWidget(bt_starttime)
+        bt_time_layout.addWidget(QtWidgets.QLabel('End time'))
+        bt_time_layout.addWidget(bt_endtime)
+
+        bt_datasource = QtWidgets.QComboBox()
+        bt_datasource.addItems(['CSV','MongoDB','Tushare'])
+        bt_datascale = QtWidgets.QComboBox()
+        bt_datascale.addItems(['Tick','Bar'])
+        bt_data_layout = QtWidgets.QHBoxLayout()
+        bt_data_layout.addWidget(QtWidgets.QLabel('Data Source'))
+        bt_data_layout.addWidget(bt_datasource)  
+        bt_data_layout.addWidget(QtWidgets.QLabel('Data Scale'))
+        bt_data_layout.addWidget(bt_datascale)
+
+  
+
+        bt_btn_strat_reload = QtWidgets.QPushButton(self._lang_dict['Load_Strat'])
+        # self.btn_strat_reload.clicked.connect(self.reload_strategy)
+        bt_btn_strat_start = QtWidgets.QPushButton(self._lang_dict['Start_Strat'])
+        # self.btn_strat_start.clicked.connect(self.start_strategy)
+        bt_btn_strat_stop = QtWidgets.QPushButton(self._lang_dict['Stop_Strat'])
+        # self.btn_strat_stop.clicked.connect(self.stop_strategy)
+        bt_btn_edit = QtWidgets.QPushButton('Open')
+        bt_btn_save = QtWidgets.QPushButton('Save')
+
+        bt_btn_editor_layout = QtWidgets.QHBoxLayout()
+        bt_btn_editor_layout.addWidget(bt_btn_edit)
+        bt_btn_editor_layout.addWidget(bt_btn_save)
+        bt_btn_strat_layout = QtWidgets.QHBoxLayout()
+        bt_btn_strat_layout.addWidget(bt_btn_strat_start)
+        bt_btn_strat_layout.addWidget(bt_btn_strat_stop)
+        bt_btn_strat_layout.addWidget(bt_btn_strat_reload)
+        
+
+
+        bt_strategy_window = StrategyWindow(self._lang_dict, self._strategy_manager)
+        bt_editor = QtWidgets.QTextEdit()
+        bt_editor.setMinimumHeight(800)
+        
+        bt_setting_layout.addRow(QtWidgets.QLabel('Backtest Setting'))
+        bt_setting_layout.addRow(bt_data_layout)
+        bt_setting_layout.addRow(bt_sym_layout)
+        bt_setting_layout.addRow(bt_margin_layout)
+        # bt_setting_layout.addRow('start time', bt_starttime)
+        # bt_setting_layout.addRow('end time', bt_endtime)
+        bt_setting_layout.addRow(bt_time_layout)
+
+        bt_setting_layout.addRow(QtWidgets.QLabel('Strategy Lists'))
+        bt_setting_layout.addRow(bt_strategy_window)
+        bt_setting_layout.addRow(bt_btn_strat_layout)
+        bt_setting_layout.addRow(QtWidgets.QLabel('Editor'))
+        bt_setting_layout.addRow(bt_btn_editor_layout)
+        bt_setting_layout.addRow(bt_editor)
+
+        bt_topright.setLayout(bt_setting_layout)
+    #  bottom left:  log
+        bt_bottomleft = QtWidgets.QTabWidget()
+        bt_bottomleft.setFont(self._font)
+        bt_logtab1 = QtWidgets.QTextBrowser()
+        bt_bottomleft.addTab(bt_logtab1, 'output')
+
+    #  bottom right :  strategy 
+        # bt_bottomright = QtWidgets.QFrame()
+        # bt_bottomright.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        # bt_bottomright.setFont(self._font)
+        # bt_strategy_manager_layout = QtWidgets.QFormLayout()
+        #TODO: change manager 
+        
+
+  
+        # bt_strategy_manager_layout.addRow(QtWidgets.QLabel('Strategy Lists'))
+        # bt_strategy_manager_layout.addRow(bt_strategy_window)
+        # bt_strategy_manager_layout.addRow(bt_btn_strat_layout)
+        # bt_bottomright.setLayout(bt_strategy_manager_layout)
+
+    #-------------------------------- 
+        bt_splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        bt_splitter1.addWidget(bt_topleft)
+        bt_splitter1.addWidget(bt_bottomleft)
+        bt_splitter1.setSizes([400,100])
+
+        bt_splitter2 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        bt_splitter2.addWidget(bt_splitter1)
+        bt_splitter2.addWidget(bt_topright)
+        bt_splitter2.setSizes([400, 100])
+
+        # bt_splitter3 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        # bt_splitter3.addWidget(bt_splitter1)
+        # bt_splitter3.addWidget(bt_splitter2)
+        # bt_splitter3.setSizes([400, 100])
+
+        bt_hbox.addWidget(bt_splitter2)
+        backtestwidget.setLayout(bt_hbox)
+
 
 #--------------------mainwindow----------------------
         self.central_widget.addWidget(tradewidget)
@@ -548,7 +706,6 @@ class StatusThread(QtCore.QThread):
 
 
 class AboutWidget(QtWidgets.QDialog):
-    """显示关于信息"""
     #----------------------------------------------------------------------
     def __init__(self, parent=None):
         """Constructor"""
