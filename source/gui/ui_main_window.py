@@ -46,6 +46,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._font = lang_dict['font']
         self._widget_dict = {}
         self.central_widget = None
+        # self.central_widget = QtWidgets.QStackedWidget()
         self.market_window = None
         self.message_window = None
         self.order_window = None
@@ -89,9 +90,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(lang_dict['Prog_Name'])
         self.setWindowIcon(QtGui.QIcon("logo.png"))       
         self.init_menu()
-        self.init_status_bar()
+        self.init_status_bar()  
         self.init_central_area()
-
+ 
         ## 9. wire up event handlers
         self._ui_events_engine.register_handler(EventType.TICK, self._tick_event_handler)
         self._ui_events_engine.register_handler(EventType.ORDERSTATUS, self.order_window.order_status_signal.emit)
@@ -124,8 +125,8 @@ class MainWindow(QtWidgets.QMainWindow):
         webbrowser.open('.')
 
     def send_cmd(self):
-        cmdstr= str(self.cmd.text()) + '|' + str(datetime.now())
         try:
+            cmdstr= str(self.cmd.text()) + '|' + str(datetime.now())
             gr = GeneralReqEvent()
             gr.req = cmdstr
             self._outgoing_request_events_engine.put(gr)   
@@ -134,14 +135,34 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def subsrcibe(self):
         ss = SubscribeEvent()
-        ss.api = self.account.currentText()+'_MD'
-        ss.content = str(self.sym.text())
-        ss.source = 0
-        self._outgoing_request_events_engine.put(ss)
+        echa = ['SHFE','ZCE','DCE','CFFEX','INE','OPTION','SSE']
+        stype = ['F','O','T','Z']
+
+        sno = str(self.sym.text())
+        sname = str(self.sym_name.text())
+        stypeid = self.sec_type.currentIndex()
+        echid = self.exchange.currentIndex()
+        s = echa[echid] + ' ' + stype[stypeid] + ' ' + sname.upper() + ' ' + sno  #合约全称        
+        try:
+            ss.api = self.account.currentText()+'_MD'
+            ss.content = s
+            ss.source = 0
+            self._outgoing_request_events_engine.put(ss)
+        except:
+            print('subsribe error')
 
 
     def place_order(self):
-        s = str(self.sym.text())
+        echa = ['SHFE','ZCE','DCE','CFFEX','INE','OPTION','SSE']
+        stype = ['F','O','T','Z']
+
+        sno = str(self.sym.text())
+        sname = str(self.sym_name.text())
+        stypeid = self.sec_type.currentIndex()
+        echid = self.exchange.currentIndex()
+
+        s = echa[echid] + ' ' + stype[stypeid] + ' ' + sname.upper() + ' ' + sno  #合约全称
+        print(s)
         n = self.direction.currentIndex()
         f = self.order_flag.currentIndex()
         p = str(self.order_price.text())
@@ -294,28 +315,39 @@ class MainWindow(QtWidgets.QMainWindow):
     def set_font(self, font):
         self._font = font
 
+    def displaytrade(self):
+        self.central_widget.setCurrentIndex(0)
+    def displaybacktest(self):
+        self.central_widget.setCurrentIndex(1)
+
+
     def init_menu(self):
         menubar = self.menuBar()
-
+        #sys menu --filebrowser
         sysMenu = menubar.addMenu(self._lang_dict['File'])
-        # open folder
         sys_folderAction = QtWidgets.QAction(self._lang_dict['Folder'], self)
         sys_folderAction.setStatusTip(self._lang_dict['Open_Folder'])
         sys_folderAction.triggered.connect(self.open_proj_folder)
         sysMenu.addAction(sys_folderAction)
-
+            # --exit
         sysMenu.addSeparator()
-
-        # sys|exit
         sys_exitAction = QtWidgets.QAction(self._lang_dict['Exit'], self)
         sys_exitAction.setShortcut('Ctrl+Q')
         sys_exitAction.setStatusTip(self._lang_dict['Exit_App'])
         sys_exitAction.triggered.connect(self.close)
         sysMenu.addAction(sys_exitAction)
+        #mode menu 
+        modeMenu = menubar.addMenu('Mode')
+        mode_tradeAction = QtWidgets.QAction('Trade',self)
+        mode_tradeAction.triggered.connect(self.displaytrade)
+        modeMenu.addAction(mode_tradeAction)
+        mode_backtestAction = QtWidgets.QAction('Backtest',self)
+        mode_backtestAction.triggered.connect(self.displaybacktest)
+        modeMenu.addAction(mode_backtestAction)
 
-        # help menu
-        helpMenu = menubar.addMenu('HELP')
-        help_action = QtWidgets.QAction('about', self)
+        #help menu
+        helpMenu = menubar.addMenu('Help')
+        help_action = QtWidgets.QAction('About', self)
         help_action.triggered.connect(self.openabout)
         helpMenu.addAction(help_action)
 
@@ -332,10 +364,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusthread.start()
 
     def init_central_area(self):
-        self.central_widget = QtWidgets.QWidget()
+        self.central_widget = QtWidgets.QStackedWidget()      
+        # self.central_widget = QtWidgets.QWidget()
 
+
+
+
+
+#-------Trade Widgets----------
+        tradewidget = QtWidgets.QWidget()
         hbox = QtWidgets.QHBoxLayout()
-
         #-------------------------------- Top Left ------------------------------------------#
         topleft = MarketWindow(self._symbols, self._lang_dict)
         # self.scrollAreaWidgetContents = QtWidgets.QWidget()
@@ -352,7 +390,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.sym = QtWidgets.QLineEdit()
         self.sym_name = QtWidgets.QLineEdit()
         self.sec_type = QtWidgets.QComboBox()
-        self.sec_type.addItems([self._lang_dict['Stock'], self._lang_dict['Future'], self._lang_dict['Option'], self._lang_dict['Forex']])
+        self.sec_type.addItems([self._lang_dict['Future'], self._lang_dict['Option'], self._lang_dict['Stock'],self._lang_dict['Index']])
         self.direction = QtWidgets.QComboBox()
         self.direction.addItems([self._lang_dict['Long'], self._lang_dict['Short']])
         self.order_flag = QtWidgets.QComboBox()
@@ -362,14 +400,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.order_type = QtWidgets.QComboBox()
         self.order_type.addItems([self._lang_dict['MKT'], self._lang_dict['LMT'], self._lang_dict['STP'],self._lang_dict['STPLMT'],self._lang_dict['FAK'], self._lang_dict['FOK']])
         self.exchange = QtWidgets.QComboBox()
-        self.exchange.addItems(['郑商所ZCE','大商所DCE','中金所CFFEX','上期所SHFE','能源INE','期权OPTION','上证SSE'])
+        self.exchange.addItems(['上期所','郑商所','大商所','中金所','能源','期权','上证'])
         self.account = QtWidgets.QComboBox()
         # self.account.addItems(['FROM', 'CONFIG'])
         self.account.addItems([str(element) for element in self._config_server['apis']])
         self.btn_order = QtWidgets.QPushButton(self._lang_dict['Place_Order'])
         self.btn_order.clicked.connect(self.place_order)     # insert order
+        self.sym_name.returnPressed.connect(self.subsrcibe) # subscbre market data
         self.sym.returnPressed.connect(self.subsrcibe)  # subscbre market data
         self.cmd = QtWidgets.QLineEdit()
+        self.cmd.returnPressed.connect(self.send_cmd)
         self.btn_cmd = QtWidgets.QPushButton('Enter')
         self.btn_cmd.clicked.connect(self.send_cmd)
         
@@ -477,7 +517,16 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter3.setSizes([400, 100])
 
         hbox.addWidget(splitter3)
-        self.central_widget.setLayout(hbox)
+        tradewidget.setLayout(hbox)
+#---------Backtest ----------------------------
+        backtestwidget = MarketWindow(self._symbols, self._lang_dict)
+
+        
+
+#--------------------mainwindow----------------------
+        self.central_widget.addWidget(tradewidget)
+        self.central_widget.addWidget(backtestwidget)
+        self.central_widget.setCurrentIndex(0)
         self.setCentralWidget(self.central_widget)
 
     #################################################################################################
@@ -500,14 +549,12 @@ class StatusThread(QtCore.QThread):
 
 class AboutWidget(QtWidgets.QDialog):
     """显示关于信息"""
-
     #----------------------------------------------------------------------
     def __init__(self, parent=None):
         """Constructor"""
         super(AboutWidget, self).__init__(parent)
 
         self.initUi()
-
     #----------------------------------------------------------------------
     def initUi(self):
         """"""
@@ -518,16 +565,13 @@ class AboutWidget(QtWidgets.QDialog):
             易数量化交易系统
             Lightweight Algorithmic Trading System            
             Language: C++,Python
-            Author : Wubin
-            Email: dr.wb@qq.com
+            Contact: dr.wb@qq.com
             License：MIT
      
             """
-
         label = QtWidgets.QLabel()
         label.setText(text)
         label.setMinimumWidth(500)
-
         vbox = QtWidgets.QVBoxLayout()
         vbox.addWidget(label)
 

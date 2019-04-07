@@ -122,7 +122,10 @@ namespace StarQuant
 					break;
 				case MSG_TYPE_CANCEL_ORDER:
 					if (estate_ == LOGIN_ACK){
-						cancelOrder(v);
+						if (v[1] == "0")  //cancel order by serveroid from gui(0)
+							cancelOrder(stol(v[3]),0);
+						else
+							cancelOrder(v); //cancel order according to sid and clientorderid
 					}
 					else{
 						LOG_DEBUG(logger,"CTP_TD is not connected,can not cancel order!");

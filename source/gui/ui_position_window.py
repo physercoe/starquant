@@ -10,7 +10,7 @@ class PositionWindow(QtWidgets.QTableWidget):
     def __init__(self, lang_dict, parent=None):
         super(PositionWindow, self).__init__(parent)
 
-        self.header = [lang_dict['Symbol'],
+        self.header = [lang_dict['FullSymbol'],
                        lang_dict['PosNo'],
                        lang_dict['Direction'],
                        lang_dict['OpenQuantity'],
@@ -20,7 +20,7 @@ class PositionWindow(QtWidgets.QTableWidget):
                        lang_dict['Open_PnL'],
                        lang_dict['Closed_PnL'],
                        lang_dict['Account'],
-                       lang_dict['Source'],
+                       lang_dict['API'],
                        lang_dict['SID'],
                        lang_dict['Time']]
 

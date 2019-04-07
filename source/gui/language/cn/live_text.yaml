@@ -4,9 +4,10 @@ File: 文件
 Folder: 文件夹
 Open_Folder: 打开文件夹
 Exit: 退出
-Exit_App: 退出群英量化
+Exit_App: 退出易数量化交易系统
 #------------------ Top Left ---------------#
 Market: 行情
+FullSymbol: 合约全称
 Symbol: 合约代码
 Name: 合约名称
 Last_Price: 最新价
@@ -21,7 +22,7 @@ Open_Price: 开盘价
 High_Price: 最高价
 Low_Price: 最低价
 Time: 时间
-Source: 来源
+Source: API
 SID: 策略编号
 #------------------ End of Top Left ---------------#
 #------------------ Top Right ---------------#
@@ -30,6 +31,7 @@ Security_Type: 合约类型
 Stock: 股票
 Future: 期货
 Option: 期权
+Index: 指数
 Forex: 外汇
 Direction: 方向
 Long: 多

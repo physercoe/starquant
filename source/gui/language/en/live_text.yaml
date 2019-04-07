@@ -7,6 +7,7 @@ Exit: Exit
 Exit_App: Exit Application
 #------------------ Top Left ---------------#
 Market: Market
+FullSymbol: FullSym
 Symbol: Symbol
 Name: Name
 Last_Price: Last
@@ -21,7 +22,7 @@ Open_Price: Open
 High_Price: High
 Low_Price: Low
 Time: Time
-Source: Source
+Source: API
 SID: SID
 #------------------ End of Top Left ---------------#
 #------------------ Top Right ---------------#
@@ -30,6 +31,7 @@ Security_Type: Security Type
 Stock: Stock
 Future: Future
 Option: Option
+Index: Index
 Forex: Forex
 Direction: Direction
 Long: Long

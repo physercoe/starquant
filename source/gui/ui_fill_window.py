@@ -11,17 +11,14 @@ class FillWindow(QtWidgets.QTableWidget):
 
         self.header = [lang_dict['OrderID'],
                        lang_dict['FillID'],
-                       lang_dict['Symbol'],
-                       lang_dict['Name'],
-                       lang_dict['Security_Type'],
+                       lang_dict['FullSymbol'],
                        lang_dict['Direction'],
                        lang_dict['Order_Flag'],
                        lang_dict['Fill_Price'],
                        lang_dict['Filled'],
                        lang_dict['Fill_Time'],
-                       lang_dict['Exchange'],
                        lang_dict['Account'],
-                       lang_dict['Source'],
+                       lang_dict['API'],
                        lang_dict['SID']]
 
         self.init_table()
@@ -55,17 +52,14 @@ class FillWindow(QtWidgets.QTableWidget):
                 self.setItem(0, 0, QtWidgets.QTableWidgetItem(fill_event.orderNo))
                 self.setItem(0, 1, QtWidgets.QTableWidgetItem(str(fill_event.broker_fill_id)))
                 self.setItem(0, 2, QtWidgets.QTableWidgetItem(fill_event.full_symbol))
-                self.setItem(0, 3, QtWidgets.QTableWidgetItem(""))
-                self.setItem(0, 4, QtWidgets.QTableWidgetItem(""))
-                self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(self._lang_dict['Long'] if fill_event.fill_size > 0 else self._lang_dict['Short'])))
-                self.setItem(0, 6, QtWidgets.QTableWidgetItem(fill_event.fill_flag.name))
-                self.setItem(0, 7, QtWidgets.QTableWidgetItem(str(fill_event.fill_price)))
-                self.setItem(0, 8, QtWidgets.QTableWidgetItem(str(fill_event.fill_size)))
-                self.setItem(0, 9, QtWidgets.QTableWidgetItem(fill_event.fill_time))
-                self.setItem(0, 10, QtWidgets.QTableWidgetItem(""))
-                self.setItem(0, 11, QtWidgets.QTableWidgetItem(fill_event.account))
-                self.setItem(0, 12, QtWidgets.QTableWidgetItem(fill_event.api))
-                self.setItem(0, 13, QtWidgets.QTableWidgetItem(str(fill_event.source)))
+                self.setItem(0, 3, QtWidgets.QTableWidgetItem(str(self._lang_dict['Long'] if fill_event.fill_size > 0 else self._lang_dict['Short'])))
+                self.setItem(0, 4, QtWidgets.QTableWidgetItem(fill_event.fill_flag.name))
+                self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(fill_event.fill_price)))
+                self.setItem(0, 6, QtWidgets.QTableWidgetItem(str(fill_event.fill_size)))
+                self.setItem(0, 7, QtWidgets.QTableWidgetItem(fill_event.fill_time))
+                self.setItem(0, 8, QtWidgets.QTableWidgetItem(fill_event.account))
+                self.setItem(0, 9, QtWidgets.QTableWidgetItem(fill_event.api))
+                self.setItem(0, 10, QtWidgets.QTableWidgetItem(str(fill_event.source)))
             except:
                 print('unable to find order that matches this fill')
 

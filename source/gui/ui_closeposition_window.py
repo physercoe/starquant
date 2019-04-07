@@ -10,12 +10,12 @@ class ClosePositionWindow(QtWidgets.QTableWidget):
     def __init__(self, lang_dict, parent=None):
         super(ClosePositionWindow, self).__init__(parent)
 
-        self.header = [lang_dict['Symbol'],
+        self.header = [lang_dict['FullSymbol'],
                        lang_dict['Close_Price'],
                        lang_dict['CloseQuantity'],
                        lang_dict['Closed_PnL'],
                        lang_dict['Account'],
-                       lang_dict['Source'],
+                       lang_dict['API'],
                        lang_dict['SID'],
                        lang_dict['Time']]
         self.init_table()

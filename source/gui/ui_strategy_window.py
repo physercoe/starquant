@@ -71,12 +71,12 @@ class StrategyWindow(QtWidgets.QTableWidget):
     
     def reload_table(self):
         for key, value in self._strategy_manager._strategy_dict.items():
-            if key in self.sids:
-                row = self.sids.index(key)
-                self.setItem(row, 1, QtWidgets.QTableWidgetItem(str(value.name)))
-                self.setItem(row, 7, QtWidgets.QTableWidgetItem('active' if value.active else 'inactive'))
-                continue
-            try:
+            try:            
+                if key in self.sids:
+                    row = self.sids.index(key)
+                    self.setItem(row, 1, QtWidgets.QTableWidgetItem(str(value.name)))
+                    self.setItem(row, 7, QtWidgets.QTableWidgetItem('active' if value.active else 'inactive'))
+                    continue
                 self.sids.insert(0,key)
                 self.insertRow(0)
                 self.setItem(0, 0, QtWidgets.QTableWidgetItem(str(key)))
@@ -102,5 +102,5 @@ class StrategyWindow(QtWidgets.QTableWidget):
             self._strategy_manager.start_strategy(sid)
         else:
             self._strategy_manager.stop_strategy(sid)    
-        self._strategy_manager._strategy_dict[sid].active = active
+        # self._strategy_manager._strategy_dict[sid].active = active
         self.setItem(row, 7, QtWidgets.QTableWidgetItem('active' if active else 'inactive'))

@@ -22,7 +22,9 @@ class StrategyBase(metaclass=ABCMeta):
     Base strategy class
 
     """
+    # class id and name
     ID = -1
+    name = "base"
     def __init__(self, events_engine,order_manager,portfolio_manager):
         """
         initialize trategy

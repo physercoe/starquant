@@ -54,39 +54,38 @@ class StrategyManager(object):
                 # self._strategy_id = self._strategy_id+1
         for key,value in strategy_list.items():
             strategyClass = value
-            strategy = strategyClass(self._outgoing_request_event_engine,self._order_manager,self._portfolio_manager)
-            strategy.name = key          # assign class name to the strategy
-            for sym in strategy.symbols:
-                if sym in self._tick_strategy_dict:
-                    self._tick_strategy_dict[sym].append(strategy.id)
-                else:
-                    self._tick_strategy_dict[sym] = [strategy.id]
-            strategy.active = False
-            self._strategy_dict[strategy.id] = strategy
-            if (strategy.id not in self.sid_oid_dict):
-                self.sid_oid_dict[strategy.id] =[] 
+            # strategy = strategyClass(self._outgoing_request_event_engine,self._order_manager,self._portfolio_manager)
+            # strategy.name = key          # assign class name to the strategy
+            # for sym in strategy.symbols:
+            #     if sym in self._tick_strategy_dict:
+            #         self._tick_strategy_dict[sym].append(strategy.id)
+            #     else:
+            #         self._tick_strategy_dict[sym] = [strategy.id]
+            # strategy.active = False
+            self._strategy_dict[strategyClass.ID] = strategyClass
+            if (strategyClass.ID not in self.sid_oid_dict):
+                self.sid_oid_dict[strategyClass.ID] =[] 
             # p = Process(target=startstrategy, args=(key,))
             # if (strategy.id not in self.sid_process_dict):
             #     self.sid_process_dict[strategy.id] = p  
 
     def reload_strategy(self):
-        pass
-        # strategy_list_reload()
-        # self._strategy_dict.clear()
-        # for key,value in strategy_list.items():
-        #     strategyClass = value
-        #     strategy = strategyClass(self._outgoing_request_event_engine,self._order_manager,self._portfolio_manager)
-        #     strategy.name = key          # assign class name to the strategy
-        #     for sym in strategy.symbols:
-        #         if sym in self._tick_strategy_dict:
-        #             self._tick_strategy_dict[sym].append(strategy.id)
-        #         else:
-        #             self._tick_strategy_dict[sym] = [strategy.id]
-        #     strategy.active = False
-        #     self._strategy_dict[strategy.id] = strategy
-        #     if (strategy.id not in self.sid_oid_dict):
-        #         self.sid_oid_dict[strategy.id] =[]
-            
+        strategy_list_reload()
+        self._strategy_dict.clear()
+        for key,value in strategy_list.items():
+            strategyClass = value
+            # strategy = strategyClass(self._outgoing_request_event_engine,self._order_manager,self._portfolio_manager)
+            # strategy.name = key          # assign class name to the strategy
+            # for sym in strategy.symbols:
+            #     if sym in self._tick_strategy_dict:
+            #         self._tick_strategy_dict[sym].append(strategy.id)
+            #     else:
+            #         self._tick_strategy_dict[sym] = [strategy.id]
+            # strategy.active = False
+            self._strategy_dict[strategyClass.ID] = strategyClass
+            if (strategyClass.ID not in self.sid_oid_dict):
+                self.sid_oid_dict[strategyClass.ID] =[]
+        pass     
 
     def start_strategy(self, sid):
         gr = GeneralReqEvent()
@@ -130,13 +129,14 @@ class StrategyManager(object):
     def cancel_all(self):
         pass
 
-    def on_tick(self, k):
-        if k.full_symbol in self._tick_strategy_dict:
-            # foreach strategy that subscribes to this tick
-            s_list = self._tick_strategy_dict[k.full_symbol]
-            for sid in s_list:
-                if self._strategy_dict[sid].active:
-                    self._strategy_dict[sid].on_tick(k)
+    def on_tick(self, k):        
+        # if k.full_symbol in self._tick_strategy_dict:
+        #     # foreach strategy that subscribes to this tick
+        #     s_list = self._tick_strategy_dict[k.full_symbol]
+        #     for sid in s_list:
+        #         if self._strategy_dict[sid].active:
+        #             self._strategy_dict[sid].on_tick(k)
+        pass
 
     def update_position(self):
         for sid in self._strategy_dict.keys():
@@ -148,12 +148,13 @@ class StrategyManager(object):
             self.sid_closepnl_dict[sid] = closepnl
 
     def on_position(self,pos):
-        if pos.full_symbol in self._tick_strategy_dict:
-            # foreach strategy that subscribes to this tick
-            s_list = self._tick_strategy_dict[pos.full_symbol]
-            for sid in s_list:
-                if self._strategy_dict[sid].active:
-                    self._strategy_dict[sid].on_position(pos)
+        # if pos.full_symbol in self._tick_strategy_dict:
+        #     # foreach strategy that subscribes to this tick
+        #     s_list = self._tick_strategy_dict[pos.full_symbol]
+            # for sid in s_list:
+            #     if self._strategy_dict[sid].active:
+            #         self._strategy_dict[sid].on_position(pos)
+        pass
 
     def on_order_status(self, os):
         # if os.client_order_id in self._oid_sid_dict:
@@ -170,10 +171,10 @@ class StrategyManager(object):
         else:
             self.sid_oid_dict[fill.source] = [fill]
 
-        if fill.full_symbol in self._tick_strategy_dict:
-            # foreach strategy that subscribes to this tick
-            s_list = self._tick_strategy_dict[fill.full_symbol]
-            for sid in s_list:
-                if self._strategy_dict[sid].active:
-                    self._strategy_dict[sid].on_fill(fill)   
+        # if fill.full_symbol in self._tick_strategy_dict:
+        #     # foreach strategy that subscribes to this tick
+        #     s_list = self._tick_strategy_dict[fill.full_symbol]
+        #     for sid in s_list:
+        #         if self._strategy_dict[sid].active:
+        #             self._strategy_dict[sid].on_fill(fill)   
 
