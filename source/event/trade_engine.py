@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 from queue import Queue, Empty
 from threading import Thread
-from nanomsg import Socket, PAIR, SUB, PUB, PUSH,SUB_SUBSCRIBE, AF_SP
+from nanomsg import Socket, PAIR, SUB, PUB, PUSH,SUB_SUBSCRIBE, AF_SP,SOL_SOCKET,RCVTIMEO
+
+
 from source.data.tick_event import TickEvent, TickType
 from source.order.order_status_event import OrderStatusEvent
 from source.order.fill_event import FillEvent
-from source.event.event import InfoEvent,MSG_TYPE
+from source.event.event import *
 from source.position.position_event import PositionEvent
 from source.position.contract_event import ContractEvent
 from source.data.historical_event import HistoricalEvent
@@ -24,7 +26,8 @@ class TradeEngine(object):
         two sockets to send and recv msg
         """
         self.__active = False
-
+        self.id = 0
+             
         self._recv_sock = Socket(SUB)
         self._send_sock = Socket(PUSH)
         self._config = config
@@ -37,17 +40,19 @@ class TradeEngine(object):
         start the dispatcher thread
         """
 
-        self._recv_sock.connect(self._config['serverpub_url'])
+        print('tradeclient started ,pid = %d ' % os.getpid())
         self._recv_sock.set_string_option(SUB, SUB_SUBSCRIBE, '')  # receive msg start with all
+        self._recv_sock.set_int_option(SOL_SOCKET,RCVTIMEO,100)
+        self._recv_sock.connect(self._config['serverpub_url'])
         self._send_sock.connect(self._config['serverpull_url'])
         self.__active = True
-        print(self._config['serverpub_url'])
+        # print(self._config['serverpub_url'])
         while self.__active:
             try:
-                msgin = self._recv_sock.recv(flags=1)
+                msgin = self._recv_sock.recv(flags=0)
                 msgin = msgin.decode("utf-8")
                 if msgin is not None and msgin.index('|') > 0:
-                    # print('tradeengine rec broker msg:',msgin,'at ', datetime.now())
+                    print('tradeclient(id = %d) rec server msg:'%(self.id), msgin,'at ', datetime.now())
                     if msgin[-1] == '\0':
                         msgin = msgin[:-1]
                     if msgin[-1] == '\x00':
@@ -78,12 +83,15 @@ class TradeEngine(object):
                     elif msg2type == MSG_TYPE.MSG_TYPE_INFO:
                         m = InfoEvent()
                         m.deserialize(msgin)
+                    else:
+                        m = GeneralReqEvent() 
+                        m.deserialize(msgin)
                         pass
                     if m.event_type in self._handlers:
                         [handler(m) for handler in self._handlers[m.event_type]]
             except Exception as e:
                 pass
-                # print("TradeEngineError {0}".format(str(e.args[0])).encode("utf-8"))
+                #print("TradeEngineError {0}".format(str(e.args[0])).encode("utf-8"))
  
     def stop(self):
         """

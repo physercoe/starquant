@@ -98,5 +98,9 @@ class StrategyWindow(QtWidgets.QTableWidget):
 
     def update_status(self, row, active):
         sid = int(self.item(row,0).text())
+        if active:
+            self._strategy_manager.start_strategy(sid)
+        else:
+            self._strategy_manager.stop_strategy(sid)    
         self._strategy_manager._strategy_dict[sid].active = active
         self.setItem(row, 7, QtWidgets.QTableWidgetItem('active' if active else 'inactive'))

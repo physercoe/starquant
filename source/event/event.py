@@ -166,6 +166,8 @@ class GeneralReqEvent(Event):
 
     def serialize(self):
         return self.req
+    def deserialize(self,msg):
+        self.req = msg
 
 class QryAccEvent(Event):
     """

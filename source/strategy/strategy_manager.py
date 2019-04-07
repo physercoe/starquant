@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from mystrategy import strategy_list,strategy_list_reload
-
+from mystrategy import strategy_list,strategy_list_reload,startstrategy
+from multiprocessing import Process
+from source.event.event import *   #EventType
 class StrategyManager(object):
     def __init__(self, config_client, outgoing_request_event_engine, order_manager, portfolio_manager):
         self._config_client = config_client
@@ -16,7 +17,8 @@ class StrategyManager(object):
         self.sid_buyqty_dict = {}
         self.sid_sellqty_dict = {}
         self.sid_openpnl_dict = {}
-        self.sid_closepnl_dict ={}
+        self.sid_closepnl_dict = {}
+        self.sid_process_dict = {}
         self.reset()
 
     def reset(self):
@@ -62,31 +64,56 @@ class StrategyManager(object):
             strategy.active = False
             self._strategy_dict[strategy.id] = strategy
             if (strategy.id not in self.sid_oid_dict):
-                self.sid_oid_dict[strategy.id] =[]   
+                self.sid_oid_dict[strategy.id] =[] 
+            # p = Process(target=startstrategy, args=(key,))
+            # if (strategy.id not in self.sid_process_dict):
+            #     self.sid_process_dict[strategy.id] = p  
 
     def reload_strategy(self):
-        strategy_list_reload()
-        self._strategy_dict.clear()
-        for key,value in strategy_list.items():
-            strategyClass = value
-            strategy = strategyClass(self._outgoing_request_event_engine,self._order_manager,self._portfolio_manager)
-            strategy.name = key          # assign class name to the strategy
-            for sym in strategy.symbols:
-                if sym in self._tick_strategy_dict:
-                    self._tick_strategy_dict[sym].append(strategy.id)
-                else:
-                    self._tick_strategy_dict[sym] = [strategy.id]
-            strategy.active = False
-            self._strategy_dict[strategy.id] = strategy
-            if (strategy.id not in self.sid_oid_dict):
-                self.sid_oid_dict[strategy.id] =[]
+        pass
+        # strategy_list_reload()
+        # self._strategy_dict.clear()
+        # for key,value in strategy_list.items():
+        #     strategyClass = value
+        #     strategy = strategyClass(self._outgoing_request_event_engine,self._order_manager,self._portfolio_manager)
+        #     strategy.name = key          # assign class name to the strategy
+        #     for sym in strategy.symbols:
+        #         if sym in self._tick_strategy_dict:
+        #             self._tick_strategy_dict[sym].append(strategy.id)
+        #         else:
+        #             self._tick_strategy_dict[sym] = [strategy.id]
+        #     strategy.active = False
+        #     self._strategy_dict[strategy.id] = strategy
+        #     if (strategy.id not in self.sid_oid_dict):
+        #         self.sid_oid_dict[strategy.id] =[]
             
 
     def start_strategy(self, sid):
-        self._strategy_dict[sid].on_start()
+        gr = GeneralReqEvent()
+        gr.req = '.' + str(sid) + '|0|' +  str(MSG_TYPE.MSG_TYPE_STRATEGY_START.value) 
+        self._outgoing_request_event_engine.put(gr)
+        pass
+        # if sid not in self.sid_process_dict:
+        #     return
+        # self.sid_process_dict[sid].start()
+        # print("%s (id = %d) started, pid = %d"%(self._strategy_dict[sid].name, sid, self.sid_process_dict[sid].pid) )
+        # self._strategy_dict[sid].on_start()
 
     def stop_strategy(self, sid):
-        self._strategy_dict[sid].on_stop()
+        gr = GeneralReqEvent()
+        gr.req = '.' + str(sid) + '|0|' +  str(MSG_TYPE.MSG_TYPE_STRATEGY_END.value) 
+        self._outgoing_request_event_engine.put(gr)
+        pass
+        # if sid not in self.sid_process_dict:
+        #     return
+        # if (self.sid_process_dict[sid].is_alive()):
+        #     self.sid_process_dict[sid].terminate()
+        #     print("%s (id = %d) stopped, pid = %d"%(self._strategy_dict[sid].name, sid, self.sid_process_dict[sid].pid) )
+        #     name = self._strategy_dict[sid].name
+        #     p = Process(target=startstrategy, args=(name,))  
+        #     self.sid_process_dict[sid] = p 
+          
+        # self._strategy_dict[sid].on_stop()
 
     def flat_strategy(self, sid):
         pass
@@ -149,4 +176,4 @@ class StrategyManager(object):
             for sid in s_list:
                 if self._strategy_dict[sid].active:
                     self._strategy_dict[sid].on_fill(fill)   
-        
+

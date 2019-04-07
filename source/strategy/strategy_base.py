@@ -20,7 +20,9 @@ from ..event.event import *
 class StrategyBase(metaclass=ABCMeta):
     """
     Base strategy class
+
     """
+    ID = -1
     def __init__(self, events_engine,order_manager,portfolio_manager):
         """
         initialize trategy
