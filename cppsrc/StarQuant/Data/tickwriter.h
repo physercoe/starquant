@@ -6,7 +6,12 @@
 #include <Common/config.h>
 #include <Common/timeutil.h>
 #include <Common/getRealTime.h>
-
+#include <Common/util.h>
+#include <APIs/Ctp/ThostFtdcUserApiDataType.h>
+#include <APIs/Ctp/ThostFtdcUserApiStruct.h>
+#include <APIs/Tap/TapQuoteAPIDataType.h>
+#include <APIs/Tap/TapAPICommDef.h>
+#include <Data/tick.h>
 #include <bson.h>
 #include <bson/bcon.h>
 #include <mongoc.h>
@@ -24,7 +29,6 @@ namespace StarQuant
 		FILE* fp = nullptr;
 		int count = 0; //length of string in the buffer
 		char* head = nullptr; // = raiibuf.get();
-
 // mongodb writer
 	  	//mongoc_client_t      *client;
    		//mongoc_database_t    *database;
@@ -116,7 +120,6 @@ namespace StarQuant
 					bson_destroy(doc);
 					mongoc_collection_destroy(collection);
 					mongoc_client_pool_push(pool, client);
-
 				}
 				else if ((MSG_TYPE)(atoi(vs[0].c_str())) == MSG_TYPE::MSG_TYPE_TICK_L5){
 					// Tick_L5 k;
@@ -157,6 +160,34 @@ namespace StarQuant
 
 			}
 		}
+
+		void insertdb(const Tick_L1& k){
+			vector<string> fullsym = stringsplit(k.fullsymbol_, ' ');
+			string  collectionname = fullsym[2]; 
+			mongoc_client_t     *client = mongoc_client_pool_pop(pool);
+			mongoc_collection_t *collection = mongoc_client_get_collection (client, "findata", collectionname.c_str());
+
+			bson_t *doc = bson_new();
+			BSON_APPEND_UTF8(doc, "contractno", fullsym[3].c_str());
+			BSON_APPEND_DATE_TIME(doc, "datetime", string2unixtimems(k.time_)+8*3600000);
+			BSON_APPEND_DOUBLE(doc, "price", k.price_);
+			BSON_APPEND_INT32(doc, "size", k.size_);
+			BSON_APPEND_DOUBLE(doc, "bidprice1", k.bidprice_L1_);
+			BSON_APPEND_INT32(doc, "bidsize1", k.bidsize_L1_);
+			BSON_APPEND_DOUBLE(doc, "askprice1", k.askprice_L1_);
+			BSON_APPEND_INT32(doc, "asksize1", k.asksize_L1_);
+			BSON_APPEND_INT32(doc, "openinterest", k.open_interest);
+			BSON_APPEND_INT32(doc, "dominant", 0);
+			//BSON_APPEND_DOUBLE(doc, "upperLimit", k.upper_limit_price_);
+			//BSON_APPEND_DOUBLE(doc, "lowerLimit", k.lower_limit_price_);
+			if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, doc, NULL, &error)) {
+				cout<<"insert mongodb failed, errormsg = "<<error.message;
+			}
+			bson_destroy(doc);
+			mongoc_collection_destroy(collection);
+			mongoc_client_pool_push(pool, client);			
+		}
+
 
 	};
 }

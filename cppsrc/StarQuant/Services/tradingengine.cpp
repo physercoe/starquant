@@ -15,6 +15,7 @@
 #include <Engine/CtpTDEngine.h>
 #include <Engine/TapMDEngine.h>
 #include <Engine/TapTDEngine.h>
+#include <Engine/PaperTDEngine.h>
 #include <Trade/ordermanager.h>
 #include <Trade/portfoliomanager.h>
 //#include <Services/Strategy/strategyservice.h>
@@ -107,6 +108,11 @@ namespace StarQuant
 				}
 				if (CConfig::instance()._loadapi["XTP"]){
 				}
+				if (CConfig::instance()._loadapi["PAPER"]){
+					std::shared_ptr<IEngine> papertdengine = make_shared<PaperTDEngine>();
+					threads_.push_back(new std::thread(startengine,papertdengine));
+					pengines_.push_back(papertdengine);
+				}				
 			}
 			else {
 				LOG_ERROR(logger,"Mode doesn't exist,exit.");				
@@ -114,24 +120,27 @@ namespace StarQuant
 			}
 			// set thread affinity
 			//engine thread
-			int num_cpus = std::thread::hardware_concurrency();
-			for (int i = 0; i< threads_.size();i ++){
+			if (CConfig::instance().cpuaffinity){
+				int num_cpus = std::thread::hardware_concurrency();
+				for (int i = 0; i< threads_.size();i ++){
+					cpu_set_t cpuset;
+					CPU_ZERO(&cpuset);
+					CPU_SET(i%num_cpus,&cpuset);
+					int rc = pthread_setaffinity_np(threads_[i]->native_handle(),sizeof(cpu_set_t),&cpuset);
+					if (rc != 0) {
+						std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
+					}
+				}
+				//main thread
 				cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
-				CPU_SET(i%num_cpus,&cpuset);
-				int rc = pthread_setaffinity_np(threads_[i]->native_handle(),sizeof(cpu_set_t),&cpuset);
-				if (rc != 0) {
-      				std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
-    			}
+				CPU_SET(threads_.size()%num_cpus,&cpuset);
+				int rc = pthread_setaffinity_np(pthread_self(),sizeof(cpu_set_t),&cpuset);
+					if (rc != 0) {
+						std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
+				}	
 			}
-			//main thread
-			cpu_set_t cpuset;
-			CPU_ZERO(&cpuset);
-			CPU_SET(threads_.size()%num_cpus,&cpuset);
-			int rc = pthread_setaffinity_np(pthread_self(),sizeof(cpu_set_t),&cpuset);
-				if (rc != 0) {
-      				std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
-    		}		
+	
 
 			while(!gShutdown){
 				string msgpull = msg_pull_->recmsg(0);

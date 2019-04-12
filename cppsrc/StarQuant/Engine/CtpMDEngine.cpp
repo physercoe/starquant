@@ -16,6 +16,7 @@
 #include <Common/logger.h>
 #include <Common/timeutil.h>
 #include <Data/tick.h>
+#include <Data/datamanager.h>
 using namespace std;
 
 namespace StarQuant
@@ -380,6 +381,9 @@ namespace StarQuant
 		k.lower_limit_price_ = pDepthMarketData->LowerLimitPrice;
 		lock_guard<mutex> g(IEngine::sendlock_);
 		IEngine::msgq_send_->sendmsg(k.serialize());
+
+		DataManager::instance().updateOrderBook(k);
+		// DataManager::instance().recorder_.insertdb(k);
 		LOG_DEBUG(logger,"Ctp md OnRtnDepthMarketData at"<<arrivetime
 			<<"InstrumentID="<<pDepthMarketData->InstrumentID
 			<<"LastPrice="<<pDepthMarketData->LastPrice

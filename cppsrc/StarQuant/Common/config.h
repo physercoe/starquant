@@ -281,7 +281,7 @@ printf("%s ",ymdhmsf().c_str());printf(__VA_ARGS__);\
 		string SERVERPUB_URL = "tcp://localhost:55555";  //to all clients
 		string SERVERSUB_URL = "tcp://localhost:55556";  // pub the requests to engines(which subscribe)
 		string SERVERPULL_URL = "tcp://localhost:55557"; //listen all the requests from clients
-
+		bool cpuaffinity = false;
 
 		string MKT_DATA_PUBSUB_PORT = "55555";				// market/tick data
 		string BROKERAGE_PAIR_PORT = "55556";				// brokerage order, account, etc

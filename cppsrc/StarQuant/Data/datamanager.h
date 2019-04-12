@@ -1,5 +1,5 @@
-#ifndef _StarQuant_Common_DataManager_H_
-#define _StarQuant_Common_DataManager_H_
+#ifndef _StarQuant_Data_DataManager_H_
+#define _StarQuant_Data_DataManager_H_
 
 #include <string>
 #include <sstream>
@@ -10,7 +10,8 @@
 #include <Data/tick.h>
 #include <Data/barseries.h>
 #include <Data/security.h>
-
+#include <Data/tickwriter.h>
+#include <Trade/fill.h>
 #define CEREAL_RAPIDJSON_NAMESPACE creal_rapidjson
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/types/memory.hpp>
@@ -33,30 +34,33 @@ namespace StarQuant
 {
 	/// DataManager
 	/// 1. provide latest full tick price info  -- DataBoard Service
-	/// 2. provide bar series		-- Bar Service
+	/// 2. record data
 	class DataManager {
 	public:
-		std::unique_ptr<CMsgq> msgq_pub_;
+		// std::unique_ptr<CMsgq> msgq_pub_;
 
 		static DataManager* pinstance_;
 		static mutex instancelock_;
 		static DataManager& instance();
-		//atomic<uint64_t> count_ = { 0 };
-		uint64_t count_ = 0;
 
-		std::map<string, Tick_L5> _latestmarkets;
+		TickWriter recorder_;
+		uint64_t count_ = 0;
+		std::map<std::string, Security> securityDetails_;
+		std::map<string, Tick_L5> orderBook_;
 		//std::map<string, BarSeries> _5s;
 		//std::map<string, BarSeries> _15s;
-		std::map<string, BarSeries> _60s;
+		// std::map<string, BarSeries> _60s;
 		//std::map<string, BarSeries> _1d;
-		std::map<std::string, Security> securityDetails_;
 
 		DataManager();
 		~DataManager();
 		void reset();
 		void rebuild();
-		void SetTickValue(Tick& k);
+		void updateOrderBook(const Tick_L1& k);
+		void updateOrderBook(const Tick_L5& k);
+		// void updateOrderBook(const Tick_L20& k);
+		void updateOrderBook(const Fill& fill);
 	};
 }
 
-#endif // _StarQuant_Common_DataManager_H_
+#endif // _StarQuant_Data_DataManager_H_

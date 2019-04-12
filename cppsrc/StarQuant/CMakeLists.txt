@@ -24,6 +24,7 @@ set(StarQuantCppSrc
   ./Engine/CtpTDEngine.cpp
   ./Engine/TapMDEngine.cpp
   ./Engine/TapTDEngine.cpp
+  ./Engine/PaperTDEngine.cpp
   ./Services/dataservice.cpp
   ./Services/starquant_.cpp
   ./Services/tradingengine.cpp

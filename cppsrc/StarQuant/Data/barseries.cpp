@@ -69,8 +69,8 @@ namespace StarQuant
 			newBar.setBarStartTime();
 
 			// broadcast
-			if (!bars_.empty())
-				DataManager::instance().msgq_pub_->sendmsg(bars_.back().serialize());
+			// if (!bars_.empty())
+				// DataManager::instance().msgq_pub_->sendmsg(bars_.back().serialize());
 
 			bars_.push_back(newBar);
 		}

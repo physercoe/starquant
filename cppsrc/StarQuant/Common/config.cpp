@@ -83,7 +83,7 @@ namespace StarQuant {
 		logconfigfile_ = boost::filesystem::current_path().string() + "/etc/config_log";
 		// const string msgq = config["msgq"].as<std::string>();
 		_msgq = MSGQ::NANOMSG;
-		
+		cpuaffinity = config["cpuaffinity"].as<bool>();
 		_mongodbaddr = config["dbaddr"].as<std::string>();
 		_mongodbname = config["dbname"].as<std::string>();
 		 
