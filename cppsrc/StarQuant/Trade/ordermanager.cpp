@@ -1,10 +1,12 @@
 ﻿#include <Trade/ordermanager.h>
 #include <Trade/portfoliomanager.h>
-
+#include <Common/logger.h>
+#include <Common/datastruct.h>
 namespace StarQuant {
-	long m_serverOrderId = 0;    // unique order id on server side defined in ordermanager.cpp. Every broker has its own id;
-	std::mutex oid_mtx;			 // mutex for increasing order id
-	std::mutex orderStatus_mtx;  // mutex for changing order status
+
+	//extern long m_serverOrderId ;    // unique order id on server side defined in ordermanager.cpp. Every broker has its own id;
+	//extern std::mutex oid_mtx;			 // mutex for increasing order id
+	//extern std::mutex orderStatus_mtx;  // mutex for changing order status
 
 	OrderManager* OrderManager::pinstance_ = nullptr;
 	mutex OrderManager::instancelock_;
@@ -31,29 +33,29 @@ namespace StarQuant {
 	}
 
 	void OrderManager::reset() {
-		_orders.clear();
-		_fills.clear();
-		_cancels.clear();
+		orders_.clear();
+		fills_.clear();
+		cancels_.clear();
 
 		_count = 0;
 	}
 
 	void OrderManager::trackOrder(std::shared_ptr<Order> o)
 	{
-		if (o->orderSize == 0) {
+		if (o->orderSize_ == 0) {
 			PRINT_TO_FILE("ERROR:[%s,%d][%s]%s\n", __FILE__, __LINE__, __FUNCTION__, "Incorrect OrderSize.");
 			return;
 		}
 
-		auto iter = _orders.find(o->serverOrderId);
-		if (iter != _orders.end())			// order exists
+		auto iter = orders_.find(o->serverOrderID_);
+		if (iter != orders_.end())			// order exists
 			return;
 
-		_orders[o->serverOrderId] = o;		// add to map
-		_cancels[o->serverOrderId] = false;
-		_fills[o->serverOrderId] = 0;
+		orders_[o->serverOrderID_] = o;		// add to map
+		cancels_[o->serverOrderID_] = false;
+		fills_[o->serverOrderID_] = 0;
 
-		PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Order is put under track. ServerOrderId=%d\n", __FILE__, __LINE__, __FUNCTION__, o->serverOrderId);
+		PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Order is put under track. ServerOrderId=%d\n", __FILE__, __LINE__, __FUNCTION__, o->serverOrderID_);
 	}
 
 	void OrderManager::gotOrder(long oid)
@@ -65,22 +67,22 @@ namespace StarQuant {
 		}
 
 		lock_guard<mutex> g(orderStatus_mtx);
-		if ((_orders[oid]->orderStatus == OrderStatus::OS_NewBorn) || (_orders[oid]->orderStatus == OrderStatus::OS_Submitted))
+		if ((orders_[oid]->orderStatus_ == OrderStatus::OS_NewBorn) || (orders_[oid]->orderStatus_ == OrderStatus::OS_Submitted))
 		{
-			_orders[oid]->orderStatus = OrderStatus::OS_Acknowledged;
+			orders_[oid]->orderStatus_ = OrderStatus::OS_Acknowledged;
 		}
 	}
 
 	void OrderManager::gotFill(Fill& fill)
 	{
-		if (!isTracked(fill.serverOrderId))
+		if (!isTracked(fill.serverOrderID_))
 		{
-			PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]Order is not tracked. ServerOrderId= %d\n", __FILE__, __LINE__, __FUNCTION__, fill.serverOrderId);
+			PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]Order is not tracked. ServerOrderId= %d\n", __FILE__, __LINE__, __FUNCTION__, fill.serverOrderID_);
 		}
 		else {
-			PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Order is filled. ServerOrderId=%d, price=%.2f\n", __FILE__, __LINE__, __FUNCTION__, fill.serverOrderId, fill.tradePrice);
+			PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Order is filled. ServerOrderId=%d, price=%.2f\n", __FILE__, __LINE__, __FUNCTION__, fill.serverOrderID_, fill.tradePrice_);
 			lock_guard<mutex> g(orderStatus_mtx);
-			_orders[fill.serverOrderId]->orderStatus = OrderStatus::OS_Filled;			
+			orders_[fill.serverOrderID_]->orderStatus_ = OrderStatus::OS_Filled;			
 			// TODO: check for partial fill
 
 			PortfolioManager::instance().Adjust(fill);
@@ -92,22 +94,22 @@ namespace StarQuant {
 		if (isTracked(oid))
 		{
 			lock_guard<mutex> g(orderStatus_mtx);
-			_orders[oid]->orderStatus = OrderStatus::OS_Canceled;
-			_cancels[oid] = true;
+			orders_[oid]->orderStatus_ = OrderStatus::OS_Canceled;
+			cancels_[oid] = true;
 		}
 	}
 
 	std::shared_ptr<Order> OrderManager::retrieveOrderFromServerOrderId(long oid) {
-		if (_orders.count(oid))         // return # of matches; either 0 or 1
+		if (orders_.count(oid))         // return # of matches; either 0 or 1
 		{
-			return _orders[oid];
+			return orders_[oid];
 		}
 		return nullptr;
 	}
 
 	std::shared_ptr<Order> OrderManager::retrieveOrderFromBrokerOrderId(long oid) {
-		for (auto iterator = _orders.begin(); iterator != _orders.end(); ++iterator) {
-			if (iterator->second->brokerOrderId == oid)
+		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
+			if (iterator->second->brokerOrderID_ == oid)
 			{
 				return iterator->second;
 			}
@@ -117,8 +119,8 @@ namespace StarQuant {
 	}
 
 	std::shared_ptr<Order> OrderManager::retrieveOrderFromBrokerOrderIdAndApi(long oid, string acc) {
-		for (auto iterator = _orders.begin(); iterator != _orders.end(); ++iterator) {
-			if ((iterator->second->brokerOrderId == oid) && (iterator->second->account == acc))
+		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
+			if ((iterator->second->brokerOrderID_ == oid) && (iterator->second->account_ == acc))
 			{
 				return iterator->second;
 			}
@@ -127,8 +129,8 @@ namespace StarQuant {
 		return nullptr;
 	}
 	std::shared_ptr<Order> OrderManager::retrieveOrderFromSourceAndClientOrderId(int source, long oid) {
-		for (auto iterator = _orders.begin(); iterator != _orders.end(); ++iterator) {
-			if ((iterator->second->clientOrderId == oid) && (iterator->second->source == source))
+		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
+			if ((iterator->second->clientOrderID_ == oid) && (iterator->second->clientID_ == source))
 			{
 				return iterator->second;
 			}
@@ -140,8 +142,8 @@ namespace StarQuant {
 
 
 	std::shared_ptr<Order> OrderManager::retrieveOrderFromOrderNo(string ono) {
-		for (auto iterator = _orders.begin(); iterator != _orders.end(); ++iterator) {
-			if ((iterator->second->orderNo == ono))
+		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
+			if ((iterator->second->orderNo_ == ono))
 			{
 				return iterator->second;
 			}
@@ -151,8 +153,8 @@ namespace StarQuant {
 	}
 
 	std::shared_ptr<Order> OrderManager::retrieveOrderFromMatchNo(string fno) {
-		for (auto iterator = _orders.begin(); iterator != _orders.end(); ++iterator) {
-			if ((iterator->second->fillNo == fno))
+		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
+			if ((iterator->second->fillNo_ == fno))
 			{
 				return iterator->second;
 			}
@@ -164,8 +166,8 @@ namespace StarQuant {
 
 	vector<std::shared_ptr<Order>> OrderManager::retrieveOrder(const string& fullsymbol) {
 		vector<std::shared_ptr<Order>> v;
-		for (auto iterator = _orders.begin(); iterator != _orders.end(); ++iterator) {
-			if (iterator->second->fullSymbol == fullsymbol)
+		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
+			if (iterator->second->fullSymbol_ == fullsymbol)
 			{
 				v.push_back(iterator->second);
 			}
@@ -176,7 +178,7 @@ namespace StarQuant {
 
 	vector<std::shared_ptr<Order>> OrderManager::retrieveNonFilledOrderPtr() {
 		vector<std::shared_ptr<Order>> v;
-		for (auto iterator = _orders.begin(); iterator != _orders.end(); ++iterator) {
+		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
 			if (!isCompleted(iterator->first))
 			{
 				v.push_back(iterator->second);
@@ -188,8 +190,8 @@ namespace StarQuant {
 
 	vector<std::shared_ptr<Order>> OrderManager::retrieveNonFilledOrderPtr(const string& fullsymbol) {
 		vector<std::shared_ptr<Order>> v;
-		for (auto iterator = _orders.begin(); iterator != _orders.end(); ++iterator) {
-			if ((!isCompleted(iterator->first)) && (iterator->second->fullSymbol == fullsymbol))
+		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
+			if ((!isCompleted(iterator->first)) && (iterator->second->fullSymbol_ == fullsymbol))
 			{
 				v.push_back(iterator->second);
 			}
@@ -200,7 +202,7 @@ namespace StarQuant {
 
 	vector<long> OrderManager::retrieveNonFilledOrderId() {
 		vector<long> v;
-		for (auto iterator = _orders.begin(); iterator != _orders.end(); ++iterator) {
+		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
 			if (!isCompleted(iterator->first))
 			{
 				v.push_back(iterator->first);
@@ -212,8 +214,8 @@ namespace StarQuant {
 
 	vector<long> OrderManager::retrieveNonFilledOrderId(const string& fullsymbol) {
 		vector<long> v;
-		for (auto iterator = _orders.begin(); iterator != _orders.end(); ++iterator) {
-			if ((!isCompleted(iterator->first)) && (iterator->second->fullSymbol == fullsymbol))
+		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
+			if ((!isCompleted(iterator->first)) && (iterator->second->fullSymbol_ == fullsymbol))
 			{
 				v.push_back(iterator->first);
 			}
@@ -228,8 +230,8 @@ namespace StarQuant {
 	}
 
 	bool OrderManager::isTracked(long oid) {
-		auto it = _orders.find(oid);
-		return (it != _orders.end());
+		auto it = orders_.find(oid);
+		return (it != orders_.end());
 	}
 
 	bool OrderManager::isFilled(long oid) { return false; }
@@ -240,7 +242,7 @@ namespace StarQuant {
 	}
 
 	bool OrderManager::hasPendingOrders() {
-		for (auto iterator = _orders.begin(); iterator != _orders.end(); ++iterator) {
+		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
 			if (!isCompleted(iterator->first))
 			{
 				return true;

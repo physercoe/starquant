@@ -5,8 +5,8 @@
 namespace StarQuant
 {
 
-mutex IEngine::sendlock_;
-std::unique_ptr<CMsgq> IEngine::msgq_send_;
+// mutex IEngine::sendlock_;
+// std::unique_ptr<CMsgq> IEngine::msgq_send_;
 IEngine::IEngine()
     :estate_(EState::DISCONNECTED)
     {

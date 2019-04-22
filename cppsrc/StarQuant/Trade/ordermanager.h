@@ -4,18 +4,14 @@
 #include <map>
 #include <mutex>
 #include <atomic>
-#include <Common/config.h>
-#include <Trade/order.h>
-#include <Trade/fill.h>
-#include <Trade/orderstatus.h>
-#include <Common/util.h>
+#include <Common/datastruct.h>
 
 using namespace std;
 
 namespace StarQuant {
-	extern long m_serverOrderId;				// unique order id on server side defined in ordermanager.cpp. Every broker has its own id;
-	extern std::mutex oid_mtx;					// mutex for increasing order id; defined in ordermanager.cpp
-	extern std::mutex orderStatus_mtx;			// mutex for changing order status; defined in ordermanager.cpp
+	//extern long m_serverOrderId;				// unique order id on server side defined in ordermanager.cpp. Every broker has its own id;
+	//extern std::mutex oid_mtx;					// mutex for increasing order id; defined in ordermanager.cpp
+	//extern std::mutex orderStatus_mtx;			// mutex for changing order status; defined in ordermanager.cpp
 
 	// TODO: maintain order book
 	class OrderManager {
@@ -28,9 +24,9 @@ namespace StarQuant {
 
 		//std::atomic_int _count = { 0 };
 		int _count = 0;
-		std::map<long, std::shared_ptr<Order>> _orders;
-		std::map<long, long> _fills;       // signed filled size
-		std::map<long, bool> _cancels;    // if cancelled
+		std::map<long, std::shared_ptr<Order>> orders_;
+		std::map<long, long> fills_;       // signed filled size
+		std::map<long, bool> cancels_;    // if cancelled
 		mutex wlock;
 		void reset();
 

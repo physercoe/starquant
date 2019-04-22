@@ -1,0 +1,642 @@
+#ifndef __StarQuant_Common_Datastruct_H_
+#define __StarQuant_Common_Datastruct_H_
+
+#include <string>
+#include <mutex>
+#include <memory>
+#include <vector>
+#include <atomic>
+
+
+
+using namespace std;
+
+
+#if defined(_WIN32) || defined(_WIN64)
+#ifdef DLL_EXPORT
+#define DLL_EXPORT_IMPORT  __declspec(dllexport)   // export DLL information
+#else
+#define DLL_EXPORT_IMPORT  __declspec(dllimport)   // import DLL information
+#endif
+#else
+#define DLL_EXPORT_IMPORT
+#endif
+
+namespace StarQuant {
+
+
+#define SERIALIZATION_SEPARATOR '|'
+#define RELAY_DESTINATION '.'
+#define DESTINATION_ALL "0"
+
+
+enum CurrencyType {
+    USD,
+    AUD,
+    CAD,
+    CHF,
+    EUR,
+    GBP,
+    HKD,
+    JPY,
+    MXN,
+    NZD,
+    SEK
+};
+
+const std::string CurrencyTypeString[] = {
+    "USD",
+    "AUD",
+    "CAD",
+    "CHF",
+    "EUR",
+    "GBP",
+    "HKD",
+    "JPY",
+    "MXN",
+    "NZD",
+    "SEK"
+};
+enum OrderType {
+    OT_Market = 0,				// market
+    OT_MarketOnClose,
+    OT_Limit = 2,				// limit
+    OT_LimitOnClose,
+    OT_PeggedToMarket,
+    OT_Stop = 5,				// stop
+    OT_StopLimit = 6,			// stop limit
+    OT_TrailingStop = 7,		// traiing stop
+    OT_Relative,
+    OT_VolumeWeightedAveragePrice,
+    OT_TrailingStopLimit,
+    OT_Volatility,
+    OT_None,
+    OT_Empty,
+    OT_Default,
+    OT_Scale,
+    OT_MarketIfTouched,
+    OT_LimitIfTouched,
+    OT_OptExec,
+    OT_OptAbandon,
+    OT_Reqquot,
+    OT_Rspquot,
+    OT_Swap
+};
+
+enum OrderStatus {
+    OS_UNKNOWN = 0,		// Unknown
+    OS_NewBorn = 1,			// NewBorn
+    OS_PendingSubmit = 2,   
+    OS_Submitted = 3,			// submitted
+    OS_Acknowledged = 4,		// acknowledged
+    OS_Queued =5,
+    OS_PartiallyFilled = 6,		// PartiallyFilled
+    OS_Filled = 7,				// Filled
+    OS_PendingCancel = 8 ,
+    OS_PendingModify =9 ,
+    OS_Canceled = 10,			// Canceled
+    OS_LeftDelete = 11,
+    OS_Suspended = 12,
+    OS_ApiPending = 13,
+    OS_ApiCancelled = 14,
+    OS_Fail =15,                 //指令失败
+    OS_Deleted =16,             
+    OS_Effect = 17,             //已生效-询价成功
+    OS_Apply = 18,              //已申请-行权，弃权等申请成功
+    OS_Error = 19,
+    OS_Trig =20,
+    OS_Exctrig=21
+};
+
+enum OrderFlag {			// for CTP,tap offset flag
+    OF_None = -1,
+    OF_OpenPosition = 0,
+    OF_ClosePosition = 1,
+    OF_CloseToday = 2,
+    OF_CloseYesterday = 3,
+    OF_ForceClose = 4,
+    OF_ForceOff = 5,
+    OF_LocalForceClose = 6
+};
+
+const std::string OrderStatusString[] = {
+    "Unknown",
+    "NewBorn",
+    "PendingSubmit",
+    "Submitted",
+    "Acknowledged",
+    "Queued",
+    "PartiallyFilled",
+    "Filled",
+    "PendingCancel",
+    "PendingModify",
+    "Canceled",
+    "LeftDelete",
+    "Suspended",
+    "ApiPending",
+    "ApiCancelled",
+    "Fail",
+    "Deleted",
+    "Effect",
+    "Apply",
+    "Error",
+    "Trigerrring",
+    "ExcTriggering",
+    "None"
+};
+
+enum class MSGQ : uint8_t {
+	NANOMSG = 0, ZMQ, KAFKA, WEBSOCKET
+};
+
+enum class MSGQ_PROTOCOL : uint8_t {
+	PAIR = 0, REQ, REP, PUB, SUB, PUSH,PULL
+};
+// -----------------------------msg type for interprocess communication-----------------
+enum MSG_TYPE : int32_t {
+//  10* datatype same as ticktype 
+    MSG_TYPE_TICK_L1 = 1000,
+    MSG_TYPE_TICK_L5 = 1001,
+    MSG_TYPE_TICK_L10 = 1002,
+    MSG_TYPE_TICK_L20 = 1003,
+    MSG_TYPE_BAR_1MIN = 1011,
+    MSG_TYPE_BAR_5MIN = 1012,
+    MSG_TYPE_BAR_15MIN = 1013,
+    MSG_TYPE_BAR_1HOUR = 1014,
+    MSG_TYPE_BAR_1DAY = 1015,
+    MSG_TYPE_BAR_1WEEK = 1016,
+    MSG_TYPE_BAR_1MON = 1017,	
+    MSG_TYPE_Trade =1060,
+    MSG_TYPE_Bid = 1061,
+    MSG_TYPE_Ask = 1062,
+    MSG_TYPE_Full = 1063,
+    MSG_TYPE_BidPrice = 1064,
+    MSG_TYPE_BidSize = 1065,
+    MSG_TYPE_AskPrice = 1066,
+    MSG_TYPE_AskSize = 1067,
+    MSG_TYPE_TradePrice = 1068,
+    MSG_TYPE_TradeSize = 1069,
+    MSG_TYPE_OpenPrice = 1070,
+    MSG_TYPE_HighPrice = 1071,
+    MSG_TYPE_LowPrice = 1072,
+    MSG_TYPE_ClosePrice = 1073,
+    MSG_TYPE_Volume = 1074,
+    MSG_TYPE_OpenInterest = 1075,
+    MSG_TYPE_Hist =1076,
+// 	11* sys control
+    MSG_TYPE_ENGINE_STATUS = 1101,
+    MSG_TYPE_ENGINE_START = 1111,
+    MSG_TYPE_ENGINE_STOP = 1112,
+    MSG_TYPE_ENGINE_CONNECT = 1120,
+    MSG_TYPE_ENGINE_DISCONNECT = 1121,
+    MSG_TYPE_SWITCH_TRADING_DAY = 1141,
+//  12* strategy
+    MSG_TYPE_STRATEGY_START = 1210,
+    MSG_TYPE_STRATEGY_END = 1211,
+//  13*  tast 
+    MSG_TYPE_TIMER = 1301,
+    MSG_TYPE_TASK_START = 1310,
+    MSG_TYPE_TASK_STOP = 1311,
+//  20* engine action
+    // request
+    MSG_TYPE_SUBSCRIBE_MARKET_DATA = 2001,
+    MSG_TYPE_SUBSCRIBE_L2_MD = 2002,
+    MSG_TYPE_SUBSCRIBE_INDEX = 2003,
+    MSG_TYPE_SUBSCRIBE_ORDER_TRADE = 2004,
+    MSG_TYPE_UNSUBSCRIBE = 2011,
+    MSG_TYPE_QRY_COMMODITY = 2021,	
+    MSG_TYPE_QRY_CONTRACT   = 2022,
+    MSG_TYPE_QRY_POS       = 2023,
+    MSG_TYPE_QRY_ACCOUNT   = 2024,
+    MSG_TYPE_ORDER         = 2031,  //insert order
+    MSG_TYPE_ORDER_ACTION  = 2032,  //cancel order
+    MSG_TYPE_CANCEL_ORDER = 2033,
+    MSG_TYPE_CANCEL_ALL = 2039,
+    //call back
+    MSG_TYPE_RSP_POS       = 2051,
+    MSG_TYPE_RTN_ORDER     = 2052, //order status
+    MSG_TYPE_RTN_TRADE     = 2053,
+    MSG_TYPE_RSP_ACCOUNT   = 2054,
+    MSG_TYPE_RSP_CONTRACT   = 2055,
+    MSG_TYPE_RSP_COMMODITY   = 2056,
+//	31*: info class msg, mainly about sys
+    MSG_TYPE_INFO   = 3100,
+    MSG_TYPE_INFO_ENGINE_MDCONNECTED = 3101,
+    MSG_TYPE_INFO_ENGINE_MDDISCONNECTED = 3102,
+    MSG_TYPE_INFO_ENGINE_TDCONNECTED = 3103,
+    MSG_TYPE_INFO_ENGINE_TDDISCONNECTED = 3104,
+    MSG_TYPE_INFO_HEARTBEAT_WARNING =3105,
+//	34*:error class msg
+    MSG_TYPE_ERROR = 3400,
+    MSG_TYPE_ERROR_ENGINENOTCONNECTED = 3401,
+    MSG_TYPE_ERROR_SUBSCRIBE = 3402,
+    MSG_TYPE_ERROR_INSERTORDER = 3403,
+    MSG_TYPE_ERROR_CANCELORDER = 3404,
+    MSG_TYPE_ERROR_ORGANORDER = 3405, //order is not tracted by order manager
+    MSG_TYPE_ERROR_QRY_ACC = 3406,
+    MSG_TYPE_ERROR_QRY_POS = 3407,
+    MSG_TYPE_ERROR_QRY_CONTRACT = 3408,
+    MSG_TYPE_ERROR_CONNECT = 3409,  //login fail
+    MSG_TYPE_ERROR_DISCONNECT = 3410,
+//  40*: test class msg
+    MSG_TYPE_TEST = 4000,
+
+//  9* base/header
+    MSG_TYPE_BASE = 9
+};
+
+	MSG_TYPE MsgType(const string& str);
+
+
+	enum class RUN_MODE :uint8_t {
+		TRADE_MODE = 0, RECORD_MODE, REPLAY_MODE
+	};
+
+	enum class BROKERS : uint8_t {
+		IB = 0, CTP, GOOGLE, SINA, PAPER,TAP
+	};
+
+
+
+	struct Account{
+		string id;
+		int32_t intid;
+		string brokerid;
+		string userid;
+		string password;
+		string auth_code;
+		string productinfo;
+		string md_ip;
+		uint16_t md_port;
+		string td_ip;
+		uint16_t td_port;
+		string apitype;
+	};
+
+class MsgHeader{
+    public:
+        string destination_;
+        string source_;
+        MSG_TYPE msgtype_;
+        
+        MsgHeader(){}
+        MsgHeader(string des, string sour, MSG_TYPE mt_)
+        {
+            destination_ = des;
+            source_ = sour;
+            msgtype_ = mt_;
+        };
+        virtual ~MsgHeader(){};
+
+        virtual string serialize() {            
+            string tmp = destination_ 
+            + SERIALIZATION_SEPARATOR + source_
+            + SERIALIZATION_SEPARATOR + to_string(msgtype_);
+            return tmp;
+        };
+        virtual void deserialize(const string& msgin) {};
+};
+
+class DLL_EXPORT_IMPORT Tick{
+    public:
+        Tick() { }
+        ~Tick(){ }
+
+        string fullSymbol_;
+        string time_;
+        double price_ = 0.0;
+        int size_ = 0;
+        int depth_ = 1;
+        double bidPrice_[20] = {0.0};
+        int bidSize_[20] = {0};
+        double askPrice_[20] = {0.0};
+        int askSize_[20]= {0};
+        int openInterest_ = 0;
+        double open_ = 0.0;
+        double high_ = 0.0;
+        double low_ = 0.0;
+        double preClose_ = 0.0;
+        double upperLimitPrice_ = 0.0;
+        double lowerLimitPrice_ = 0.0;       
+};
+
+class DLL_EXPORT_IMPORT TickMsg: public MsgHeader{
+public:
+    TickMsg() :MsgHeader(),data_()
+    {
+        msgtype_ = MSG_TYPE::MSG_TYPE_TICK_L1;
+    }
+    ~TickMsg() {}
+
+    Tick data_;
+
+    virtual string serialize();
+    // virtual void deserialize(const string& msgin);
+};
+
+class DLL_EXPORT_IMPORT Security{
+    public:
+        Security() {}
+        ~Security(){}
+    
+    string fullSymbol_;
+    string symbol_;
+    string securityType_;
+    string exchange_;
+    string contractNo_;
+    int multiplier_ = 0;
+    string localName_;	// Unicode; e.g., in Chinese or French
+    string currency_;
+    double ticksize_ = 0.0;
+    double margin_ = 0.0;		
+
+    // Options
+    string underlyingSymbol_;
+    double strike = 0.0;
+    string right_;		// "C" or "P" or ""
+    string expiryDate_;
+};
+
+class DLL_EXPORT_IMPORT SecurityMsg: public MsgHeader{
+public:
+    SecurityMsg() 	:MsgHeader(),data_()
+    {
+        msgtype_ = MSG_TYPE::MSG_TYPE_RSP_COMMODITY;
+    }
+    ~SecurityMsg() {}
+
+    Security data_;
+
+    virtual string serialize() ;
+    // virtual void deserialize(const string& msgin);
+};
+
+class AccountInfo {
+public:
+    AccountInfo(){}
+    ~AccountInfo(){}
+
+    string accountID_;
+    string accountType_;				//INDIVIDUAL
+    double availableFunds_ = 0.0;
+    double netLiquidation_ = 0.0;
+    double equityWithLoanValue_ = 0.0;
+    double previousDayEquityWithLoanValue_ = 0.0;
+    double fullInitialMargin_ = 0.0;
+    double fullMaintainanceMargin_ = 0.0;
+    double commission_ = 0.0;
+    double buyingPower_ = 0.0;
+    double cashBalance_ = 0.0;
+    double realizedPnL_ = 0.0;
+    double unrealizedPnL_ = 0.0;
+};
+
+class DLL_EXPORT_IMPORT AccMsg: public MsgHeader{
+public:
+    AccMsg() :MsgHeader(),data_()
+    {
+         msgtype_ = MSG_TYPE::MSG_TYPE_RSP_ACCOUNT;
+    }
+    ~AccMsg() {}
+
+    AccountInfo data_;
+
+    virtual string serialize();
+    // virtual void deserialize(const string& msgin);
+};
+
+
+class DLL_EXPORT_IMPORT Fill {
+public:
+    Fill() { }
+    ~Fill(){}
+
+    long serverOrderID_ = -1;        //local server id
+    long clientOrderID_ = -1;
+    long brokerOrderID_ = -1;
+    long tradeId_ = -1;              //local id
+    int clientID_ = 0;             // sid, get from client; 0=mannual
+    string orderNo_;            //exchange id
+    string tradeNo_;            //exchange id  
+    string tradeTime_;
+    string fullSymbol_;
+    string account_;
+    OrderFlag fillFlag_ = OrderFlag::OF_OpenPosition;
+    string api_;						// IB, ctp etc
+    string currency_;                  
+    double tradePrice_ = 0.0;
+    int tradeSize_ = 0;					// < 0 = short, order size != trade size
+    double commission_ = 0.0;
+};
+
+class DLL_EXPORT_IMPORT FillMsg: public MsgHeader{
+public:
+    FillMsg(): MsgHeader(),data_()
+    {
+         msgtype_ = MSG_TYPE::MSG_TYPE_RTN_TRADE;
+    }
+    ~FillMsg() {}
+
+    Fill data_;
+
+    virtual string serialize();
+    // virtual void deserialize(const string& msgin);
+};
+
+extern long m_serverOrderId;    // unique order id on server side defined in ordermanager.cpp. Every broker has its own id;
+extern std::mutex oid_mtx;			 // mutex for increasing order id
+extern std::mutex orderStatus_mtx;  // mutex for changing order status
+
+class DLL_EXPORT_IMPORT Order {
+public:
+    Order() { }
+    ~Order(){}
+
+    long serverOrderID_ = -1;
+    long clientOrderID_ = -1;
+    long brokerOrderID_ = -1;
+    int clientID_ = 0;           // sid, get from client; -1=mannual
+    long permId_ = -1;				// for IB use
+    string orderNo_;
+    string createTime_;
+    string cancelTime_;
+    string fullSymbol_;
+    string account_;
+    string api_;				// IB, ctp etc
+	string tag_;                     // used for mark 
+    OrderType orderType_ = OrderType::OT_Market;						// MKT, LMT, STP, STPLMT, etc
+    OrderStatus orderStatus_ = OrderStatus::OS_UNKNOWN;				// OS_NEWBORN, etc
+    OrderFlag orderFlag_ = OrderFlag::OF_OpenPosition;
+    int orderSize_ = 0;
+    string fillNo_;					// < 0 = short, order size != trade size
+    int filledSize_ = 0;
+    double lastFilledPrice_ = 0.0;
+    double avgFilledPrice_ = 0.0;
+    double limitPrice_ = 0.0;
+    double stopPrice_ = 0.0;
+    double trailPrice_ = 0.0;
+    double trailingPercent_ = 0.0;
+    string timeInForce_;
+    bool outsideRegularTradingHour_ = false;
+    bool hidden_ = false;
+    bool allOrNone_ = false;
+};
+
+class DLL_EXPORT_IMPORT OrderMsg: public MsgHeader{
+public:
+    OrderMsg(): MsgHeader(),data_()
+    {
+         msgtype_ = MSG_TYPE::MSG_TYPE_RTN_ORDER;
+    }
+    ~OrderMsg() {}
+
+    Order data_;
+
+    virtual string serialize();
+    virtual void deserialize(const string& msgin);
+    std::shared_ptr<Order> toPOrder();
+};
+
+class DLL_EXPORT_IMPORT Position {
+public:
+    Position(){}
+    ~Position(){}
+
+    string account_ = "";
+    string api_ = "";
+    string fullSymbol_ = "";
+    double avgPrice_ = 0;
+    int size_ = 0;
+    int preSize_ = 0;
+    int freezedSize_ = 0;
+    double openpl_ = 0;			// unrealized pnl
+    double closedpl_ = 0;		// realized pnl
+    char type_ ='a';             // used in tap event: n :new postion; c:closepostion ;u: postionprofit update;a:ctp postion
+    string posNo_ = "";
+    string openapi_ = "";
+    string openOrderNo_ = "";
+    int openClientID_ = -1;
+    string closeapi_ = "";
+    string closeOrderNo_ = "";
+    int closeClientID_ = -1;		
+};
+
+class DLL_EXPORT_IMPORT PosMsg: public MsgHeader{
+public:
+    PosMsg(): MsgHeader(),data_()
+    {
+         msgtype_ = MSG_TYPE::MSG_TYPE_RSP_POS;
+    }
+    ~PosMsg() {}
+
+    Position data_;
+
+    virtual string serialize();
+    // virtual void deserialize(const string& msgin);
+    Position toPos(){return data_;};
+};
+
+
+class OrderAction {
+public:
+    OrderAction(){}
+    ~OrderAction(){}
+
+    int clientID_ = 0;
+    long serverOrderID_ = -1;
+    long clientOrderID_ = -1;
+    string orderNo_;
+};
+
+class DLL_EXPORT_IMPORT OrderActionMsg: public MsgHeader{
+public:
+    OrderActionMsg() :MsgHeader(),data_()
+    {
+         msgtype_ = MSG_TYPE::MSG_TYPE_ORDER_ACTION;
+    }
+    OrderActionMsg(string des,string src) :MsgHeader(des,src,MSG_TYPE_ORDER_ACTION),data_()
+    {
+
+    }
+    ~OrderActionMsg() {}
+
+    OrderAction data_;
+
+    // virtual string serialize();
+    virtual void deserialize(const string& msgin);
+};
+
+
+
+
+class DLL_EXPORT_IMPORT SubscribeMsg: public MsgHeader{
+public:
+    SubscribeMsg(string des,string src) :MsgHeader(des,src,MSG_TYPE_SUBSCRIBE_MARKET_DATA),data_()
+    {
+    }
+    SubscribeMsg():MsgHeader(),data_(){
+        msgtype_ = MSG_TYPE::MSG_TYPE_SUBSCRIBE_MARKET_DATA;
+    }
+    ~SubscribeMsg() {}
+
+    vector<string> data_;
+
+    // virtual string serialize();
+    virtual void deserialize(const string& msgin);
+};
+
+class DLL_EXPORT_IMPORT UnSubscribeMsg: public MsgHeader{
+public:
+    UnSubscribeMsg(string des,string src) :MsgHeader(des,src,MSG_TYPE_UNSUBSCRIBE),data_()
+    {
+    }
+    UnSubscribeMsg():MsgHeader(),data_(){
+        msgtype_ = MSG_TYPE::MSG_TYPE_UNSUBSCRIBE;
+    }
+    ~UnSubscribeMsg() {}
+
+    vector<string> data_;
+
+    // virtual string serialize();
+    virtual void deserialize(const string& msgin);
+};
+
+class DLL_EXPORT_IMPORT ErrorMsg: public MsgHeader{
+public:
+    ErrorMsg(string des,string src, MSG_TYPE mt, string em) :
+    MsgHeader(des,src,mt)
+    ,data_(em)
+    {
+    }
+    ~ErrorMsg() {}
+
+    string data_;
+
+    virtual string serialize();
+    // virtual void deserialize(const string& msgin);
+};
+
+class DLL_EXPORT_IMPORT InfoMsg: public MsgHeader{
+public:
+    InfoMsg(string des,string src, MSG_TYPE mt, string em) :
+    MsgHeader(des,src,mt)
+    ,data_(em)
+    {
+    }
+    ~InfoMsg() {}
+
+    string data_;
+
+    virtual string serialize();
+    // virtual void deserialize(const string& msgin);
+};
+
+
+
+
+
+
+
+}
+
+#endif  // __StarQuant_Common_Datastruct_H_

@@ -1,9 +1,10 @@
 #include <atomic>
 #include <Services/dataservice.h>
+#include <Common/datastruct.h>
 #include <Common/config.h>
 #include <Common/util.h>
-#include <Common/timeutil.h>
 #include <Common/logger.h>
+#include <Common/msgq.h>
 //#include <Common/Data/datatype.h>
 #include <Data/datamanager.h>
 #include <Data/tickwriter.h>
@@ -151,7 +152,7 @@ namespace StarQuant
 	void TickReplayService(const std::string& filetoreplay,int tickinterval)
 	{
 		std::unique_ptr<CMsgq> msgq_pub_;
-		msgq_pub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().MKT_DATA_PUBSUB_PORT);
+		msgq_pub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
 		uint64_t curt = 0;
 		uint64_t logt = 0;
 		//vector<TimeAndMsg> lines = readreplayfile(filetoreplay);

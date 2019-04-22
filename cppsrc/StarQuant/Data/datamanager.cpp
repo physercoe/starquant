@@ -1,7 +1,7 @@
 #include <vector>
 #include <Data/datamanager.h>
 #include <Trade/portfoliomanager.h>
-#include <Common/util.h>
+#include <Common/datastruct.h>
 
 namespace StarQuant {
 	DataManager* DataManager::pinstance_ = nullptr;
@@ -9,22 +9,10 @@ namespace StarQuant {
 
 	DataManager::DataManager() : count_(0)
 	{
-		// message queue factory
-		// if (CConfig::instance()._msgq == MSGQ::ZMQ) {
-		// 	//msgq_pub_ = std::make_unique<CMsgqZmq>(MSGQ_PROTOCOL::PUB, CConfig::instance().BAR_AGGREGATOR_PUBSUB_PORT);
-		// 	msgq_pub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().BAR_AGGREGATOR_PUBSUB_PORT);
-		// }
-		// else {
-		// 	msgq_pub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().BAR_AGGREGATOR_PUBSUB_PORT);
-		// }
-		// msgq_pub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().BAR_AGGREGATOR_PUBSUB_PORT);
-		// construct map for data storage
-		// rebuild();
 	}
 
 	DataManager::~DataManager()
 	{
-
 	}
 
 	DataManager& DataManager::instance() {
@@ -38,81 +26,20 @@ namespace StarQuant {
 	}
 
 
-	void DataManager::updateOrderBook(const Tick_L1& k){
-			Tick_L5 newk;
-			newk.depth_ = 1;
-			newk.fullsymbol_ = k.fullsymbol_;
-			newk.time_ = k.time_;
-			newk.price_ = k.price_;
-			newk.size_ = k.size_;
-			newk.bidprice_L1_ = k.bidprice_L1_;
-			newk.bidsize_L1_ = k.bidsize_L1_;
-			newk.askprice_L1_ = k.askprice_L1_;
-			newk.asksize_L1_ = k.asksize_L1_;
-			newk.open_interest = k.open_interest;
-			newk.open_ = k.open_;
-			newk.high_ = k.high_;
-			newk.low_ = k.low_;
-			newk.pre_close_ = k.pre_close_;
-			newk.upper_limit_price_ = k.upper_limit_price_;
-			newk.lower_limit_price_ = k.lower_limit_price_;
-			orderBook_[k.fullsymbol_] = newk;
-	}
-	void DataManager::updateOrderBook(const Tick_L5& k){
-			orderBook_[k.fullsymbol_] = k;
-			// Tick_L5 newk;
-			// newk.depth_ = 5;
-			// newk.fullsymbol_ = k.fullsymbol_;
-			// newk.time_ = k.time_;
-			// newk.price_ = k.price_;
-			// newk.size_ = k.size_;
-			// newk.bidprice_L1_ = k.bidprice_L1_;
-			// newk.bidsize_L1_ = k.bidsize_L1_;
-			// newk.askprice_L1_ = k.askprice_L1_;
-			// newk.asksize_L1_ = k.asksize_L1_;
-			// newk.bidprice_L2_ = k.bidprice_L2_;
-			// newk.bidsize_L2_ = k.bidsize_L2_;
-			// newk.askprice_L2_ = k.askprice_L2_;
-			// newk.asksize_L2_ = k.asksize_L2_;
-			// newk.bidprice_L3_ = k.bidprice_L3_;
-			// newk.bidsize_L3_ = k.bidsize_L3_;
-			// newk.askprice_L3_ = k.askprice_L3_;
-			// newk.asksize_L3_ = k.asksize_L3_;
-			// newk.bidprice_L4_ = k.bidprice_L4_;
-			// newk.bidsize_L4_ = k.bidsize_L4_;
-			// newk.askprice_L4_ = k.askprice_L4_;
-			// newk.asksize_L4_ = k.asksize_L4_;
-			// newk.bidprice_L5_ = k.bidprice_L5_;
-			// newk.bidsize_L5_ = k.bidsize_L5_;
-			// newk.askprice_L5_ = k.askprice_L5_;
-			// newk.asksize_L5_ = k.asksize_L5_;
-			// newk.open_interest = k.open_interest;
-			// newk.open_ = k.open_;
-			// newk.high_ = k.high_;
-			// newk.low_ = k.low_;
-			// newk.pre_close_ = k.pre_close_;
-			// newk.upper_limit_price_ = k.upper_limit_price_;
-			// newk.lower_limit_price_ = k.lower_limit_price_;
-			// orderBook_[k.fullsymbol_] = newk;
-	}
-
-	// void DataManager::updateOrderBook(const Tick_L20& k){
-	// 	orderBook_[k.fullsymbol_] = k;
-	// }
 
 	void DataManager::updateOrderBook(const Fill& fill){
 	//assume only price change
-		if (orderBook_.find(fill.fullSymbol) != orderBook_.end()){
-			orderBook_[fill.fullSymbol].price_ = fill.tradePrice;
-			orderBook_[fill.fullSymbol].size_ = fill.tradeSize;
+		if (orderBook_.find(fill.fullSymbol_) != orderBook_.end()){
+			orderBook_[fill.fullSymbol_].price_ = fill.tradePrice_;
+			orderBook_[fill.fullSymbol_].size_ = fill.tradeSize_;
 		}
 		else
 		{
-			Tick_L5 newk;
+			Tick newk;
 			newk.depth_ = 0;
-			newk.price_ = fill.tradePrice;
-			newk.size_ = fill.tradeSize;
-			orderBook_[fill.fullSymbol] = newk;
+			newk.price_ = fill.tradePrice_;
+			newk.size_ = fill.tradeSize_;
+			orderBook_[fill.fullSymbol_] = newk;
 		}
 	}
 
@@ -157,7 +84,7 @@ namespace StarQuant {
 		// 	//_5s[k.fullsymbol_].newTick(k);				// if it doesn't exist, operator[] creates a new element with default constructor
 		// 	//_15s[k.fullsymbol_].newTick(k);
 		// 	_60s[k.fullsymbol_].newTick(k);
-		// 	//PortfolioManager::instance()._positions[sym].
+		// 	//PortfolioManager::instance().positions_[sym].
 		// }
 		// else if (k.msgtype_ == MSG_TYPE::MSG_TYPE_TICK_L1 || k.msgtype_ == MSG_TYPE::MSG_TYPE_TICK_L5 || k.msgtype_ == MSG_TYPE::MSG_TYPE_TICK_L20 ) {
 		// 	//_latestmarkets[k.fullsymbol_] = dynamic_cast<Tick_L5&>(k);		// default assigement shallow copy

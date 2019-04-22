@@ -2,11 +2,11 @@
 #define _StarQuant_Engine_PaperTDEngine_H_
 
 #include <mutex>
+#include <Common/datastruct.h>
 #include <Common/config.h>
 #include <Engine/IEngine.h>
-#include <APIs/Ctp/ThostFtdcTraderApi.h>
-#include <Trade/order.h>
-#include <Trade/fill.h>
+
+
 
 using std::mutex;
 using std::string;
@@ -30,6 +30,12 @@ namespace StarQuant
 		virtual bool connect() ;
 		virtual bool disconnect() ;
 
+		void insertOrder(shared_ptr<OrderMsg> pmsg);
+		void cancelOrder(shared_ptr<OrderActionMsg> pmsg);
+		void queryAccount(shared_ptr<MsgHeader> pmsg);
+		// void queryOrder(const string& msgorder_,const string& source);
+		void queryPosition(shared_ptr<MsgHeader> pmsg);
+		
 		void insertOrder(const vector<string>& msgv);
 		void cancelOrder(const vector<string>& msgv);
 		void cancelOrder(long oid,const string& source );

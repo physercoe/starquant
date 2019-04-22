@@ -2,10 +2,7 @@
 #include <boost/locale.hpp>
 #include <boost/algorithm/algorithm.hpp>
 
-#include <Trade/order.h>
-#include <Trade/orderstatus.h>
-#include <Trade/ordertype.h>
-#include <Trade/fill.h>
+#include <Common/datastruct.h>
 #include <Trade/ordermanager.h>
 #include <Trade/portfoliomanager.h>
 #include <Data/datamanager.h>
@@ -177,7 +174,7 @@ namespace StarQuant
 		o->serverOrderId = m_serverOrderId++;
 		o->brokerOrderId = m_brokerOrderId_++;
 		o->createTime = ymdhmsf();	
-		o->orderStatus = OrderStatus::OS_NewBorn;	
+		o->orderStatus_ = OrderStatus::OS_NewBorn;	
 		o->api = name_;// = name_;	
 		o->source = stoi(v[1]);
 		o->clientId = stoi(v[1]);		
@@ -207,8 +204,8 @@ namespace StarQuant
 			fill.clientOrderId = o->clientOrderId;
 			fill.brokerOrderId = o->brokerOrderId;
 			fill.tradeId = o->brokerOrderId;
-			fill.account = o->account;     
-			fill.api = o->api;   
+			fill.account_ = o->account_;     
+			fill.api_ = o->api_;   
 			if (o->orderType == OrderType::OT_Market){
 				fill.fillflag = o->orderFlag;
 				if (o->orderSize > 0){
@@ -241,7 +238,7 @@ namespace StarQuant
 					else
 					{
 						lock_guard<mutex> gs(orderStatus_mtx);
-						o->orderStatus = OrderStatus::OS_Error;
+						o->orderStatus_ = OrderStatus::OS_Error;
 						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
 							+ name_ + SERIALIZATION_SEPARATOR 
 							+ to_string(MSG_TYPE_ERROR_INSERTORDER) + SERIALIZATION_SEPARATOR
@@ -277,7 +274,7 @@ namespace StarQuant
 					else
 					{
 						lock_guard<mutex> gs(orderStatus_mtx);
-						o->orderStatus = OrderStatus::OS_Error;
+						o->orderStatus_ = OrderStatus::OS_Error;
 						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
 							+ name_ + SERIALIZATION_SEPARATOR 
 							+ to_string(MSG_TYPE_ERROR_INSERTORDER) + SERIALIZATION_SEPARATOR
@@ -297,7 +294,7 @@ namespace StarQuant
 			}
 			else if (o->orderType == OrderType::OT_StopLimit){
 				lock_guard<mutex> gs(orderStatus_mtx);				
-				o->orderStatus = OrderStatus::OS_Error;
+				o->orderStatus_ = OrderStatus::OS_Error;
 				string msgout = v[1]+ SERIALIZATION_SEPARATOR 
 					+ name_ + SERIALIZATION_SEPARATOR 
 					+ to_string(MSG_TYPE_ERROR_INSERTORDER) + SERIALIZATION_SEPARATOR
@@ -313,7 +310,7 @@ namespace StarQuant
 			}
 			OrderManager::instance().gotFill(fill);	
 			lock_guard<mutex> gs(orderStatus_mtx);					
-			o->orderStatus = OrderStatus::OS_Filled;		
+			o->orderStatus_ = OrderStatus::OS_Filled;		
 			LOG_INFO(logger,"Order filled by paper td,  Order: clientorderid ="<<o->clientOrderId<<"fullsymbol = "<<o->fullSymbol);
 			lock_guard<std::mutex> ge(IEngine::sendlock_);
 			IEngine::msgq_send_->sendmsg(o->serialize());
@@ -322,7 +319,7 @@ namespace StarQuant
 		else
 		{
 			lock_guard<mutex> gs(orderStatus_mtx);
-			o->orderStatus = OrderStatus::OS_Error;
+			o->orderStatus_ = OrderStatus::OS_Error;
 			string msgout = v[1]+ SERIALIZATION_SEPARATOR 
 				+ name_ + SERIALIZATION_SEPARATOR 
 				+ to_string(MSG_TYPE_ERROR_INSERTORDER) + SERIALIZATION_SEPARATOR

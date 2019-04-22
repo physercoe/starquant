@@ -1,7 +1,8 @@
 #include <Common/msgq.h>
 #include <Common/logger.h>
 #include <Common/config.h>
-#include <Common/timeutil.h>
+#include <Common/util.h>
+#include <Common/datastruct.h>
 
 #include <cassert>
 #include <string.h>
@@ -27,6 +28,10 @@ namespace StarQuant {
 	CMsgq::CMsgq(MSGQ_PROTOCOL protocol, string url) {
 		protocol_ = protocol;
 		url_ = url;
+		logger = SQLogger::getLogger("SYS");
+	}
+
+	IMessenger::IMessenger(){
 		logger = SQLogger::getLogger("SYS");
 	}
 
@@ -81,6 +86,99 @@ namespace StarQuant {
 		}
 	}
 
+	std::mutex CMsgqEMessenger::sendlock_;
+	std::unique_ptr<CMsgq> CMsgqEMessenger::msgq_send_;
+
+	CMsgqEMessenger::CMsgqEMessenger(string name, string url_send)
+	{
+		name_ = name;
+		if (msgq_recv_ == nullptr){
+			msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, url_send);	
+		}		
+	}
+	CMsgqEMessenger::CMsgqEMessenger(string url_send)
+	{
+		if (msgq_recv_ == nullptr){
+			msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, url_send);	
+		}		
+	}
+
+	void CMsgqEMessenger::send(shared_ptr<MsgHeader> Msg,int mode){
+		// string msgout = Msg->destination_ 
+		// 				+ SERIALIZATION_SEPARATOR + Msg->source_
+		// 				+ SERIALIZATION_SEPARATOR + to_string(Msg->msgtype_)
+		// 				+ Msg->serialize();
+		string msgout = Msg->serialize();
+		lock_guard<std::mutex> g(CMsgqEMessenger::sendlock_);
+		CMsgqEMessenger::msgq_send_->sendmsg(msgout,mode);
+	}
+
+	shared_ptr<MsgHeader> CMsgqEMessenger::recv(int mode){
+		string msgin = msgq_recv_->recmsg(mode);
+		if (msgin.empty())
+			return nullptr;
+		LOG_DEBUG(logger, name_ <<" recv msg:"<<msgin);
+		string des;
+		string src;
+		string stype;
+		stringstream ss(msgin);
+		getline(ss,des,SERIALIZATION_SEPARATOR);
+		getline(ss,src,SERIALIZATION_SEPARATOR);
+		getline(ss,stype,SERIALIZATION_SEPARATOR);
+		MSG_TYPE mtype = MSG_TYPE(stoi(stype));
+		std::shared_ptr<MsgHeader> pheader;
+		switch (mtype)
+		{
+			case MSG_TYPE_ORDER:
+				pheader = make_shared<OrderMsg>();
+				pheader->msgtype_ = MSG_TYPE_ORDER;
+				pheader->deserialize(msgin);
+				break;
+			case MSG_TYPE_SUBSCRIBE_MARKET_DATA:
+				pheader = make_shared<SubscribeMsg>(des,src);
+				pheader->deserialize(msgin);
+				break;
+			case MSG_TYPE_UNSUBSCRIBE:
+				pheader = make_shared<UnSubscribeMsg>(des,src);
+				pheader->deserialize(msgin);
+				break;
+			case MSG_TYPE_ORDER_ACTION:
+			case MSG_TYPE_CANCEL_ORDER:	
+				pheader = make_shared<OrderActionMsg>();
+				pheader->deserialize(msgin);
+				break;			
+			default:
+				pheader = make_shared<MsgHeader>(des,src,mtype);
+				break;
+		}
+		return pheader;
+	}
+
+	
+	CMsgqRMessenger::CMsgqRMessenger(string url_recv, string url_send){
+		msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PULL, url_recv);
+		msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, url_send);
+
+	}
+	void CMsgqRMessenger::relay(){
+			string msgpull = msgq_recv_->recmsg(0);
+			if (msgpull.empty())
+				return;
+			// cout<<"recv msg at"<<ymdhmsf6();	
+			if (msgpull[0] == RELAY_DESTINATION){ //特殊标志，表明消息让策略进程收到
+				lock_guard<std::mutex> g(CMsgqEMessenger::sendlock_);
+				CMsgqEMessenger::msgq_send_->sendmsg(msgpull);		//将消息发回，让策略进程收到			
+			}
+			else
+			{
+				msgq_send_->sendmsg(msgpull); //转发消息到各个engine
+			}
+	}
+
+
+
+
+
 	CMsgqNanomsg::~CMsgqNanomsg()
 	{
 		nn_shutdown(sock_, eid_);
@@ -92,7 +190,7 @@ namespace StarQuant {
 		int bytes = nn_send(sock_, msg.c_str(), msg.size() + 1, dontwait);			// TODO: size or size+1
 
 		if (bytes != msg.size()+1){
-			LOG_ERROR(logger,"Nanomsg send msg error, return:"<<bytes);
+			LOG_ERROR(logger,"Nanomsg "<<endpoint_ <<" send msg error, return:"<<bytes);
 			// PRINT_TO_FILE("INFO:[%s,%d][%s]NANOMSG ERROR, %s\n", __FILE__, __LINE__, __FUNCTION__, msg.c_str());
 		}
 	}

@@ -1,9 +1,7 @@
 #ifndef _StarQuant_Trade_Calc_H
 #define _StarQuant_Trade_Calc_H
 
-#include <Common/config.h>
-#include <Trade/position.h>
-#include <Trade/fill.h>
+#include <Common/datastruct.h>
 
 namespace StarQuant {
 	namespace Calc {

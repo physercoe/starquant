@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 #include <Common/logger.h>
-
+#include <Common/datastruct.h>
 #ifdef _WIN32
 #include <nanomsg/src/nn.h>
 #include <nanomsg/src/pubsub.h>
@@ -19,20 +19,25 @@
 using namespace std;
 
 namespace StarQuant {
+	class IMessenger{
+		protected:
+			std::shared_ptr<SQLogger> logger;		
+		public:
+			string name_;
+			IMessenger();
+			virtual ~IMessenger(){};
 
-enum class MSGQ : uint8_t {
-	NANOMSG = 0, ZMQ, KAFKA, WEBSOCKET
-};
+			virtual void send(std::shared_ptr<MsgHeader> pmsg,int mode = 0) = 0;
+			virtual std::shared_ptr<MsgHeader> recv(int mode = 0) =0;
+			virtual void relay() = 0;
+	};
 
-enum class MSGQ_PROTOCOL : uint8_t {
-	PAIR = 0, REQ, REP, PUB, SUB, PUSH,PULL
-};
 
 	class CMsgq {
 	protected:
 		MSGQ_PROTOCOL protocol_;
 		string url_;
-		std::shared_ptr<SQLogger> logger;
+		std::shared_ptr<SQLogger> logger;	
 	public:
 		CMsgq(MSGQ_PROTOCOL protocol, string url);
 		virtual ~CMsgq(){};
@@ -76,6 +81,36 @@ enum class MSGQ_PROTOCOL : uint8_t {
 			static std::unique_ptr<CMsgq> msgq_pub_;
 			MsgCenter();
 			~MsgCenter();
+
+	};
+
+	//  CMsgq Engine messenger, for md and td engine use, send and recv msg using different port
+	class CMsgqEMessenger : public IMessenger {
+		private: 
+			std::unique_ptr<CMsgq> msgq_recv_;
+		public:
+			static mutex sendlock_;
+			static std::unique_ptr<CMsgq> msgq_send_;
+
+			CMsgqEMessenger(string url_recv);
+			CMsgqEMessenger(string name, string url_recv);
+			virtual ~CMsgqEMessenger(){};
+			virtual void send(shared_ptr<MsgHeader> pmsg,int mode = 0) ;
+			virtual shared_ptr<MsgHeader> recv(int mode = 0) ;
+			virtual void relay(){};
+	};
+// nanomsg relay messenger, for trading engine use 
+	class CMsgqRMessenger : public IMessenger {
+		private: 
+			std::unique_ptr<CMsgq> msgq_recv_;
+			std::unique_ptr<CMsgq> msgq_send_;		
+		public:
+			CMsgqRMessenger(string url_recv, string url_send);
+			virtual ~CMsgqRMessenger(){};
+
+			virtual void send(std::shared_ptr<MsgHeader> pmsg,int mode = 0) {};
+			virtual std::shared_ptr<MsgHeader> recv(int mode = 0) {return nullptr;};
+			virtual void relay() ;
 
 	};
 }

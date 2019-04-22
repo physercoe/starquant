@@ -1,6 +1,6 @@
 #include <cmath>
-#include <Common/config.h>
 #include <Trade/calc.h>
+#include <Common/datastruct.h>
 
 using namespace std;
 
@@ -24,14 +24,14 @@ namespace StarQuant {
 
 		double ClosePT(Position& existing, Fill& adjust)
 		{
-			if (existing._size == 0) return 0; // nothing to close
-			if ((existing._size > 0) == (adjust.tradeSize > 0)) return 0; // if we're adding, nothing to close
-			return (existing._size > 0) ? adjust.tradePrice - existing._avgprice : existing._avgprice - adjust.tradePrice;   // if long, sell high = profit; if short, sell low = profit
+			if (existing.size_ == 0) return 0; // nothing to close
+			if ((existing.size_ > 0) == (adjust.tradeSize_ > 0)) return 0; // if we're adding, nothing to close
+			return (existing.size_ > 0) ? adjust.tradePrice_ - existing.avgPrice_ : existing.avgPrice_ - adjust.tradePrice_;   // if long, sell high = profit; if short, sell low = profit
 		}
 
 		double ClosePL(Position& existing, Fill& adjust, int multiplier)
 		{
-			int closedsize = std::abs(adjust.tradeSize) > std::abs(existing._size) ? std::abs(existing._size) : std::abs(adjust.tradeSize);   // choose the smaller one
+			int closedsize = std::abs(adjust.tradeSize_) > std::abs(existing.size_) ? std::abs(existing.size_) : std::abs(adjust.tradeSize_);   // choose the smaller one
 			return ClosePT(existing, adjust) * closedsize * multiplier;
 		}
 	}

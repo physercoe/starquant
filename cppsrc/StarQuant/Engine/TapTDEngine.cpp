@@ -214,11 +214,11 @@ void TapTDEngine::insertOrder(const vector<string>& v) {
 	o->serverOrderId = m_serverOrderId++;
 	o->brokerOrderId = m_brokerOrderId_++;
 	o->createTime = ymdhmsf();	
-	o->orderStatus = OrderStatus::OS_NewBorn;	
+	o->orderStatus_ = OrderStatus::OS_NewBorn;	
 	o->api = v[0];// = name_;	
 	o->source = stoi(v[1]);
 	o->clientId = stoi(v[1]);
-	o->account = v[3];
+	o->account_ = v[3];
 	o->clientOrderId = stoi(v[4]);
 	o->orderType = static_cast<OrderType>(stoi(v[5]));
 	o->fullSymbol = v[6];
@@ -277,7 +277,7 @@ void TapTDEngine::insertOrder(const vector<string>& v) {
 	PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Placing Order : sessionid = %d,serverorderId=%ld, clientorderId=%ld,fullSymbol=%s\n", __FILE__, __LINE__, __FUNCTION__, this->sessionID_,o->serverOrderId, o->clientOrderId,o->fullSymbol.c_str());
 	if (iErr == TAPIERROR_SUCCEED){
 		lock_guard<mutex> g(orderStatus_mtx);
-		o->orderStatus = OrderStatus::OS_Submitted;
+		o->orderStatus_ = OrderStatus::OS_Submitted;
 		string msg = o->serialize() 
 				+ SERIALIZATION_SEPARATOR + ymdhmsf();
 		cout<<"Tap td send orderestatus msg:"<<msg<<endl;
@@ -287,7 +287,7 @@ void TapTDEngine::insertOrder(const vector<string>& v) {
 	else{
 		cout<<"tap insert order error "<<iErr<<endl;
 		lock_guard<mutex> g(orderStatus_mtx);
-		o->orderStatus = OrderStatus::OS_Error;
+		o->orderStatus_ = OrderStatus::OS_Error;
 		string msg = o->serialize() 
 				+ SERIALIZATION_SEPARATOR + ymdhmsf();
 		cout<<"Tap td send orderestatus msg:"<<msg<<endl;
@@ -474,7 +474,7 @@ void TAP_CDECL TapTDEngine::OnRtnOrder( const TapAPIOrderInfoNotice *info ){
 				PRINT_TO_FILE("ERROR:[%s,%d][%s]Tap broker server OnRtnOrder: ErrorID=%d, OrderNo=%s.\n",
 					__FILE__, __LINE__, __FUNCTION__, info->OrderInfo->ErrorCode, info->OrderInfo->OrderNo);
 				lock_guard<mutex> g(orderStatus_mtx);
-				o->orderStatus = OS_Error;
+				o->orderStatus_ = OS_Error;
 				o->orderNo = info->OrderInfo->OrderNo;
 				//o->api = info->OrderInfo->OrderSource;					
 				string msg = o->serialize() 
@@ -490,7 +490,7 @@ void TAP_CDECL TapTDEngine::OnRtnOrder( const TapAPIOrderInfoNotice *info ){
 				PRINT_TO_FILE("INFO:[%s,%d][%s]Tap broker server OnRtnOrder: serverOrderId=%s, LimitPrice=%.2f, VolumeTotalOriginal=%d, Side=%c, Direction=%c.\n",
 					__FILE__, __LINE__, __FUNCTION__, info->OrderInfo->RefString, info->OrderInfo->OrderPrice, info->OrderInfo->OrderQty, info->OrderInfo->OrderSide, info->OrderInfo->PositionEffect);
 				lock_guard<mutex> g(orderStatus_mtx);
-				o->orderStatus = TapOrderStatusToOrderStatus(info->OrderInfo->OrderState);
+				o->orderStatus_ = TapOrderStatusToOrderStatus(info->OrderInfo->OrderState);
 				o->orderNo = info->OrderInfo->OrderNo;
 				//o->api = info->OrderInfo->OrderSource;
 				string msg = o->serialize() 
@@ -508,14 +508,14 @@ void TAP_CDECL TapTDEngine::OnRtnOrder( const TapAPIOrderInfoNotice *info ){
 			std::shared_ptr<Order> o = make_shared<Order>();
 			//o->account = info->OrderInfo->AccountNo;
 			//o->api = info->OrderInfo->OrderSource;;
-			o->account = tapacc_.id;
+			o->account_ = tapacc_.id;
 			o->api = "others";
 			char temp[128] = {};
 			sprintf(temp, "%s %c %s %s", info->OrderInfo->ExchangeNo, info->OrderInfo->CommodityType, info->OrderInfo->CommodityNo,info->OrderInfo->ContractNo);
 			o->fullSymbol = temp;
 			o->serverOrderId = m_serverOrderId;
 			m_serverOrderId++;
-			o->orderStatus = TapOrderStatusToOrderStatus(info->OrderInfo->OrderState);
+			o->orderStatus_ = TapOrderStatusToOrderStatus(info->OrderInfo->OrderState);
 			o->orderFlag = TapPositionEffectToOrderFlag(info->OrderInfo->PositionEffect);
 			o->orderNo = info->OrderInfo->OrderNo;
 			o->orderSize = (info->OrderInfo->OrderSide == TAPI_SIDE_BUY ? 1 : -1) * info->OrderInfo->OrderQty;
@@ -562,7 +562,7 @@ void TAP_CDECL TapTDEngine::OnRtnFill( const TapAPIFillInfo *info ){
 		t.clientOrderId = o->clientOrderId;
 		t.brokerOrderId = o->brokerOrderId;
 		o->fillNo = t.tradeNo;
-		t.account = o->account;
+		t.account_ = o->account_;
 		t.api = o->api;
 		t.source = o->source;
 		OrderManager::instance().gotFill(t);
@@ -575,7 +575,7 @@ void TAP_CDECL TapTDEngine::OnRtnFill( const TapAPIFillInfo *info ){
 	else {
 		PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]fill order id is not tracked. OrderNo= %s\n", __FILE__, __LINE__, __FUNCTION__, info->OrderNo);
 		t.api = "others";
-		t.account = tapacc_.id;
+		t.account_ = tapacc_.id;
 		string msg = t.serialize()
 			+ SERIALIZATION_SEPARATOR + ymdhmsf();
 		cout<<"Tap td send fill msg:"<<msg<<endl;
@@ -600,8 +600,8 @@ void TAP_CDECL TapTDEngine::OnRtnClose( const TapAPICloseInfo *info ){
 	pos._size = (info->CloseSide == TAPI_SIDE_BUY ? 1 : -1) * info->CloseQty;
 	pos._avgprice = info->ClosePrice;
 	pos._closedpl = info->CloseProfit;
-	//pos._account = info->AccountNo;
-	pos._account = tapacc_.id;
+	//pos.account_ = info->AccountNo;
+	pos.account_ = tapacc_.id;
 	pos._openorderNo = info->OpenMatchNo;
 	pos._closeorderNo = info->CloseMatchNo;
 	auto oo = OrderManager::instance().retrieveOrderFromMatchNo(info->OpenMatchNo);
@@ -625,7 +625,7 @@ void TAP_CDECL TapTDEngine::OnRtnClose( const TapAPICloseInfo *info ){
 			+ SERIALIZATION_SEPARATOR + name_  //source
 			+ SERIALIZATION_SEPARATOR + to_string(MSG_TYPE::MSG_TYPE_RSP_POS)
 			+ SERIALIZATION_SEPARATOR + pos._type
-			+ SERIALIZATION_SEPARATOR + pos._account
+			+ SERIALIZATION_SEPARATOR + pos.account_
 			+ SERIALIZATION_SEPARATOR + pos._posNo
 			+ SERIALIZATION_SEPARATOR + pos._openorderNo
 			+ SERIALIZATION_SEPARATOR + pos._openapi
@@ -663,7 +663,7 @@ void TAP_CDECL TapTDEngine::OnRtnPosition( const TapAPIPositionInfo *info ){
 	pos._size = (info->MatchSide == TAPI_SIDE_BUY ? 1 : -1) * info->PositionQty;
 	pos._avgprice = info->PositionPrice;
 	pos._openpl = info->PositionProfit;
-	pos._account = tapacc_.id;
+	pos.account_ = tapacc_.id;
 	pos._openorderNo = info->OrderNo;
 	auto oo = OrderManager::instance().retrieveOrderFromMatchNo(info->MatchNo);
 	if (oo != nullptr) {
@@ -679,7 +679,7 @@ void TAP_CDECL TapTDEngine::OnRtnPosition( const TapAPIPositionInfo *info ){
 			+ SERIALIZATION_SEPARATOR + name_  //source
 			+ SERIALIZATION_SEPARATOR + to_string(MSG_TYPE::MSG_TYPE_RSP_POS)
 			+ SERIALIZATION_SEPARATOR + pos._type
-			+ SERIALIZATION_SEPARATOR + pos._account
+			+ SERIALIZATION_SEPARATOR + pos.account_
 			+ SERIALIZATION_SEPARATOR + pos._posNo
 			+ SERIALIZATION_SEPARATOR + pos._openorderNo
 			+ SERIALIZATION_SEPARATOR + pos._openapi
@@ -715,7 +715,7 @@ void TAP_CDECL TapTDEngine::OnRtnPositionProfit( const TapAPIPositionProfitNotic
 		+ SERIALIZATION_SEPARATOR + name_  //source
 		+ SERIALIZATION_SEPARATOR + to_string(MSG_TYPE::MSG_TYPE_RSP_POS)
 		+ SERIALIZATION_SEPARATOR + pos._type
-		+ SERIALIZATION_SEPARATOR + pos._account
+		+ SERIALIZATION_SEPARATOR + pos.account_
 		+ SERIALIZATION_SEPARATOR + pos._posNo
 		+ SERIALIZATION_SEPARATOR + pos._openorderNo
 		+ SERIALIZATION_SEPARATOR + pos._openapi
@@ -863,7 +863,7 @@ void TAP_CDECL TapTDEngine::OnRspQryPosition( TAPIUINT32 sessionID, TAPIINT32 er
 	pos._size = (info->MatchSide == TAPI_SIDE_BUY ? 1 : -1) * info->PositionQty;
 	pos._avgprice = info->PositionPrice;
 	pos._openpl = info->PositionProfit;
-	pos._account = tapacc_.id;
+	pos.account_ = tapacc_.id;
 	pos._openorderNo = info->OrderNo;
 	auto oo = OrderManager::instance().retrieveOrderFromMatchNo(info->MatchNo);
 	if (oo != nullptr) {
@@ -878,7 +878,7 @@ void TAP_CDECL TapTDEngine::OnRspQryPosition( TAPIUINT32 sessionID, TAPIINT32 er
 			+ SERIALIZATION_SEPARATOR + name_  //source
 			+ SERIALIZATION_SEPARATOR + to_string(MSG_TYPE::MSG_TYPE_RSP_POS)
 			+ SERIALIZATION_SEPARATOR + pos._type
-			+ SERIALIZATION_SEPARATOR + pos._account
+			+ SERIALIZATION_SEPARATOR + pos.account_
 			+ SERIALIZATION_SEPARATOR + pos._posNo
 			+ SERIALIZATION_SEPARATOR + pos._openorderNo
 			+ SERIALIZATION_SEPARATOR + pos._openapi

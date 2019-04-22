@@ -8,12 +8,8 @@
 #include <regex>
 #include <atomic>
 #include <map>
-#include <Common/config.h>
-#include <Trade/accountinfo.h>
-#include <Trade/position.h>
-#include <Trade/orderstatus.h>
-#include <Trade/order.h>
-#include <Common/logger.h>
+#include <Common/datastruct.h>
+
 
 using namespace std;
 
@@ -27,16 +23,16 @@ namespace StarQuant {
 		static PortfolioManager& instance();
 		//atomic<uint64_t> _count = { 0 };
 		uint64_t _count = 0;
-		AccountInfo _account;
+		AccountInfo account_;
 		map<string, AccountInfo> accinfomap_;
-		map<string, Position> _positions;			// fullsymbol --> size
-		double _cash;
+		map<string, Position> positions_;			// fullsymbol --> size
+		double cash_;
 
 		void reset();
 		void rebuild();
 
-		void Add(Position& pos);
-		double Adjust(Fill& fill);
+		void Add(const Position& pos);
+		double Adjust(const Fill& fill);
 	};
 }
 

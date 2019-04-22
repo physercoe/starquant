@@ -1,30 +1,23 @@
 include_directories(${StarQuantCpp_SOURCE_DIR}/StarQuant)
 set(StarQuantCppSrc
-  ./Common/msgq.cpp
-  ./Common/consolecontrolhandler.cpp
-  ./Common/timeutil.cpp
-  ./Common/getRealTime.cpp
+  ./Common/datastruct.cpp
+  ./Common/util.cpp
   ./Common/heartbeat.cpp
   ./Common/logger.cpp
   ./Common/config.cpp
-  ./Common/util.cpp
+  ./Common/msgq.cpp
   ./Data/datamanager.cpp
-  ./Data/tick.cpp
-  ./Data/barseries.cpp
-  ./Data/bar.cpp
   ./Trade/calc.cpp
   ./Trade/marginmanager.cpp
   ./Trade/riskmanager.cpp
   ./Trade/ordermanager.cpp
-  ./Trade/orderstatus.cpp
   ./Trade/portfoliomanager.cpp
-  ./Trade/position.cpp
   ./Engine/IEngine.cpp
   ./Engine/CtpMDEngine.cpp
   ./Engine/CtpTDEngine.cpp
-  ./Engine/TapMDEngine.cpp
-  ./Engine/TapTDEngine.cpp
-  ./Engine/PaperTDEngine.cpp
+ # ./Engine/TapMDEngine.cpp
+ # ./Engine/TapTDEngine.cpp
+ # ./Engine/PaperTDEngine.cpp
   ./Services/dataservice.cpp
   ./Services/starquant_.cpp
   ./Services/tradingengine.cpp

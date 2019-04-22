@@ -4,14 +4,14 @@
 #include <condition_variable>
 #include <mutex>
 #include <Common/config.h>
-#include <Common/timeutil.h>
-#include <Common/getRealTime.h>
 #include <Common/util.h>
+#include <Common/datastruct.h>
+
 #include <APIs/Ctp/ThostFtdcUserApiDataType.h>
 #include <APIs/Ctp/ThostFtdcUserApiStruct.h>
 #include <APIs/Tap/TapQuoteAPIDataType.h>
 #include <APIs/Tap/TapAPICommDef.h>
-#include <Data/tick.h>
+
 #include <bson.h>
 #include <bson/bcon.h>
 #include <mongoc.h>
@@ -161,8 +161,8 @@ namespace StarQuant
 			}
 		}
 
-		void insertdb(const Tick_L1& k){
-			vector<string> fullsym = stringsplit(k.fullsymbol_, ' ');
+		void insertdb(const Tick& k){
+			vector<string> fullsym = stringsplit(k.fullSymbol_, ' ');
 			string  collectionname = fullsym[2]; 
 			mongoc_client_t     *client = mongoc_client_pool_pop(pool);
 			mongoc_collection_t *collection = mongoc_client_get_collection (client, "findata", collectionname.c_str());
@@ -172,11 +172,11 @@ namespace StarQuant
 			BSON_APPEND_DATE_TIME(doc, "datetime", string2unixtimems(k.time_)+8*3600000);
 			BSON_APPEND_DOUBLE(doc, "price", k.price_);
 			BSON_APPEND_INT32(doc, "size", k.size_);
-			BSON_APPEND_DOUBLE(doc, "bidprice1", k.bidprice_L1_);
-			BSON_APPEND_INT32(doc, "bidsize1", k.bidsize_L1_);
-			BSON_APPEND_DOUBLE(doc, "askprice1", k.askprice_L1_);
-			BSON_APPEND_INT32(doc, "asksize1", k.asksize_L1_);
-			BSON_APPEND_INT32(doc, "openinterest", k.open_interest);
+			BSON_APPEND_DOUBLE(doc, "bidprice1", k.bidPrice_[0]);
+			BSON_APPEND_INT32(doc, "bidsize1", k.bidSize_[0]);
+			BSON_APPEND_DOUBLE(doc, "askprice1", k.askPrice_[0]);
+			BSON_APPEND_INT32(doc, "asksize1", k.askSize_[0]);
+			BSON_APPEND_INT32(doc, "openinterest", k.openInterest_);
 			BSON_APPEND_INT32(doc, "dominant", 0);
 			//BSON_APPEND_DOUBLE(doc, "upperLimit", k.upper_limit_price_);
 			//BSON_APPEND_DOUBLE(doc, "lowerLimit", k.lower_limit_price_);

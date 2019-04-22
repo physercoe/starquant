@@ -48,7 +48,7 @@ namespace StarQuant {
 		lock_guard<mutex> g(oid_mtx);
 
 		o->createTime = time(nullptr);
-		o->orderStatus = OrderStatus::OS_NewBorn;
+		o->orderStatus_ = OrderStatus::OS_NewBorn;
 		o->clientOrderId = m_orderId;
 		//o->serverOrderId= m_serverOrderId;
 		// increase order id

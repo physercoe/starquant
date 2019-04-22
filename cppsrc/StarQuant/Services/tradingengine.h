@@ -3,10 +3,8 @@
 
 #include <thread>
 #include <memory>
-#include <Common/config.h>
+#include <Common/datastruct.h>
 #include <Engine/IEngine.h>
-#include <Engine/CtpMDEngine.h>
-#include <Engine/CtpTDEngine.h>
 using namespace std;
 
 namespace StarQuant
@@ -28,8 +26,9 @@ namespace StarQuant
 		// CtpTDEngine ctptdengine;
 		// TapMDEngine tapmdengine;  
 		// TapTDEngine taptdengine;
-		std::unique_ptr<CMsgq> msg_pull_;
-		std::shared_ptr<CMsgq> msg_pub_;
+		// std::unique_ptr<CMsgq> msg_pull_;
+		// std::shared_ptr<CMsgq> msg_pub_;
+		std::unique_ptr<IMessenger> msg_relay_;
 		std::shared_ptr<SQLogger> logger;
 	public:
 

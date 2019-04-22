@@ -1,5 +1,5 @@
 #include <Trade/portfoliomanager.h>
-
+#include <Common/datastruct.h>
 namespace StarQuant {
 	PortfolioManager* PortfolioManager::pinstance_ = nullptr;
 	mutex PortfolioManager::instancelock_;
@@ -7,7 +7,7 @@ namespace StarQuant {
 	PortfolioManager::~PortfolioManager()
 	{
 		// release all the positions
-		/*for (auto&& p : _positions) {
+		/*for (auto&& p : positions_) {
 			if (p.second != nullptr) delete p.second;
 		}*/
 	}
@@ -27,11 +27,11 @@ namespace StarQuant {
 	}
 
 	void PortfolioManager::reset() {
-		/*for (auto&& p : _positions) {
+		/*for (auto&& p : positions_) {
 			if (p.second != nullptr) delete p.second;
 		}*/
 
-		_positions.clear();
+		positions_.clear();
 		_count = 0;
 	}
 
@@ -39,27 +39,28 @@ namespace StarQuant {
 		reset();
 	}
 
-	void PortfolioManager::Add(Position& pos) {
-		auto it = _positions.find(pos._fullsymbol);
-		if (it == _positions.end()) {
-			_positions.insert(std::pair<string, Position>(pos._fullsymbol, pos));
+	void PortfolioManager::Add(const Position& pos) {
+		auto it = positions_.find(pos.fullSymbol_);
+		if (it == positions_.end()) {
+			positions_.insert(std::pair<string, Position>(pos.fullSymbol_, pos));
 		}
 		else {
-			_positions[pos._fullsymbol] = pos;
+			positions_[pos.fullSymbol_] = pos;
 		}
 	}
 
-	double PortfolioManager::Adjust(Fill& fill) {
-		auto it = _positions.find(fill.fullSymbol);
-		if (it == _positions.end()) {
+	double PortfolioManager::Adjust(const Fill& fill) {
+		auto it = positions_.find(fill.fullSymbol_);
+		if (it == positions_.end()) {
 			Position pos;
-			pos._fullsymbol = fill.fullSymbol;
-			pos._size = 0;
-			pos._avgprice = 0;
-			_positions.insert(std::pair<string, Position>(fill.fullSymbol, pos));
+			pos.fullSymbol_ = fill.fullSymbol_;
+			pos.size_ = 0;
+			pos.avgPrice_ = 0;
+			positions_.insert(std::pair<string, Position>(fill.fullSymbol_, pos));
 
 		}
 
-		return _positions[fill.fullSymbol].Adjust(fill);
+		// return positions_[fill.fullSymbol_].Adjust(fill);TODO: add adjust
+		return 1.0;
 	}
 }

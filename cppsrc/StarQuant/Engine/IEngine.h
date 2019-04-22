@@ -23,11 +23,13 @@ enum EState :int {
 // Interface class: base engine for td and md engine
 class IEngine {	    	
 public:
-    static mutex sendlock_;  // msg send lock_
-    static std::unique_ptr<CMsgq> msgq_send_;  //for md and td messenge to client, all engine share same msgq, usually publish mode
+    // static mutex sendlock_;  // msg send lock_
+    // static std::unique_ptr<CMsgq> msgq_send_;  //for md and td messenge to client, all engine share same msgq, usually publish mode
 
-    std::unique_ptr<CMsgq> msgq_recv_;  //each engine has its own msgq, usually subscribe mode
+    // std::unique_ptr<CMsgq> msgq_recv_;  //each engine has its own msgq, usually subscribe mode
     std::atomic<EState> estate_;
+    std::unique_ptr<IMessenger> messenger_;
+
     IEngine();
     virtual ~IEngine();
 

@@ -2,7 +2,7 @@
 #define _StarQuant_Engine_CtpMDEngine_H_
 
 #include <mutex>
-#include <Common/config.h>
+#include <Common/datastruct.h>
 #include <Engine/IEngine.h>
 #include <APIs/Ctp/ThostFtdcMdApi.h>
 
@@ -26,8 +26,8 @@ namespace StarQuant
 		virtual bool connect() ;
 		virtual bool disconnect() ;
 		
-		void subscribe(const string& symbol) ;
-		void unsubscribe(const string& symbol) ;		
+		void subscribe(const vector<string>& symbols) ;
+		void unsubscribe(const vector<string>& symbols) ;		
 
 	public:
 		virtual void OnFrontConnected();

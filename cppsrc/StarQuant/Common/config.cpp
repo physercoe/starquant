@@ -5,8 +5,10 @@
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <cctype>
+
 #include <Common/config.h>
 #include <Common/util.h>
+#include <Common/datastruct.h>
 #include <yaml-cpp/yaml.h>
 
 namespace bpt = boost::property_tree;
@@ -82,7 +84,7 @@ namespace StarQuant {
 		boost::filesystem::create_directory(data_path);
 		logconfigfile_ = boost::filesystem::current_path().string() + "/etc/config_log";
 		// const string msgq = config["msgq"].as<std::string>();
-		_msgq = MSGQ::NANOMSG;
+		// _msgq = MSGQ::NANOMSG;
 		cpuaffinity = config["cpuaffinity"].as<bool>();
 		_mongodbaddr = config["dbaddr"].as<std::string>();
 		_mongodbname = config["dbname"].as<std::string>();

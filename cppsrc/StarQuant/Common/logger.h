@@ -9,16 +9,31 @@
 #include <log4cplus/logger.h>
 #include <log4cplus/loggingmacros.h>
 
+#include <Common/util.h>
+
 #define LOG_FATAL(sqLogger, content) LOG4CPLUS_FATAL(sqLogger->getLogger(), content)
 #define LOG_ERROR(sqLogger, content) LOG4CPLUS_ERROR(sqLogger->getLogger(), content)
 #define LOG_INFO(sqLogger, content) LOG4CPLUS_INFO(sqLogger->getLogger(), content)
 #define LOG_DEBUG(sqLogger, content) LOG4CPLUS_DEBUG(sqLogger->getLogger(), content)
+
+
 
 using std::string;
 using std::mutex;
 
 namespace StarQuant
 {
+
+#define PRINT_TO_FILE logger::instance().Printf2File
+#define PRINT_TO__CONSOLE(...) do{\
+printf("%s ",ymdhmsf().c_str());printf(__VA_ARGS__);\
+}while (0)
+#define PRINT_TO_FILE_AND_CONSOLE(...) do{\
+logger::instance().Printf2File(__VA_ARGS__);\
+printf("%s ",ymdhmsf().c_str());printf(__VA_ARGS__);\
+}while (0)
+
+
 	class logger {
 		static logger* pinstance_;
 		static mutex instancelock_;

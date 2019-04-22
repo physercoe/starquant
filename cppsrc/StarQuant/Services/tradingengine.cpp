@@ -6,6 +6,7 @@
 #include <pthread.h> 
 
 #include <Services/tradingengine.h>
+#include <Common/datastruct.h>
 #include <Common/config.h>
 #include <Common/util.h>
 #include <Common/logger.h>
@@ -13,9 +14,9 @@
 #include <Engine/IEngine.h>
 #include <Engine/CtpMDEngine.h>
 #include <Engine/CtpTDEngine.h>
-#include <Engine/TapMDEngine.h>
-#include <Engine/TapTDEngine.h>
-#include <Engine/PaperTDEngine.h>
+// #include <Engine/TapMDEngine.h>
+// #include <Engine/TapTDEngine.h>
+// #include <Engine/PaperTDEngine.h>
 #include <Trade/ordermanager.h>
 #include <Trade/portfoliomanager.h>
 //#include <Services/Strategy/strategyservice.h>
@@ -41,14 +42,19 @@ namespace StarQuant
 		if(logger == nullptr){
 			logger = SQLogger::getLogger("SYS");
 		}
-		if (IEngine::msgq_send_ == nullptr){
-			IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
-		}
+		// if (IEngine::msgq_send_ == nullptr){
+		// 	IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
+		// }
+		if (CMsgqEMessenger::msgq_send_ == nullptr){
+		 	CMsgqEMessenger::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
+		}		
 		LOG_DEBUG(logger,CConfig::instance().SERVERPULL_URL);
-		msg_pull_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PULL, CConfig::instance().SERVERPULL_URL);
-		msg_pub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERSUB_URL);
+
+		//msg_pull_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PULL, CConfig::instance().SERVERPULL_URL);
+		//msg_pub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERSUB_URL);
 		//client_msg_pair_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PAIR, CConfig::instance().API_PORT);
 		//md_msg_pub_=  std::make_shared<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().API_ZMQ_DATA_PORT,false);
+		msg_relay_ = std::make_unique<CMsgqRMessenger>(CConfig::instance().SERVERPULL_URL,CConfig::instance().SERVERSUB_URL);
 	}
 
 	tradingengine::~tradingengine() {		
@@ -99,19 +105,19 @@ namespace StarQuant
 					pengines_.push_back(ctptdengine);
 				}
 				if (CConfig::instance()._loadapi["TAP"]){
-					std::shared_ptr<IEngine> tapmdengine = make_shared<TapMDEngine>();
-					std::shared_ptr<IEngine> taptdengine = make_shared<TapTDEngine>();
-					threads_.push_back(new std::thread(startengine,tapmdengine));
-					threads_.push_back(new std::thread(startengine,taptdengine));
-					pengines_.push_back(tapmdengine);
-					pengines_.push_back(taptdengine);		
+					// std::shared_ptr<IEngine> tapmdengine = make_shared<TapMDEngine>();
+					// std::shared_ptr<IEngine> taptdengine = make_shared<TapTDEngine>();
+					// threads_.push_back(new std::thread(startengine,tapmdengine));
+					// threads_.push_back(new std::thread(startengine,taptdengine));
+					// pengines_.push_back(tapmdengine);
+					// pengines_.push_back(taptdengine);		
 				}
 				if (CConfig::instance()._loadapi["XTP"]){
 				}
 				if (CConfig::instance()._loadapi["PAPER"]){
-					std::shared_ptr<IEngine> papertdengine = make_shared<PaperTDEngine>();
-					threads_.push_back(new std::thread(startengine,papertdengine));
-					pengines_.push_back(papertdengine);
+					// std::shared_ptr<IEngine> papertdengine = make_shared<PaperTDEngine>();
+					// threads_.push_back(new std::thread(startengine,papertdengine));
+					// pengines_.push_back(papertdengine);
 				}				
 			}
 			else {
@@ -143,18 +149,19 @@ namespace StarQuant
 	
 
 			while(!gShutdown){
-				string msgpull = msg_pull_->recmsg(0);
-				if (msgpull.empty())
-					continue;
-				// cout<<"recv msg at"<<ymdhmsf6();	
-				if (msgpull[0] == '.'){ //特殊标志，表明消息让策略进程收到
-					lock_guard<std::mutex> g(IEngine::sendlock_);
-					IEngine::msgq_send_->sendmsg(msgpull);		//将消息发回，让策略进程收到			
-				}
-				else
-				{
-					msg_pub_->sendmsg(msgpull); //转发消息到各个engine
-				}
+				// string msgpull = msg_pull_->recmsg(0);
+				// if (msgpull.empty())
+				// 	continue;
+				// // cout<<"recv msg at"<<ymdhmsf6();	
+				// if (msgpull[0] == '.'){ //特殊标志，表明消息让策略进程收到
+				// 	lock_guard<std::mutex> g(IEngine::sendlock_);
+				// 	IEngine::msgq_send_->sendmsg(msgpull);		//将消息发回，让策略进程收到			
+				// }
+				// else
+				// {
+				// 	msg_pub_->sendmsg(msgpull); //转发消息到各个engine
+				// }
+				msg_relay_->relay();
 			}
 
 			fu1.get(); 
