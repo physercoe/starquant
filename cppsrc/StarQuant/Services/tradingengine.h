@@ -1,6 +1,7 @@
 #ifndef _StarQuant_Engine_TradingEngine_H_
 #define _StarQuant_Engine_TradingEngine_H_
 
+#include <atomic>
 #include <thread>
 #include <memory>
 #include <Common/datastruct.h>
@@ -10,30 +11,28 @@ using namespace std;
 namespace StarQuant
 {
 	void startengine(shared_ptr<IEngine> pe);
-
+	extern std::atomic<bool> gShutdown;
 	class DLL_EXPORT_IMPORT tradingengine {
 		RUN_MODE mode = RUN_MODE::TRADE_MODE; //RUN_MODE::REPLAY_MODE;
-//		RUN_MODE mode = RUN_MODE::RECORD_MODE; //RUN_MODE::REPLAY_MODE;
 		BROKERS _broker = BROKERS::PAPER;
 		vector<std::thread*> threads_;
-		//thread* tmd;
-		//thread* ttd;
 		vector<std::shared_ptr<IEngine>> pengines_; 
-		//std::shared_ptr<IEngine> ctpmdengine;
-		//std::shared_ptr<IEngine> ctptdengine;
-		//CtpTDEngine ctptdengine;
-		// CtpMDEngine ctpmdengine;  
-		// CtpTDEngine ctptdengine;
-		// TapMDEngine tapmdengine;  
-		// TapTDEngine taptdengine;
-		// std::unique_ptr<CMsgq> msg_pull_;
-		// std::shared_ptr<CMsgq> msg_pub_;
 		std::unique_ptr<IMessenger> msg_relay_;
 		std::shared_ptr<SQLogger> logger;
+
 	public:
+
+
+		static void ConsoleControlHandler(int sig);
+		//std::atomic<bool>* setconsolecontrolhandler(void);
+		//setconsolecontrolhandler(void)
+		int check_gshutdown(bool force = true);
 
 		int run();
 		bool live() const;
+
+
+
 
 		tradingengine();
 		~tradingengine();

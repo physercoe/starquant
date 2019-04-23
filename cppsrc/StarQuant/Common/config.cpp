@@ -109,6 +109,7 @@ namespace StarQuant {
 			acc.auth_code = config[s]["auth_code"].as<std::string>();
 			acc.productinfo = config[s]["user_prod_info"].as<std::string>();
 			acc.intid = config[s]["intid"].as<int>();
+			acc.appid = config[s]["appid"].as<std::string>();
 			_apimap[s] = acc;
 		}
 	}

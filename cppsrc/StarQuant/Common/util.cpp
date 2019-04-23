@@ -23,55 +23,55 @@ namespace StarQuant {
 
 //console related 
 
-	std::atomic<bool> gShutdown{ false };
+	// std::atomic<bool> gShutdown{ false };
 
-#if defined(_WIN64) || defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <stdio.h>
-	BOOL CtrlHandler(DWORD fdwCtrlType) {
-		switch (fdwCtrlType) {
-			case CTRL_C_EVENT:
-			case CTRL_CLOSE_EVENT:
-				PRINT_SHUTDOWN_MESSAGE;
-				gShutdown = true;
-				return(TRUE);
+// #if defined(_WIN64) || defined(_WIN32)
+// #define WIN32_LEAN_AND_MEAN
+// #include <windows.h>
+// #include <stdio.h>
+// 	BOOL CtrlHandler(DWORD fdwCtrlType) {
+// 		switch (fdwCtrlType) {
+// 			case CTRL_C_EVENT:
+// 			case CTRL_CLOSE_EVENT:
+// 				PRINT_SHUTDOWN_MESSAGE;
+// 				gShutdown = true;
+// 				return(TRUE);
 
-			case CTRL_BREAK_EVENT:
-			case CTRL_LOGOFF_EVENT:
-			case CTRL_SHUTDOWN_EVENT:
-				PRINT_SHUTDOWN_MESSAGE;
-				gShutdown = true;
-				return FALSE;
+// 			case CTRL_BREAK_EVENT:
+// 			case CTRL_LOGOFF_EVENT:
+// 			case CTRL_SHUTDOWN_EVENT:
+// 				PRINT_SHUTDOWN_MESSAGE;
+// 				gShutdown = true;
+// 				return FALSE;
 
-			default:
-				return FALSE;
-		}
-	}
+// 			default:
+// 				return FALSE;
+// 		}
+// 	}
 
-	std::atomic<bool>* setconsolecontrolhandler(void) {
-		bool b = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE);
-		if (!b) {
-			printf("\nERROR: Could not set control handler");
-		}
-		return &gShutdown;
-	}
+// 	std::atomic<bool>* setconsolecontrolhandler(void) {
+// 		bool b = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE);
+// 		if (!b) {
+// 			printf("\nERROR: Could not set control handler");
+// 		}
+// 		return &gShutdown;
+// 	}
 
-#elif defined(__linux__)
-#include <signal.h>
-	void ConsoleControlHandler(int sig) {
-		gShutdown = true;
-		PRINT_SHUTDOWN_MESSAGE;
-		//throw runtime_error("crl c");
-	}
+// #elif defined(__linux__)
+// #include <signal.h>
+// 	void ConsoleControlHandler(int sig) {
+// 		gShutdown = true;
+// 		PRINT_SHUTDOWN_MESSAGE;
+// 		//throw runtime_error("crl c");
+// 	}
 
-	std::atomic<bool>* setconsolecontrolhandler(void) {
-		signal(SIGINT, ConsoleControlHandler);
-		signal(SIGPWR, ConsoleControlHandler);
-		return &gShutdown;
-	}
+// 	std::atomic<bool>* setconsolecontrolhandler(void) {
+// 		signal(SIGINT, ConsoleControlHandler);
+// 		signal(SIGPWR, ConsoleControlHandler);
+// 		return &gShutdown;
+// 	}
 
-#endif
+// #endif
 
 
 
@@ -103,17 +103,17 @@ namespace StarQuant {
 			str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 	}
 
-	int check_gshutdown(bool force) {
-		atomic_bool* g = setconsolecontrolhandler();
-		while (!*g) {
-			msleep(1 * 1000);
-		}
-		// ctrl-c
-		if (force) {
-			throw runtime_error("Throw an exception to trigger shutdown");
-		}
-		return 0;
-	}
+	// int check_gshutdown(bool force) {
+	// 	atomic_bool* g = setconsolecontrolhandler();
+	// 	while (!*g) {
+	// 		msleep(1 * 1000);
+	// 	}
+	// 	// ctrl-c
+	// 	if (force) {
+	// 		throw runtime_error("Throw an exception to trigger shutdown");
+	// 	}
+	// 	return 0;
+	// }
 
 	string UTF8ToGBK(const std::string & strUTF8) {
 		string stroutGBK = "";

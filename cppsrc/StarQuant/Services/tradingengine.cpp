@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 #include <pthread.h> 
+#include <signal.h>
+#include <functional>
 
 #include <Services/tradingengine.h>
 #include <Common/datastruct.h>
@@ -16,7 +18,7 @@
 #include <Engine/CtpTDEngine.h>
 // #include <Engine/TapMDEngine.h>
 // #include <Engine/TapTDEngine.h>
-// #include <Engine/PaperTDEngine.h>
+#include <Engine/PaperTDEngine.h>
 #include <Trade/ordermanager.h>
 #include <Trade/portfoliomanager.h>
 //#include <Services/Strategy/strategyservice.h>
@@ -26,8 +28,15 @@
 
 namespace StarQuant
 {
-	extern std::atomic<bool> gShutdown;
+	//std::atomic<bool> gShutdown{ false };
+
+	// extern std::atomic<bool> gShutdown;
+
+
+
 	extern atomic<uint64_t> MICRO_SERVICE_NUMBER;
+	std::atomic<bool> gShutdown = false;
+
 
 	void startengine(shared_ptr<IEngine> pe){
 		pe->start();
@@ -78,11 +87,39 @@ namespace StarQuant
 		LOG_DEBUG(logger,"Exit trading engine");		
 	}
 
+	void tradingengine::ConsoleControlHandler(int sig) {
+		gShutdown = true;
+		PRINT_SHUTDOWN_MESSAGE;
+		//throw runtime_error("crl c");
+	}
+
+	// std::atomic<bool>* tradingengine::setconsolecontrolhandler(void) {
+	// 	signal(SIGINT, ConsoleControlHandler);
+	// 	signal(SIGPWR, ConsoleControlHandler);
+	// 	return &gShutdown;
+	// }
+
+	int tradingengine::check_gshutdown(bool force) {		
+		signal(SIGINT, tradingengine::ConsoleControlHandler);
+		signal(SIGPWR, tradingengine::ConsoleControlHandler);
+		//atomic_bool* g = setconsolecontrolhandler();
+		while (!gShutdown) {
+			msleep(1 * 1000);
+		}
+		// ctrl-c
+		if (force) {
+			throw runtime_error("Throw an exception to trigger shutdown");
+		}
+		return 0;
+	}
+
+
+
 	int tradingengine::run() {
 		if (gShutdown)
 			return 1;
 		try {
-			auto fu1 = async(launch::async, check_gshutdown, true);
+			auto fu1 = async(launch::async, std::bind(&tradingengine::check_gshutdown,this,std::placeholders::_1), true);
 			if (mode == RUN_MODE::RECORD_MODE) {
 				LOG_INFO(logger,"RECORD_MODE");
 				//threads_.push_back(new thread(TickRecordingService));
@@ -115,9 +152,9 @@ namespace StarQuant
 				if (CConfig::instance()._loadapi["XTP"]){
 				}
 				if (CConfig::instance()._loadapi["PAPER"]){
-					// std::shared_ptr<IEngine> papertdengine = make_shared<PaperTDEngine>();
-					// threads_.push_back(new std::thread(startengine,papertdengine));
-					// pengines_.push_back(papertdengine);
+					std::shared_ptr<IEngine> papertdengine = make_shared<PaperTDEngine>();
+					threads_.push_back(new std::thread(startengine,papertdengine));
+					pengines_.push_back(papertdengine);
 				}				
 			}
 			else {
@@ -146,21 +183,7 @@ namespace StarQuant
 						std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
 				}	
 			}
-	
-
 			while(!gShutdown){
-				// string msgpull = msg_pull_->recmsg(0);
-				// if (msgpull.empty())
-				// 	continue;
-				// // cout<<"recv msg at"<<ymdhmsf6();	
-				// if (msgpull[0] == '.'){ //特殊标志，表明消息让策略进程收到
-				// 	lock_guard<std::mutex> g(IEngine::sendlock_);
-				// 	IEngine::msgq_send_->sendmsg(msgpull);		//将消息发回，让策略进程收到			
-				// }
-				// else
-				// {
-				// 	msg_pub_->sendmsg(msgpull); //转发消息到各个engine
-				// }
 				msg_relay_->relay();
 			}
 
@@ -181,4 +204,12 @@ namespace StarQuant
 	bool tradingengine::live() const {
 		return gShutdown == true;
 	}
+
+
+
+
+
+
+
+
 }

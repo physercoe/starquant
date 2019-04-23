@@ -160,10 +160,10 @@ namespace StarQuant
 					msleep(100);
 					break;
 				case EState::CONNECT_ACK:
-					LOG_INFO(logger,"Ctp Md logining ...");
-					strcpy(loginField.BrokerID, ctpacc_.brokerid.c_str());
-					strcpy(loginField.UserID, ctpacc_.userid.c_str());
-					strcpy(loginField.Password, ctpacc_.password.c_str());
+					LOG_INFO(logger,"Ctp Md logining ...");//行情目前不需要认证
+					// strcpy(loginField.BrokerID, ctpacc_.brokerid.c_str());
+					// strcpy(loginField.UserID, ctpacc_.userid.c_str());
+					// strcpy(loginField.Password, ctpacc_.password.c_str());
 					///用户登录请求
 					error = this->api_->ReqUserLogin(&loginField, loginReqId_);	
 					count++;
@@ -194,8 +194,8 @@ namespace StarQuant
 		if (estate_ == LOGIN_ACK){
 			LOG_INFO(logger,"Ctp md logouting ..");
 			CThostFtdcUserLogoutField logoutField = CThostFtdcUserLogoutField();
-			strcpy(logoutField.BrokerID, ctpacc_.brokerid.c_str());
-			strcpy(logoutField.UserID, ctpacc_.userid.c_str());
+			// strcpy(logoutField.BrokerID, ctpacc_.brokerid.c_str());
+			// strcpy(logoutField.UserID, ctpacc_.userid.c_str());
 			int error = this->api_->ReqUserLogout(&logoutField, loginReqId_);
 			estate_ = EState::LOGOUTING;
 			if (error != 0){

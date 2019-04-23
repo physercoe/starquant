@@ -271,6 +271,7 @@ enum MSG_TYPE : int32_t {
 		string td_ip;
 		uint16_t td_port;
 		string apitype;
+        string appid;
 	};
 
 class MsgHeader{

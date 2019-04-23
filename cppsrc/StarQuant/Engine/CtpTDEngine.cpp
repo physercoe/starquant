@@ -39,9 +39,6 @@ namespace StarQuant
 	}
 
 	void CtpTDEngine::init(){
-		// if (IEngine::msgq_send_ == nullptr){
-		// 	IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
-		// }
 		name_ = "CTP_TD";
 		if(logger == nullptr){
 			logger = SQLogger::getLogger("TDEngine.CTP");
@@ -70,7 +67,7 @@ namespace StarQuant
 		this->api_->RegisterFront((char*)ctp_td_address.c_str());
 		this->api_->Init();
 		estate_ = CONNECTING;
-		LOG_DEBUG(logger,"CTP TD inited");
+		LOG_DEBUG(logger,"CTP TD inited, api version:"<<this->api_->GetApiVersion());
 	}
 	void CtpTDEngine::stop(){
 		int tmp = disconnect();
@@ -193,12 +190,17 @@ namespace StarQuant
 					break;
 				case CONNECT_ACK:
 					if(needauthentication_){
-						LOG_INFO(logger,"CTP_TD authenticating ...");
 						CThostFtdcReqAuthenticateField authField;
 						strcpy(authField.UserID, ctpacc_.userid.c_str());
 						strcpy(authField.BrokerID, ctpacc_.brokerid.c_str());
 						strcpy(authField.AuthCode, ctpacc_.auth_code.c_str());
-						strcpy(authField.UserProductInfo, ctpacc_.productinfo.c_str());
+						strcpy(authField.UserProductInfo,ctpacc_.productinfo.c_str());
+						strcpy(authField.AppID, ctpacc_.appid.c_str());
+						LOG_INFO(logger,"CTP_TD authenticating :"
+							<<authField.UserID<<"|"
+							<<authField.BrokerID<<"|"
+							<<authField.AuthCode<<"|"
+							<<authField.AppID<<".");
 						error = this->api_->ReqAuthenticate(&authField, reqId_++);
 						count++;
 						estate_ = AUTHENTICATING;
@@ -221,7 +223,7 @@ namespace StarQuant
 					strcpy(loginField.UserID, ctpacc_.userid.c_str());
 					strcpy(loginField.Password, ctpacc_.password.c_str());
 					strcpy(loginField.UserProductInfo, ctpacc_.productinfo.c_str());
-					error = this->api_->ReqUserLogin2(&loginField, reqId_++);
+					error = this->api_->ReqUserLogin(&loginField, reqId_++);
 					// cout<< loginField.BrokerID <<loginField.UserID <<loginField.Password;
 					count++;
 					estate_ = EState::LOGINING;
@@ -321,80 +323,6 @@ namespace StarQuant
 		messenger_->send(pmsg);
 	}
 
-
-	void CtpTDEngine::insertOrder(const vector<string>& v){
-		// std::shared_ptr<Order> o = make_shared<Order>();
-		// lock_guard<mutex> g(oid_mtx);
-		// o->serverOrderId = m_serverOrderId++;
-		// o->brokerOrderId = m_brokerOrderId_++;
-		// o->createTime = ymdhmsf();	
-		// o->orderStatus_ = OrderStatus::OS_NewBorn;	
-
-		// o->api_ = name_;// = name_;	
-		// o->source = stoi(v[1]);
-		// o->clientId = stoi(v[1]);
-		// o->account_ = ctpacc_.userid;
-		// o->clientOrderId = stol(v[4]);
-		// o->orderType = static_cast<OrderType>(stoi(v[5]));
-		// o->fullSymbol = v[6];
-		// o->orderSize = stoi(v[7]);
-		// if (o->orderType == OrderType::OT_Limit){
-		// 	o->limitPrice = stof(v[8]);
-		// }else if (o->orderType == OrderType::OT_StopLimit){
-		// 	o->stopPrice = stof(v[8]);
-		// }
-		// o->orderFlag = static_cast<OrderFlag>(stoi(v[9]));
-		// o->tag = v[10];
-		// OrderManager::instance().trackOrder(o);
-		// // begin call api's insert order		 TODO:加入不同订单类型
-		// CThostFtdcInputOrderField orderfield = CThostFtdcInputOrderField();
-		// string ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(o->fullSymbol);
-		// strcpy(orderfield.InstrumentID, ctpsym.c_str());
-		// orderfield.VolumeTotalOriginal = std::abs(o->orderSize);
-		// orderfield.OrderPriceType = o->orderType == OrderType::OT_Market ? THOST_FTDC_OPT_AnyPrice : THOST_FTDC_OPT_LimitPrice;
-		// orderfield.LimitPrice = o->orderType == OrderType::OT_Market ? 0.0 : o->limitPrice;
-		// orderfield.Direction = o->orderSize > 0 ? THOST_FTDC_D_Buy : THOST_FTDC_D_Sell;
-		// orderfield.CombOffsetFlag[0] = OrderFlagToCtpComboOffsetFlag(o->orderFlag);
-		// strcpy(orderfield.OrderRef, to_string(o->serverOrderId).c_str());
-		// strcpy(orderfield.InvestorID, ctpacc_.userid.c_str());
-		// strcpy(orderfield.UserID, ctpacc_.userid.c_str());
-		// strcpy(orderfield.BrokerID, ctpacc_.brokerid.c_str());
-		// orderfield.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;			// 投机单
-		// orderfield.ContingentCondition = THOST_FTDC_CC_Immediately;		// 立即发单
-		// orderfield.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;		// 非强平
-		// orderfield.IsAutoSuspend = 0;									// 非自动挂起
-		// orderfield.UserForceClose = 0;									// 非用户强平
-		// orderfield.TimeCondition = THOST_FTDC_TC_GFD;					// 今日有效
-		// orderfield.VolumeCondition = THOST_FTDC_VC_AV;					// 任意成交量
-		// orderfield.MinVolume = 1;										// 最小成交量为1
-		// // TODO: 判断FAK和FOK
-		// //orderfield.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
-		// //orderfield.TimeCondition = THOST_FTDC_TC_IOC;
-		// //orderfield.VolumeCondition = THOST_FTDC_VC_CV;				// FAK; FOK uses THOST_FTDC_VC_AV
-		// LOG_INFO(logger,"Insert Order: clientorderid ="<<o->clientOrderId<<"fullsymbol = "<<o->fullSymbol);
-		// lock_guard<mutex> gs(orderStatus_mtx);
-		// int i = api_->ReqOrderInsert(&orderfield, reqId_++);
-		// o->orderStatus_ = OrderStatus::OS_Submitted;
-		// if (i != 0){
-		// 	o->orderStatus_ = OrderStatus::OS_Error;
-		// 	//send error msg
-		// 	string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-		// 		+ name_ + SERIALIZATION_SEPARATOR 
-		// 		+ to_string(MSG_TYPE_ERROR_INSERTORDER) + SERIALIZATION_SEPARATOR
-		// 		+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
-		// 		+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
-		// 		+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
-		// 		+ to_string(i) + SERIALIZATION_SEPARATOR
-		// 		+ "ReqOrderinsert return != 0";
-		// 	lock_guard<std::mutex> ge(IEngine::sendlock_);
-		// 	IEngine::msgq_send_->sendmsg(msgout);
-		// 	LOG_ERROR(logger,"Ctp TD order insert error: "<<i);
-		// }
-		// //send OrderStatus
-		// lock_guard<std::mutex> ge(IEngine::sendlock_);
-		// IEngine::msgq_send_->sendmsg(o->serialize());
-	}
-
 	void CtpTDEngine::cancelOrder(shared_ptr<OrderActionMsg> pmsg){
 		CThostFtdcInputOrderActionField myreq = CThostFtdcInputOrderActionField();
 		string oref = to_string(pmsg->data_.serverOrderID_);
@@ -452,107 +380,7 @@ namespace StarQuant
 		messenger_->send(pmsgout);
 
 	}
-
-
-	void CtpTDEngine::cancelOrder(const vector<string>& v){
-		// CThostFtdcInputOrderActionField myreq = CThostFtdcInputOrderActionField();
-		// int source = stoi(v[1]);
-		// long clientorderid = stol(v[3]);
-		// std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromSourceAndClientOrderId(source,clientorderid);
-		// if (o != nullptr){
-		// 	string ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(o->fullSymbol);
-		// 	strcpy(myreq.InstrumentID, ctpsym.c_str());
-		// 	//strcpy(myreq.ExchangeID, o->.c_str());			// TODO: check the required field
-		// 	strcpy(myreq.OrderRef, to_string(o->serverOrderId).c_str());
-		// 	myreq.FrontID = frontID_;
-		// 	myreq.SessionID = sessionID_;
-		// 	myreq.ActionFlag = THOST_FTDC_AF_Delete;
-		// 	strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
-		// 	strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
-		// 	//myreq.OrderActionRef = int(m_brokerOrderId_++);//TODO: int <-> long is unsafe, use another way
-		// 	int i = this->api_->ReqOrderAction(&myreq, reqId_++);
-		// 	if (i != 0){
-		// 		string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-		// 			+ name_ + SERIALIZATION_SEPARATOR 
-		// 			+ to_string(MSG_TYPE_ERROR_CANCELORDER) + SERIALIZATION_SEPARATOR
-		// 			+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
-		// 			+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
-		// 			+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
-		// 			+ to_string(i) + SERIALIZATION_SEPARATOR
-		// 			+ "cancelorder return != 0";
-		// 		lock_guard<std::mutex> g(IEngine::sendlock_);
-		// 		IEngine::msgq_send_->sendmsg(msgout);
-		// 		LOG_ERROR(logger,"Ctp TD cancle order error "<<i);
-		// 		return;
-		// 	}
-		// 	// send cancel info through orderstatus
-		// 	lock_guard<mutex> g2(orderStatus_mtx);
-		// 	o->orderStatus_ = OrderStatus::OS_PendingCancel;
-		// 	lock_guard<std::mutex> g(IEngine::sendlock_);
-		// 	IEngine::msgq_send_->sendmsg(o->serialize());
-		// }
-		// else{
-		// 	string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-		// 		+ name_ + SERIALIZATION_SEPARATOR 
-		// 		+ to_string(MSG_TYPE_ERROR_ORGANORDER ) + SERIALIZATION_SEPARATOR
-		// 		+ v[1] + SERIALIZATION_SEPARATOR 
-		// 		+ v[3];
-		// 	lock_guard<std::mutex> g(IEngine::sendlock_);
-		// 	IEngine::msgq_send_->sendmsg(msgout);
-		// 	LOG_ERROR(logger,"cancel order ordermanager cannot find order!");
-		// }
-
-	}
 	
-	void CtpTDEngine::cancelOrder(long oid,const string& source) {
-		// LOG_INFO(logger,"Cancel Order serverorderid = "<<oid);		
-		// CThostFtdcInputOrderActionField myreq = CThostFtdcInputOrderActionField();
-		// std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(oid);
-		// if (o != nullptr){
-		// 	string ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(o->fullSymbol);
-		// 	strcpy(myreq.InstrumentID, ctpsym.c_str());
-		// 	//strcpy(myreq.ExchangeID, o->.c_str());
-		// 	strcpy(myreq.OrderRef, to_string(o->serverOrderId).c_str());
-		// 	myreq.FrontID = frontID_;
-		// 	myreq.SessionID = sessionID_;
-		// 	myreq.ActionFlag = THOST_FTDC_AF_Delete;
-		// 	strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
-		// 	strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
-		// 	int i = this->api_->ReqOrderAction(&myreq, reqId_++);
-		// 	if (i != 0){
-		// 		string msgout = source + SERIALIZATION_SEPARATOR 
-		// 			+ name_ + SERIALIZATION_SEPARATOR 
-		// 			+ to_string(MSG_TYPE_ERROR_CANCELORDER) + SERIALIZATION_SEPARATOR
-		// 			+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
-		// 			+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
-		// 			+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
-		// 			+ to_string(i) + SERIALIZATION_SEPARATOR
-		// 			+ "cancelorder return != 0";
-		// 		lock_guard<std::mutex> g(IEngine::sendlock_);
-		// 		IEngine::msgq_send_->sendmsg(msgout);
-		// 		LOG_ERROR(logger,"Ctp TD cancle order error "<<i);
-		// 		return;
-		// 	}
-		// 	lock_guard<mutex> g2(orderStatus_mtx);
-		// 	o->orderStatus_ = OrderStatus::OS_PendingCancel;
-		// 	lock_guard<std::mutex> g(IEngine::sendlock_);
-		// 	IEngine::msgq_send_->sendmsg(o->serialize());
-		// }
-		// else{
-		// 	string msgout = source + SERIALIZATION_SEPARATOR 
-		// 		+ name_ + SERIALIZATION_SEPARATOR 
-		// 		+ to_string(MSG_TYPE_ERROR_ORGANORDER ) + SERIALIZATION_SEPARATOR
-		// 		+ source + SERIALIZATION_SEPARATOR 
-		// 		+ to_string(oid);
-		// 	lock_guard<std::mutex> g(IEngine::sendlock_);
-		// 	IEngine::msgq_send_->sendmsg(msgout);
-		// 	LOG_ERROR(logger,"Cancel Order ordermanager cannot find order!");
-		// }
-	}
-
-	void CtpTDEngine::cancelOrders(const string& symbol,const string& source) {		
-	}
-
 	// 查询账户
 	void CtpTDEngine::queryAccount(shared_ptr<MsgHeader> pmsg) {
 		CThostFtdcQryTradingAccountField myreq = CThostFtdcQryTradingAccountField();
@@ -568,25 +396,6 @@ namespace StarQuant
 			LOG_ERROR(logger,"Ctp td qry acc error "<<error);
 		}
 	}
-	void CtpTDEngine::queryAccount(const string& source) {
-		// CThostFtdcQryTradingAccountField myreq = CThostFtdcQryTradingAccountField();
-		// strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
-		// strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
-		// int error = api_->ReqQryTradingAccount(&myreq, reqId_++);
-		// LOG_INFO(logger,"Ctp Td requests account information");			
-		// if (error != 0){
-		// 	string msgout = source + SERIALIZATION_SEPARATOR 
-		// 		+ name_ + SERIALIZATION_SEPARATOR 
-		// 		+ to_string(MSG_TYPE_ERROR_QRY_ACC );
-		// 	lock_guard<std::mutex> g(IEngine::sendlock_);
-		// 	IEngine::msgq_send_->sendmsg(msgout);
-		// 	LOG_ERROR(logger,"Ctp td qry acc error "<<error);
-		// }
-	}
-
-	void CtpTDEngine::queryOrder(const string& msgorder_,const string& source){
-	}
-
 	/// 查询pos
 	void CtpTDEngine::queryPosition(shared_ptr<MsgHeader> pmsg) {
 		CThostFtdcQryInvestorPositionField myreq = CThostFtdcQryInvestorPositionField();
@@ -602,21 +411,6 @@ namespace StarQuant
 			LOG_ERROR(logger,"Ctp td qry pos error "<<error);
 		}
 	}	
-	void CtpTDEngine::queryPosition(const string& source) {
-		// CThostFtdcQryInvestorPositionField myreq = CThostFtdcQryInvestorPositionField();
-		// strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
-		// strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
-		// int error = this->api_->ReqQryInvestorPosition(&myreq, reqId_++);
-		// LOG_INFO(logger,"Ctp td requests positions");		
-		// if (error != 0){
-		// 	string msgout = source + SERIALIZATION_SEPARATOR 
-		// 		+ name_ + SERIALIZATION_SEPARATOR 
-		// 		+ to_string(MSG_TYPE_ERROR_QRY_POS );
-		// 	lock_guard<std::mutex> g(IEngine::sendlock_);
-		// 	IEngine::msgq_send_->sendmsg(msgout);
-		// 	LOG_ERROR(logger,"Ctp td qry pos error "<<error);
-		// }
-	}
 	////////////////////////////////////////////////////// begin callback/incoming function ///////////////////////////////////////
 	///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
 	void CtpTDEngine::OnFrontConnected() {
@@ -649,12 +443,14 @@ namespace StarQuant
 	///客户端认证响应
 	void CtpTDEngine::OnRspAuthenticate(CThostFtdcRspAuthenticateField *pRspAuthenticateField, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
+			string errormsgutf8;			
+			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
 			string sout("Ctp Td authentication failed");
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_CONNECT,
 				sout);
 			messenger_->send(pmsgout);				
-			LOG_ERROR(logger,"Ctp Td authentication failed.");
+			LOG_ERROR(logger,"Ctp Td authentication failed."<<pRspInfo->ErrorID<<errormsgutf8);
 		}
 		else{
 			estate_ = AUTHENTICATE_ACK;

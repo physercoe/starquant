@@ -28,13 +28,13 @@ namespace StarQuant
 	}
 
 	void PaperTDEngine::init(){
+		name_ = "PAPER_TD";
 		if(logger == nullptr){
 			logger = SQLogger::getLogger("TDEngine.Paper");
 		}
-		if (msgq_recv_ == nullptr){
-			msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::SUB, CConfig::instance().SERVERSUB_URL);	
-		}
-		name_ = "PAPER_TD";
+		if (messenger_ == nullptr){
+			messenger_ = std::make_unique<CMsgqEMessenger>(name_, CConfig::instance().SERVERSUB_URL);	
+		}	
 		estate_ = CONNECTING;
 		LOG_DEBUG(logger,"Paper TD inited");
 	}
@@ -46,107 +46,86 @@ namespace StarQuant
 
 	void PaperTDEngine::start(){
 		while(estate_ != EState::STOP){
-			string msgin = msgq_recv_->recmsg(0);
-			if (msgin.empty())
+			auto pmsgin = messenger_->recv(1);
+			if (pmsgin == nullptr || pmsgin->destination_ != name_)
 				continue;
-			MSG_TYPE msgintype = MsgType(msgin);
-			vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);			
-			if (v[0] != name_) //filter message according to its destination
-				continue;
-			LOG_DEBUG(logger,"Paper TD recv msg:"<<msgin );
-			bool tmp;
-			switch (msgintype)
+			switch (pmsgin->msgtype_)
 			{
 				case MSG_TYPE_ENGINE_CONNECT:
 					if (connect()){
-						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-							+ name_ + SERIALIZATION_SEPARATOR 
-							+ to_string(MSG_TYPE_INFO_ENGINE_TDCONNECTED);
-						lock_guard<std::mutex> g(IEngine::sendlock_);
-						IEngine::msgq_send_->sendmsg(msgout);
+						auto pmsgout = make_shared<MsgHeader>(pmsgin->source_, name_,
+							MSG_TYPE_INFO_ENGINE_TDCONNECTED);
+						messenger_->send(pmsgout,1);
 					}
 					break;
 				case MSG_TYPE_ENGINE_DISCONNECT:
-					tmp = disconnect();
+					disconnect();
 					break;
 				case MSG_TYPE_ORDER:
 					if (estate_ == LOGIN_ACK){
-						insertOrder(v);
+						auto pmsgin2 = static_pointer_cast<OrderMsg>(pmsgin);
+						insertOrder(pmsgin2);
 					}
 					else{
-						LOG_DEBUG(logger,"Paper_TD is not connected,can not insert order!");
-						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-							+ name_ + SERIALIZATION_SEPARATOR 
-							+ to_string(MSG_TYPE_ERROR_ENGINENOTCONNECTED) 	+ SERIALIZATION_SEPARATOR 
-							+ "Paper td is not connected,can not insert order";
-						lock_guard<std::mutex> g(IEngine::sendlock_);
-						IEngine::msgq_send_->sendmsg(msgout);
+						LOG_DEBUG(logger,"PAPER_TD is not connected,can not insert order!");
+						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+							"Paper Td is not connected,can not insert order!");
+						messenger_->send(pmsgout);
 					}
 					break;
 				case MSG_TYPE_CANCEL_ORDER:
 					if (estate_ == LOGIN_ACK){
-						if (v[1] == "0")  //cancel order by serveroid from gui(0)
-							cancelOrder(stol(v[3]),0);
-						else
-							cancelOrder(v); //cancel order according to sid and clientorderid
+						auto pmsgin2 = static_pointer_cast<OrderActionMsg>(pmsgin);
+						cancelOrder(pmsgin2);
 					}
 					else{
-						LOG_DEBUG(logger,"Paper_TD is not connected,can not cancel order!");
-						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-							+ name_ + SERIALIZATION_SEPARATOR 
-							+ to_string(MSG_TYPE_ERROR_ENGINENOTCONNECTED) 	+ SERIALIZATION_SEPARATOR 
-							+ "Paper td is not connected,can not cancel order";
-						lock_guard<std::mutex> g(IEngine::sendlock_);
-						IEngine::msgq_send_->sendmsg(msgout);
+						LOG_DEBUG(logger,"PAPER_TD is not connected,can not cancel order!");
+						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+							"Paper Td is not connected,can not cancel order!");
+						messenger_->send(pmsgout);
 					}
 					break;
 				case MSG_TYPE_QRY_POS:
 					if (estate_ == LOGIN_ACK){
-						queryPosition(v[1]);//TODO:区分不同来源，回报中添加目的地信息
+						queryPosition(pmsgin);
 					}
 					else{
-						LOG_DEBUG(logger,"Paper_TD is not connected,can not qry pos!");
-						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-							+ name_ + SERIALIZATION_SEPARATOR 
-							+ to_string(MSG_TYPE_ERROR_ENGINENOTCONNECTED) 	+ SERIALIZATION_SEPARATOR 
-							+ "Paper td is not connected,can not qry pos";
-						lock_guard<std::mutex> g(IEngine::sendlock_);
-						IEngine::msgq_send_->sendmsg(msgout);
+						LOG_DEBUG(logger,"PAPER_TD is not connected,can not qry pos!");
+						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+							"PAPER TD  is not connected,can not qry pos!");
+						messenger_->send(pmsgout);
 					}
 					break;
 				case MSG_TYPE_QRY_ACCOUNT:
 					if (estate_ == LOGIN_ACK){
-						queryAccount(v[1]);
+						queryAccount(pmsgin);
 					}
 					else{
-						LOG_DEBUG(logger,"Paper_TD is not connected,can not qry acc!");
-						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-							+ name_ + SERIALIZATION_SEPARATOR 
-							+ to_string(MSG_TYPE_ERROR_ENGINENOTCONNECTED) 	+ SERIALIZATION_SEPARATOR 
-							+ "Paper td is not connected,can not qry acc";
-						lock_guard<std::mutex> g(IEngine::sendlock_);
-						IEngine::msgq_send_->sendmsg(msgout);
+						LOG_DEBUG(logger,"PAPER_TD is not connected,can not qry acc!");
+						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+							"paper Td is not connected,can not qry acc!");
+						messenger_->send(pmsgout);
 					}
 					break;
 				case MSG_TYPE_ENGINE_STATUS:
 					{
-						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-							+ name_ + SERIALIZATION_SEPARATOR 
-							+ to_string(MSG_TYPE_ENGINE_STATUS) + SERIALIZATION_SEPARATOR 
-							+ to_string(estate_);
-						lock_guard<std::mutex> g(IEngine::sendlock_);
-						IEngine::msgq_send_->sendmsg(msgout);
+						auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
+							MSG_TYPE_ENGINE_STATUS,
+							to_string(estate_));
+						messenger_->send(pmsgout);
 					}
 					break;
 				case MSG_TYPE_TEST:
 					{						
-						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-							+ name_ + SERIALIZATION_SEPARATOR 
-							+ to_string(MSG_TYPE_TEST) + SERIALIZATION_SEPARATOR 
-							+ ymdhmsf6();
-						lock_guard<std::mutex> g(IEngine::sendlock_);
-						IEngine::msgq_send_->sendmsg(msgout);
-						LOG_DEBUG(logger,"Paper_TD return test msg!");
+						auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
+							MSG_TYPE_TEST,
+							"test");
+						messenger_->send(pmsgout);
+						LOG_DEBUG(logger,"PAPER_TD return test msg!");
 					}
 					break;
 				default:
@@ -168,197 +147,147 @@ namespace StarQuant
 	}
 
 
-	void PaperTDEngine::insertOrder(const vector<string>& v){
-		std::shared_ptr<Order> o = make_shared<Order>();
+	void PaperTDEngine::insertOrder(shared_ptr<OrderMsg> pmsg){
 		lock_guard<mutex> g(oid_mtx);
-		o->serverOrderId = m_serverOrderId++;
-		o->brokerOrderId = m_brokerOrderId_++;
-		o->createTime = ymdhmsf();	
-		o->orderStatus_ = OrderStatus::OS_NewBorn;	
-		o->api = name_;// = name_;	
-		o->source = stoi(v[1]);
-		o->clientId = stoi(v[1]);		
-		o->clientOrderId = stol(v[4]);
-		o->orderType = static_cast<OrderType>(stoi(v[5]));
-		o->fullSymbol = v[6];
-		o->orderSize = stoi(v[7]);
-		if (o->orderType == OrderType::OT_Limit){
-			o->limitPrice = stof(v[8]);
-		}else if (o->orderType == OrderType::OT_StopLimit){
-			o->stopPrice = stof(v[8]);
-		}
-		o->orderFlag = static_cast<OrderFlag>(stoi(v[9]));
-		o->tag = v[10];
+		pmsg->data_.serverOrderID_ = m_serverOrderId++;
+		pmsg->data_.brokerOrderID_ = m_brokerOrderId_++;
+		pmsg->data_.createTime_ = ymdhmsf();
+		pmsg->data_.orderStatus_ = OrderStatus::OS_Submitted;
+		std::shared_ptr<Order> o = pmsg->toPOrder();
 		OrderManager::instance().trackOrder(o);
 		// begin simulate trade, now only support L1
-		if (DataManager::instance().orderBook_.find(o->fullSymbol) != DataManager::instance().orderBook_.end()){
-			double lastprice = DataManager::instance().orderBook_[o->fullSymbol].price_;
-			double lastaskprice1 = DataManager::instance().orderBook_[o->fullSymbol].askprice_L1_;
-			double lastbidprice1 = DataManager::instance().orderBook_[o->fullSymbol].bidprice_L1_;
-			long lastasksize1 = DataManager::instance().orderBook_[o->fullSymbol].asksize_L1_;
-			long lastbidsize1 = DataManager::instance().orderBook_[o->fullSymbol].bidsize_L1_;
-			Fill fill;
-			fill.fullSymbol = o->fullSymbol;
-			fill.tradetime = ymdhmsf();
-			fill.serverOrderId = o->serverOrderId;
-			fill.clientOrderId = o->clientOrderId;
-			fill.brokerOrderId = o->brokerOrderId;
-			fill.tradeId = o->brokerOrderId;
-			fill.account_ = o->account_;     
-			fill.api_ = o->api_;   
-			if (o->orderType == OrderType::OT_Market){
-				fill.fillflag = o->orderFlag;
-				if (o->orderSize > 0){
-					fill.tradePrice = lastaskprice1;
-					fill.tradeSize = o->orderSize < lastasksize1 ? o->orderSize : lastasksize1;
+		if (DataManager::instance().orderBook_.find(o->fullSymbol_) != DataManager::instance().orderBook_.end()){
+			double lastprice = DataManager::instance().orderBook_[o->fullSymbol_].price_;
+			double lastaskprice1 = DataManager::instance().orderBook_[o->fullSymbol_].askPrice_[0];
+			double lastbidprice1 = DataManager::instance().orderBook_[o->fullSymbol_].bidPrice_[0];
+			long lastasksize1 = DataManager::instance().orderBook_[o->fullSymbol_].askSize_[0];
+			long lastbidsize1 = DataManager::instance().orderBook_[o->fullSymbol_].bidSize_[0];
+			auto pmsgfill = make_shared<FillMsg>();
+			pmsgfill->destination_ = pmsg->source_;
+			pmsgfill->source_ = name_;
+			pmsgfill->data_.fullSymbol_ = o->fullSymbol_;
+			pmsgfill->data_.tradeTime_ = ymdhmsf();
+			pmsgfill->data_.serverOrderID_ = o->serverOrderID_;
+			pmsgfill->data_.clientOrderID_ = o->clientOrderID_;
+			pmsgfill->data_.brokerOrderID_ = o->brokerOrderID_;
+			pmsgfill->data_.tradeId_ = o->brokerOrderID_;
+			pmsgfill->data_.account_ = o->account_;     
+			pmsgfill->data_.api_ = o->api_;   
+			if (o->orderType_ == OrderType::OT_Market){
+				pmsgfill->data_.fillFlag_ = o->orderFlag_;
+				if (o->orderSize_ > 0){
+					pmsgfill->data_.tradePrice_ = lastaskprice1;
+					pmsgfill->data_.tradeSize_ = o->orderSize_ < lastasksize1 ? o->orderSize_ : lastasksize1;
 				}
 				else
 				{
-					fill.tradePrice = lastbidprice1;
-					fill.tradeSize = (-1)*o->orderSize < lastasksize1 ? o->orderSize : lastasksize1*(-1);
+					pmsgfill->data_.tradePrice_ = lastbidprice1;
+					pmsgfill->data_.tradeSize_ = (-1)*o->orderSize_ < lastasksize1 ? o->orderSize_ : lastasksize1*(-1);
 				}
 			}
-			else if(o->orderType == OrderType::OT_Limit){
-				if (o->orderSize > 0){
-					if (o->limitPrice >= lastaskprice1){
+			else if(o->orderType_ == OrderType::OT_Limit){
+				if (o->orderSize_ > 0){
+					if (o->limitPrice_ >= lastaskprice1){
 						if (lastprice < lastaskprice1){
-							fill.tradePrice = lastaskprice1;
+							pmsgfill->data_.tradePrice_ = lastaskprice1;
 						}
-						else if (lastprice > o->limitPrice)
+						else if (lastprice > o->limitPrice_)
 						{
-							fill.tradePrice = o->limitPrice;
+							pmsgfill->data_.tradePrice_ = o->limitPrice_;
 						}
 						else
 						{
-							fill.tradePrice = lastprice;
+							pmsgfill->data_.tradePrice_ = lastprice;
 						}
-						fill.tradeSize = o->orderSize < lastasksize1 ? o->orderSize : lastasksize1;
-						fill.fillflag = o->orderFlag;
+						pmsgfill->data_.tradeSize_ = o->orderSize_ < lastasksize1 ? o->orderSize_ : lastasksize1;
+						pmsgfill->data_.fillFlag_ = o->orderFlag_;
 					}
 					else
 					{
 						lock_guard<mutex> gs(orderStatus_mtx);
 						o->orderStatus_ = OrderStatus::OS_Error;
-						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-							+ name_ + SERIALIZATION_SEPARATOR 
-							+ to_string(MSG_TYPE_ERROR_INSERTORDER) + SERIALIZATION_SEPARATOR
-							+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
-							+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
-							+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
-							+ "9999" + SERIALIZATION_SEPARATOR
-							+ "Paper TD cannot deal due to price is below ask price, waiting order is not supported yet";
-						lock_guard<std::mutex> ge(IEngine::sendlock_);
-						IEngine::msgq_send_->sendmsg(msgout);
+						auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+							MSG_TYPE_ERROR_INSERTORDER,
+							to_string(o->clientOrderID_));
+						messenger_->send(pmsgout);
 						LOG_ERROR(logger,"Paper TD cannot deal due to price is below ask price");
 						return;
 					}
-
 				}
 				else
 				{
-					if (o->limitPrice <= lastbidprice1){
+					if (o->limitPrice_ <= lastbidprice1){
 						if (lastprice > lastbidprice1){
-							fill.tradePrice = lastbidprice1;
+							pmsgfill->data_.tradePrice_ = lastbidprice1;
 						}
-						else if (lastprice < o->limitPrice)
+						else if (lastprice < o->limitPrice_)
 						{
-							fill.tradePrice = o->limitPrice;
+							pmsgfill->data_.tradePrice_ = o->limitPrice_;
 						}
 						else
 						{
-							fill.tradePrice = lastprice;
+							pmsgfill->data_.tradePrice_ = lastprice;
 						}
-						fill.tradeSize = (-1)*o->orderSize < lastbidsize1 ? o->orderSize : (-1)*lastbidsize1;
-						fill.fillflag = o->orderFlag;
+						pmsgfill->data_.tradeSize_ = (-1)*o->orderSize_ < lastbidsize1 ? o->orderSize_ : (-1)*lastbidsize1;
+						pmsgfill->data_.fillFlag_ = o->orderFlag_;
 					}
 					else
 					{
 						lock_guard<mutex> gs(orderStatus_mtx);
 						o->orderStatus_ = OrderStatus::OS_Error;
-						string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-							+ name_ + SERIALIZATION_SEPARATOR 
-							+ to_string(MSG_TYPE_ERROR_INSERTORDER) + SERIALIZATION_SEPARATOR
-							+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
-							+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
-							+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
-							+ "9999" + SERIALIZATION_SEPARATOR
-							+ "Paper TD cannot deal due to price is above bid price, waiting order is not supported yet";
-						lock_guard<std::mutex> ge(IEngine::sendlock_);
-						IEngine::msgq_send_->sendmsg(msgout);
+						auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+							MSG_TYPE_ERROR_INSERTORDER,
+							to_string(o->clientOrderID_));
+						messenger_->send(pmsgout);	
 						LOG_ERROR(logger,"Paper TD cannot deal due to price is above bid price");
 						return;
 					}
 				}				
-
-
 			}
-			else if (o->orderType == OrderType::OT_StopLimit){
+			else if (o->orderType_ == OrderType::OT_StopLimit){
 				lock_guard<mutex> gs(orderStatus_mtx);				
 				o->orderStatus_ = OrderStatus::OS_Error;
-				string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-					+ name_ + SERIALIZATION_SEPARATOR 
-					+ to_string(MSG_TYPE_ERROR_INSERTORDER) + SERIALIZATION_SEPARATOR
-					+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
-					+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
-					+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
-					+ "9999" + SERIALIZATION_SEPARATOR
-					+ "Paper TD donot support stop order yet";
-				lock_guard<std::mutex> ge(IEngine::sendlock_);
-				IEngine::msgq_send_->sendmsg(msgout);
+				auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+					MSG_TYPE_ERROR_INSERTORDER,
+					to_string(o->clientOrderID_));
+				messenger_->send(pmsgout);
 				LOG_ERROR(logger,"Paper TD donot support stop order yet");
 				return;				
 			}
-			OrderManager::instance().gotFill(fill);	
+			OrderManager::instance().gotFill(pmsgfill->data_);	
 			lock_guard<mutex> gs(orderStatus_mtx);					
-			o->orderStatus_ = OrderStatus::OS_Filled;		
-			LOG_INFO(logger,"Order filled by paper td,  Order: clientorderid ="<<o->clientOrderId<<"fullsymbol = "<<o->fullSymbol);
-			lock_guard<std::mutex> ge(IEngine::sendlock_);
-			IEngine::msgq_send_->sendmsg(o->serialize());
-			IEngine::msgq_send_->sendmsg(fill.serialize());
+			o->orderStatus_ = OrderStatus::OS_Filled;
+			pmsg->data_.orderStatus_ = OrderStatus::OS_Filled;
+			pmsg->destination_ = pmsg->source_;
+			pmsg->source_ = name_;
+			pmsg->msgtype_ = MSG_TYPE_RTN_ORDER;
+			messenger_->send(pmsg);
+			messenger_->send(pmsgfill);
+			LOG_INFO(logger,"Order filled by paper td,  Order: clientorderid ="<<o->clientOrderID_<<"fullsymbol = "<<o->fullSymbol_);
 		}
 		else
 		{
 			lock_guard<mutex> gs(orderStatus_mtx);
 			o->orderStatus_ = OrderStatus::OS_Error;
-			string msgout = v[1]+ SERIALIZATION_SEPARATOR 
-				+ name_ + SERIALIZATION_SEPARATOR 
-				+ to_string(MSG_TYPE_ERROR_INSERTORDER) + SERIALIZATION_SEPARATOR
-				+ to_string(o->serverOrderId) + SERIALIZATION_SEPARATOR
-				+ to_string(o->clientOrderId) + SERIALIZATION_SEPARATOR
-				+ to_string(o->brokerOrderId) + SERIALIZATION_SEPARATOR  
-				+ "9999" + SERIALIZATION_SEPARATOR
-				+ "Paper TD cannot insert order due to DM dont have markets info";
-			lock_guard<std::mutex> ge(IEngine::sendlock_);
-			IEngine::msgq_send_->sendmsg(msgout);
+			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+				MSG_TYPE_ERROR_INSERTORDER,
+				to_string(o->clientOrderID_));
+			messenger_->send(pmsgout);
 			LOG_ERROR(logger,"Paper TD order insert error: due to DM dont have markets info");
 			return;
 		}
 
 	}
 	
-	void PaperTDEngine::cancelOrder(const vector<string>& v){
+	void PaperTDEngine::cancelOrder(shared_ptr<OrderActionMsg> pmsg){
 		LOG_INFO(logger,"Paper td dont support cancelorder yet!");
 	}
 	
-	void PaperTDEngine::cancelOrder(long oid,const string& source) {
-		LOG_INFO(logger,"Paper td dont support cancelorder yet!");		
-	}
-
-	void PaperTDEngine::cancelOrders(const string& symbol,const string& source) {		
-	}
-
 	// 查询账户
-	void PaperTDEngine::queryAccount(const string& source) {
+	void PaperTDEngine::queryAccount(shared_ptr<MsgHeader> pmsg) {
 	}
-
-	void PaperTDEngine::queryOrder(const string& msgorder_,const string& source){
+   /// 查询pos
+	void PaperTDEngine::queryPosition(shared_ptr<MsgHeader> pmsg) {
 	}
-
-	/// 查询pos
-	void PaperTDEngine::queryPosition(const string& source) {
-	}
-
-
-
 
 }

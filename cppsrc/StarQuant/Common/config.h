@@ -55,7 +55,6 @@ namespace StarQuant {
 	public:
 		RUN_MODE _mode = RUN_MODE::TRADE_MODE;
 		BROKERS _broker = BROKERS::PAPER;
-		string brokerapi ="none";
 		MSGQ _msgq = MSGQ::NANOMSG;
 		int _tickinterval =0;
 		int _brokerdelay = 0;
