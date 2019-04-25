@@ -75,7 +75,9 @@ namespace StarQuant {
 //console ,control related
 	// std::atomic<bool>* setconsolecontrolhandler(void);
 	// int check_gshutdown(bool force = true);
+	void ConsoleControlHandler(int sig);
 
+	
 //string related 
 	vector<string> stringsplit(const string &s, char delim);
 	bool startwith(const string&, const string&);

@@ -92,7 +92,7 @@ namespace StarQuant {
 		SERVERPUB_URL = config["serverpub_url"].as<std::string>();
 		SERVERSUB_URL = config["serversub_url"].as<std::string>();
 		SERVERPULL_URL = config["serverpull_url"].as<std::string>();
-		
+		// read account info
 		const std::vector<string> apis = config["apis"].as<std::vector<string>>();
 		for (auto s : apis){
 			_loadapi[s] = true;
@@ -112,6 +112,14 @@ namespace StarQuant {
 			acc.appid = config[s]["appid"].as<std::string>();
 			_apimap[s] = acc;
 		}
+		// read risk info
+		riskcheck = config["risk"]["check"].as<bool>();
+		sizeperorderlimit = config["risk"]["sizeperorder"].as<int>();
+		cashperorderlimit = config["risk"]["cashperorder"].as<double>();
+		ordercountlimit = config["risk"]["ordercount"].as<int>();
+		cashlimit = config["risk"]["cash"].as<double>();
+		ordersizelimit = config["risk"]["ordersize"].as<int>();
+		ordercountperseclimit = config["risk"]["ordercountpersec"].as<int>();
 	}
 
 	string CConfig::configDir()

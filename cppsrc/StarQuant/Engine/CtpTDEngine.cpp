@@ -24,6 +24,7 @@ namespace StarQuant
 		, orderRef_(0)
 		, frontID_(0)
 		, sessionID_(0)
+		, apiinited_(false)
 	{
 		init();
 	}
@@ -31,22 +32,34 @@ namespace StarQuant
 	CtpTDEngine::~CtpTDEngine() {
 		if (estate_ != STOP)
 			stop();
+		releaseapi();
+	}
+
+	void CtpTDEngine::releaseapi(){	
 		if (api_ != nullptr){
 			this->api_->RegisterSpi(nullptr);
-			this->api_->Release();// api must init() or will segfault
+			if (apiinited_)
+				this->api_->Release();// api must init() or will segfault
 			this->api_ = nullptr;
 		}		
 	}
 
+	void CtpTDEngine::reset(){
+		disconnect();
+		releaseapi();
+		init();	
+		LOG_DEBUG(logger,"CTP TD reset");	
+	}	
+
 	void CtpTDEngine::init(){
 		name_ = "CTP_TD";
+
 		if(logger == nullptr){
 			logger = SQLogger::getLogger("TDEngine.CTP");
 		}
 		if (messenger_ == nullptr){
 			messenger_ = std::make_unique<CMsgqEMessenger>(name_, CConfig::instance().SERVERSUB_URL);	
 		}	
-
 		ctpacc_ = CConfig::instance()._apimap["CTP"];
 		string path = CConfig::instance().logDir() + "/ctp/td";
 		boost::filesystem::path dir(path.c_str());
@@ -59,14 +72,8 @@ namespace StarQuant
 		else {
 			needauthentication_ = true;
 		}
-		THOST_TE_RESUME_TYPE privatetype = THOST_TERT_QUICK;// THOST_TERT_RESTART，THOST_TERT_RESUME, THOST_TERT_QUICK
-		THOST_TE_RESUME_TYPE publictype = THOST_TERT_QUICK;// THOST_TERT_RESTART，THOST_TERT_RESUME, THOST_TERT_QUICK
-		string ctp_td_address = ctpacc_.td_ip + ":" + to_string(ctpacc_.td_port);			
-		this->api_->SubscribePrivateTopic(privatetype);
-		this->api_->SubscribePublicTopic(publictype);
-		this->api_->RegisterFront((char*)ctp_td_address.c_str());
-		this->api_->Init();
-		estate_ = CONNECTING;
+		estate_ = DISCONNECTED;
+		apiinited_ = false;
 		LOG_DEBUG(logger,"CTP TD inited, api version:"<<this->api_->GetApiVersion());
 	}
 	void CtpTDEngine::stop(){
@@ -160,6 +167,12 @@ namespace StarQuant
 						LOG_DEBUG(logger,"CTP_TD return test msg!");
 					}
 					break;
+				case MSG_TYPE_SWITCH_TRADING_DAY:
+					switchday();
+					break;	
+				case MSG_TYPE_ENGINE_RESET:
+					reset();
+					break;											
 				default:
 					break;
 			}
@@ -176,14 +189,16 @@ namespace StarQuant
 		while (estate_ != LOGIN_ACK && estate_ != STOP){
 			switch (estate_){
 				case DISCONNECTED:
-					// this->api_->SubscribePrivateTopic(privatetype);
-					// this->api_->SubscribePublicTopic(publictype);
-					// this->api_->RegisterFront((char*)ctp_td_address.c_str());
-					// this->api_->Init();
-					// //this->api_->Join();
-					// estate_ = CONNECTING;
-					// LOG_INFO(logger,"CTP_TD register Front!");
-					// count++;
+					if (!apiinited_){
+						this->api_->SubscribePrivateTopic(privatetype);
+						this->api_->SubscribePublicTopic(publictype);
+						this->api_->RegisterFront((char*)ctp_td_address.c_str());
+						this->api_->Init();	
+						apiinited_ = true;					
+					}
+					estate_ = CONNECTING;
+					LOG_INFO(logger,"CTP_TD api inited, connect Front!");
+					count++;
 					break;
 				case CONNECTING:
 					msleep(100);
@@ -268,6 +283,11 @@ namespace StarQuant
 			return false;
 		}
 
+	}
+
+	void CtpTDEngine::switchday(){
+		issettleconfirmed_ = false;
+		LOG_DEBUG(logger,"ctp td switch day reset settleconfirmed!");
 	}
 
 	void CtpTDEngine::insertOrder(shared_ptr<OrderMsg> pmsg){

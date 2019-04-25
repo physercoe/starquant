@@ -34,7 +34,9 @@ namespace StarQuant
 		virtual void stop();
 		virtual bool connect() ;
 		virtual bool disconnect() ;
-
+		void switchday();
+		void releaseapi();
+		void reset();
 
 		void insertOrder(shared_ptr<OrderMsg> pmsg);
 		void cancelOrder(shared_ptr<OrderActionMsg> pmsg);
@@ -368,7 +370,7 @@ namespace StarQuant
 		int sessionID_;						// 会话编号，以上三组编号唯一确定订单
 //TODO: isLast 处理大数据包
 		CThostFtdcTraderApi* api_;			
-
+		bool apiinited_;
 		OrderStatus CtpOrderStatusToOrderStatus(const char status);
 		OrderFlag CtpComboOffsetFlagToOrderFlag(const char flag);
 		char OrderFlagToCtpComboOffsetFlag(const OrderFlag flag);

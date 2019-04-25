@@ -21,6 +21,7 @@
 #include <Engine/PaperTDEngine.h>
 #include <Trade/ordermanager.h>
 #include <Trade/portfoliomanager.h>
+#include <Trade/riskmanager.h>
 //#include <Services/Strategy/strategyservice.h>
 #include <Services/dataservice.h>
 
@@ -28,24 +29,25 @@
 
 namespace StarQuant
 {
-	//std::atomic<bool> gShutdown{ false };
 
-	// extern std::atomic<bool> gShutdown;
+	extern std::atomic<bool> gShutdown;
 
 
 
 	extern atomic<uint64_t> MICRO_SERVICE_NUMBER;
-	std::atomic<bool> gShutdown = false;
+
 
 
 	void startengine(shared_ptr<IEngine> pe){
 		pe->start();
 	}
+
 	tradingengine::tradingengine() {
 		CConfig::instance();
 		DataManager::instance();
 		OrderManager::instance();
 		PortfolioManager::instance();
+		RiskManager::instance();
 		_broker = CConfig::instance()._broker;
 		mode = CConfig::instance()._mode;
 		if(logger == nullptr){
@@ -87,24 +89,61 @@ namespace StarQuant
 		LOG_DEBUG(logger,"Exit trading engine");		
 	}
 
-	void tradingengine::ConsoleControlHandler(int sig) {
-		gShutdown = true;
-		PRINT_SHUTDOWN_MESSAGE;
-		//throw runtime_error("crl c");
-	}
 
-	// std::atomic<bool>* tradingengine::setconsolecontrolhandler(void) {
-	// 	signal(SIGINT, ConsoleControlHandler);
-	// 	signal(SIGPWR, ConsoleControlHandler);
-	// 	return &gShutdown;
-	// }
-
-	int tradingengine::check_gshutdown(bool force) {		
-		signal(SIGINT, tradingengine::ConsoleControlHandler);
-		signal(SIGPWR, tradingengine::ConsoleControlHandler);
-		//atomic_bool* g = setconsolecontrolhandler();
+	int tradingengine::cronjobs(bool force) {	
+	//set console handler		
+		signal(SIGINT, ConsoleControlHandler);
+		signal(SIGPWR, ConsoleControlHandler);
+		time_t timer;
+		struct tm tm_info;
+	//cronjobs:
+	//check gshutdown
 		while (!gShutdown) {
 			msleep(1 * 1000);
+	//flow count reset
+			RiskManager::instance().resetflow();
+
+	// switch day, at 20:30 everyday,  reset td engine, needconfirmation
+			time(&timer);
+			tm_info = *localtime(&timer);
+			if (tm_info.tm_hour == 20 && tm_info.tm_min == 30 && tm_info.tm_sec == 0){
+				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>("CTP_TD","0",MSG_TYPE_SWITCH_TRADING_DAY);
+				msg_relay_->send(pmsg);
+				RiskManager::instance().switchday();
+			}
+	// auto connect at 8:45, 1:15, 20:45
+			if (tm_info.tm_hour == 8 && tm_info.tm_min == 45 && tm_info.tm_sec == 0){
+				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>("CTP_TD","0",MSG_TYPE_ENGINE_CONNECT);
+				std::shared_ptr<MsgHeader> pmsg2 = make_shared<MsgHeader>("CTP_MD","0",MSG_TYPE_ENGINE_CONNECT);
+				msg_relay_->send(pmsg);
+				msg_relay_->send(pmsg2);
+			}
+			if (tm_info.tm_hour == 13 && tm_info.tm_min == 15 && tm_info.tm_sec == 0){
+				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>("CTP_TD","0",MSG_TYPE_ENGINE_CONNECT);
+				std::shared_ptr<MsgHeader> pmsg2 = make_shared<MsgHeader>("CTP_MD","0",MSG_TYPE_ENGINE_CONNECT);
+				msg_relay_->send(pmsg);
+				msg_relay_->send(pmsg2);
+			}
+			if (tm_info.tm_hour == 20 && tm_info.tm_min == 45 && tm_info.tm_sec == 0){
+				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>("CTP_TD","0",MSG_TYPE_ENGINE_CONNECT);
+				std::shared_ptr<MsgHeader> pmsg2 = make_shared<MsgHeader>("CTP_MD","0",MSG_TYPE_ENGINE_CONNECT);
+				msg_relay_->send(pmsg);
+				msg_relay_->send(pmsg2);
+			}
+	// auto reset at 16:00 ,3:00
+			if (tm_info.tm_hour == 16 && tm_info.tm_min == 0 && tm_info.tm_sec == 0){
+				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>("CTP_TD","0",MSG_TYPE_ENGINE_RESET);
+				std::shared_ptr<MsgHeader> pmsg2 = make_shared<MsgHeader>("CTP_MD","0",MSG_TYPE_ENGINE_RESET);
+				msg_relay_->send(pmsg);
+				msg_relay_->send(pmsg2);
+			}
+			if (tm_info.tm_hour == 3 && tm_info.tm_min == 0 && tm_info.tm_sec == 0){
+				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>("CTP_TD","0",MSG_TYPE_ENGINE_RESET);
+				std::shared_ptr<MsgHeader> pmsg2 = make_shared<MsgHeader>("CTP_MD","0",MSG_TYPE_ENGINE_RESET);
+				msg_relay_->send(pmsg);
+				msg_relay_->send(pmsg2);
+			}
+
 		}
 		// ctrl-c
 		if (force) {
@@ -119,7 +158,7 @@ namespace StarQuant
 		if (gShutdown)
 			return 1;
 		try {
-			auto fu1 = async(launch::async, std::bind(&tradingengine::check_gshutdown,this,std::placeholders::_1), true);
+			auto fu1 = async(launch::async, std::bind(&tradingengine::cronjobs,this,std::placeholders::_1), true);
 			if (mode == RUN_MODE::RECORD_MODE) {
 				LOG_INFO(logger,"RECORD_MODE");
 				//threads_.push_back(new thread(TickRecordingService));

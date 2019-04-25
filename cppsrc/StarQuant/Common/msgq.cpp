@@ -160,6 +160,18 @@ namespace StarQuant {
 		msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, url_send);
 
 	}
+
+	void CMsgqRMessenger::send(shared_ptr<MsgHeader> Msg,int mode){
+		// string msgout = Msg->destination_ 
+		// 				+ SERIALIZATION_SEPARATOR + Msg->source_
+		// 				+ SERIALIZATION_SEPARATOR + to_string(Msg->msgtype_)
+		// 				+ Msg->serialize();
+		string msgout = Msg->serialize();
+		msgq_send_->sendmsg(msgout,mode);
+
+	}
+
+
 	void CMsgqRMessenger::relay(){
 			string msgpull = msgq_recv_->recmsg(0);
 			if (msgpull.empty())

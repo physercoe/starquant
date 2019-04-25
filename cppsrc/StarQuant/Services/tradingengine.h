@@ -11,7 +11,9 @@ using namespace std;
 namespace StarQuant
 {
 	void startengine(shared_ptr<IEngine> pe);
-	extern std::atomic<bool> gShutdown;
+
+
+
 	class DLL_EXPORT_IMPORT tradingengine {
 		RUN_MODE mode = RUN_MODE::TRADE_MODE; //RUN_MODE::REPLAY_MODE;
 		BROKERS _broker = BROKERS::PAPER;
@@ -23,10 +25,10 @@ namespace StarQuant
 	public:
 
 
-		static void ConsoleControlHandler(int sig);
+
 		//std::atomic<bool>* setconsolecontrolhandler(void);
 		//setconsolecontrolhandler(void)
-		int check_gshutdown(bool force = true);
+		int cronjobs(bool force = true);
 
 		int run();
 		bool live() const;

@@ -17,6 +17,7 @@ namespace StarQuant
 	public:
 		string name_;
 		Account ctpacc_;
+
 		CtpMDEngine();
 		~CtpMDEngine();
 
@@ -25,9 +26,13 @@ namespace StarQuant
 		virtual void stop();
 		virtual bool connect() ;
 		virtual bool disconnect() ;
-		
+		void releaseapi();
+		void reset();
+		void switchday(){};	
+
 		void subscribe(const vector<string>& symbols) ;
-		void unsubscribe(const vector<string>& symbols) ;		
+		void unsubscribe(const vector<string>& symbols) ;	
+
 
 	public:
 		virtual void OnFrontConnected();
@@ -55,7 +60,7 @@ namespace StarQuant
 	private:
 		int loginReqId_;
 		CThostFtdcMdApi* api_;		
-
+		bool apiinited_;
 	};
 }
 

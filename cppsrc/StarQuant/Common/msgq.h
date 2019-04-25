@@ -108,7 +108,7 @@ namespace StarQuant {
 			CMsgqRMessenger(string url_recv, string url_send);
 			virtual ~CMsgqRMessenger(){};
 
-			virtual void send(std::shared_ptr<MsgHeader> pmsg,int mode = 0) {};
+			virtual void send(std::shared_ptr<MsgHeader> pmsg,int mode = 0);
 			virtual std::shared_ptr<MsgHeader> recv(int mode = 0) {return nullptr;};
 			virtual void relay() ;
 

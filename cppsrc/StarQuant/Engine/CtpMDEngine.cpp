@@ -3,6 +3,7 @@
 #include <ostream>
 #include <string>
 #include <sstream>
+#include <limits>
 #include <mutex>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +26,7 @@ namespace StarQuant
 
 	CtpMDEngine ::CtpMDEngine() 
 		: loginReqId_(0)
+		, apiinited_(false)
 	{
 		init();
 	}
@@ -32,12 +34,24 @@ namespace StarQuant
 	CtpMDEngine::~CtpMDEngine() {
 		if(estate_ != STOP)
 			stop();
-		if (api_ != nullptr) {
-			this->api_->RegisterSpi(nullptr);
-			this->api_->Release();// api must init() or will segfault
-			this->api_ = nullptr;
-		}
+		releaseapi();
 	}
+
+	void CtpMDEngine::releaseapi(){	
+		if (api_ != nullptr){
+			this->api_->RegisterSpi(nullptr);
+			if (apiinited_) 
+				this->api_->Release();// api must init() or will segfault
+			this->api_ = nullptr;
+		}		
+	}
+
+	void CtpMDEngine::reset(){
+		disconnect();
+		releaseapi();
+		init();	
+		LOG_DEBUG(logger,"CTP MD reset");	
+	}	
 
 	void CtpMDEngine::init(){
 		// if (IEngine::msgq_send_ == nullptr){
@@ -51,8 +65,7 @@ namespace StarQuant
 
 		if (messenger_ == nullptr){
 			messenger_ = std::make_unique<CMsgqEMessenger>(name_, CConfig::instance().SERVERSUB_URL);	
-		}	
-		
+		}			
 		ctpacc_ = CConfig::instance()._apimap["CTP"];
 		string path = CConfig::instance().logDir() + "/ctp/md";
 		boost::filesystem::path dir(path.c_str());
@@ -60,10 +73,8 @@ namespace StarQuant
 		// 创建API对象
 		this->api_ = CThostFtdcMdApi::CreateFtdcMdApi(path.c_str());
 		this->api_->RegisterSpi(this);
-		string ctp_data_address = ctpacc_.md_ip + ":" + to_string(ctpacc_.md_port);	
-		this->api_->RegisterFront((char*)ctp_data_address.c_str());
-		this->api_->Init();
-		estate_ = CONNECTING;
+		estate_ = DISCONNECTED;
+		apiinited_ = false;
 		LOG_DEBUG(logger,"CTP MD inited");
 
 	}
@@ -133,7 +144,13 @@ namespace StarQuant
 						messenger_->send(pmsgout);
 						LOG_DEBUG(logger,"CTP_MD return test msg!");
 					}
-					break;					
+					break;
+				case MSG_TYPE_SWITCH_TRADING_DAY:
+					switchday();
+					break;	
+				case MSG_TYPE_ENGINE_RESET:
+					reset();
+					break;										
 				default:
 					break;
 			}
@@ -150,11 +167,14 @@ namespace StarQuant
 		while(estate_ != EState::LOGIN_ACK && estate_ != STOP){
 			switch(estate_){
 				case EState::DISCONNECTED:
-					// this->api_->RegisterFront((char*)ctp_data_address.c_str());
-					// this->api_->Init();
-					// estate_ = CONNECTING;
-					// PRINT_TO_FILE("INFO:[%s,%d][%s]Ctp Md connecting to frontend...!\n", __FILE__, __LINE__, __FUNCTION__);
-					// count++;
+					if (!apiinited_){
+						this->api_->RegisterFront((char*)ctp_data_address.c_str());
+						this->api_->Init();
+						apiinited_ = true;
+					}
+					estate_ = CONNECTING;			
+					count++;
+					LOG_INFO(logger,"CTP MD api inited, connecting to front...");		
 					break;
 				case EState::CONNECTING:
 					msleep(100);
@@ -233,13 +253,15 @@ namespace StarQuant
 
 		int error;
 	    int nCount = symbol.size();
+		string sout;
     	char* insts[nCount];
     	for (int i = 0; i < nCount; i++)
 		{
 			string ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
-			insts[i] = (char*)ctpticker.c_str();	
+			insts[i] = (char*)ctpticker.c_str();
+			sout += insts[i] +string("|");		
 		}
-		LOG_INFO(logger,"ctp md uunsubcribe "<<insts[0]);
+		LOG_INFO(logger,"ctp md unsubcribe "<<nCount<<"|"<<sout<<".");
 		error = this->api_->UnSubscribeMarketData(insts, nCount);
 		if (error != 0){
 			LOG_ERROR(logger,"ctp md unsubscribe  error "<<error);
@@ -256,7 +278,7 @@ namespace StarQuant
 	}
 
 	void CtpMDEngine::OnFrontDisconnected(int nReason) {
-		estate_ = DISCONNECTED;			// not used
+		estate_ = CONNECTING;			// automatic connecting
 		LOG_INFO(logger,"Ctp md frontend is  disconnected, nReason="<<nReason);			
 	}
 
@@ -384,15 +406,15 @@ namespace StarQuant
 		pk->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pDepthMarketData->InstrumentID);
 		pk->data_.price_ = pDepthMarketData->LastPrice;
 		pk->data_.size_ = pDepthMarketData->Volume;			
-		pk->data_.bidPrice_[0] = pDepthMarketData->BidPrice1;
+		pk->data_.bidPrice_[0] = pDepthMarketData->BidPrice1 == numeric_limits<double>::max()? 0.0: pDepthMarketData->BidPrice1;
 		pk->data_.bidSize_[0] = pDepthMarketData->BidVolume1;
-		pk->data_.askPrice_[0] = pDepthMarketData->AskPrice1;
+		pk->data_.askPrice_[0] = pDepthMarketData->AskPrice1 == numeric_limits<double>::max()? 0.0: pDepthMarketData->AskPrice1;
 		pk->data_.askSize_[0] = pDepthMarketData->AskVolume1;
 		pk->data_.openInterest_ = pDepthMarketData->OpenInterest;
-		pk->data_.open_ = pDepthMarketData->OpenPrice;
-		pk->data_.high_ = pDepthMarketData->HighestPrice;
-		pk->data_.low_ = pDepthMarketData->LowestPrice;
-		pk->data_.preClose_ = pDepthMarketData->PreClosePrice;
+		pk->data_.open_ = pDepthMarketData->OpenPrice == numeric_limits<double>::max()? 0.0: pDepthMarketData->OpenPrice;
+		pk->data_.high_ = pDepthMarketData->HighestPrice == numeric_limits<double>::max()? 0.0: pDepthMarketData->HighestPrice;
+		pk->data_.low_ = pDepthMarketData->LowestPrice == numeric_limits<double>::max()? 0.0: pDepthMarketData->LowestPrice;
+		pk->data_.preClose_ = pDepthMarketData->PreClosePrice ;
 		pk->data_.upperLimitPrice_ = pDepthMarketData->UpperLimitPrice;
 		pk->data_.lowerLimitPrice_ = pDepthMarketData->LowerLimitPrice;
 

@@ -97,6 +97,16 @@ namespace StarQuant {
 		string SERVERPULL_URL = "tcp://localhost:55557"; //listen all the requests from clients
 		bool cpuaffinity = false;
 
+		/*****************************************Risk setting**************/
+		bool riskcheck = false;
+		int sizeperorderlimit = 0;
+		double cashperorderlimit = 0.0;
+		int ordercountlimit = 0;
+		double cashlimit =0.0;
+		int ordersizelimit = 0;
+		int ordercountperseclimit = 0;
+
+		/*****************************************End Risk setting**************/
 
 		/**************************************** End of Message Queue ******************************************/
 	};
