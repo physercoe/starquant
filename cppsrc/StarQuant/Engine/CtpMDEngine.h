@@ -62,6 +62,8 @@ namespace StarQuant
 		int loginReqId_;
 		CThostFtdcMdApi* api_;		
 		bool apiinited_;
+		bool inconnectaction_;
+		bool autoconnect_;		
 	};
 }
 

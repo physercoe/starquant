@@ -27,7 +27,10 @@ namespace StarQuant
 	CtpMDEngine ::CtpMDEngine() 
 		: loginReqId_(0)
 		, apiinited_(false)
+		, inconnectaction_(false)
+		, autoconnect_(false)		
 	{
+		name_ = "CTP.MD";
 		init();
 	}
 
@@ -49,6 +52,7 @@ namespace StarQuant
 	void CtpMDEngine::reset(){
 		disconnect();
 		releaseapi();
+		CConfig::instance().readConfig();
 		init();	
 		LOG_DEBUG(logger,"CTP.MD reset");	
 	}	
@@ -58,7 +62,7 @@ namespace StarQuant
 		// 	lock_guard<mutex> g(IEngine::sendlock_);
 		// 	IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
 		// }
-		name_ = "CTP.MD";
+		
 		if(logger == nullptr){
 			logger = SQLogger::getLogger("MDEngine.CTP");
 		}
@@ -78,7 +82,8 @@ namespace StarQuant
 			this->api_->RegisterSpi(this);
 			estate_ = DISCONNECTED;
 			apiinited_ = false;
-			LOG_DEBUG(logger,"CTP.MD inited, api version:"<<this->api_->GetApiVersion());
+			autoconnect_ = CConfig::instance().autoconnect;
+			LOG_DEBUG(logger,name_ <<" inited, api version:"<<this->api_->GetApiVersion());
 			break;
 			}				
 		}
@@ -148,7 +153,7 @@ namespace StarQuant
 							MSG_TYPE_TEST,
 							"test");
 						messenger_->send(pmsgout);
-						LOG_DEBUG(logger,"CTP.MD return test msg!");
+						LOG_DEBUG(logger,name_ <<" return test msg!");
 					}
 					break;
 				case MSG_TYPE_SWITCH_TRADING_DAY:
@@ -166,6 +171,7 @@ namespace StarQuant
 ////////////////////////////////////////////////////// outgoing function ///////////////////////////////////////
 	bool CtpMDEngine::connect()
 	{
+		inconnectaction_ = true;
 		int error;
 		int count = 0;// count numbers of tries, two many tries ends
 		string ctp_data_address = ctpacc_.md_ip + ":" + to_string(ctpacc_.md_port);	
@@ -180,13 +186,14 @@ namespace StarQuant
 					}
 					estate_ = CONNECTING;			
 					count++;
-					LOG_INFO(logger,"CTP.MD api inited, connecting to front...");		
+					LOG_INFO(logger,name_ <<" api inited, connecting to front...");		
 					break;
 				case EState::CONNECTING:
-					msleep(100);
+					msleep(1000);
+					count++;
 					break;
 				case EState::CONNECT_ACK:
-					LOG_INFO(logger,"CTP.MD logining ...");//行情目前不需要认证
+					LOG_INFO(logger,name_ <<" logining ...");//行情目前不需要认证
 					// strcpy(loginField.BrokerID, ctpacc_.brokerid.c_str());
 					// strcpy(loginField.UserID, ctpacc_.userid.c_str());
 					// strcpy(loginField.Password, ctpacc_.password.c_str());
@@ -195,7 +202,7 @@ namespace StarQuant
 					count++;
 					estate_ = EState::LOGINING;
 					if (error != 0){
-						LOG_ERROR(logger,"Ctp.md login error : "<<error);//TODO: send error msg to client
+						LOG_ERROR(logger,name_ <<" login error : "<<error);//TODO: send error msg to client
 						estate_ = EState::CONNECT_ACK;
 						msleep(1000);
 					}
@@ -208,11 +215,13 @@ namespace StarQuant
 					break;
 			}
 			if(count >10){
-				LOG_ERROR(logger,"too many tries fails, give up connecting");
+				LOG_ERROR(logger,name_ <<" connect too many tries fails, give up connecting");
 				//estate_ = EState::DISCONNECTED;
+				inconnectaction_ = false;
 				return false;
 			}
 		}
+		inconnectaction_ = false;
 		return true;
 	}
 
@@ -248,10 +257,10 @@ namespace StarQuant
 			insts[i] = (char*)ctpticker.c_str();
 			sout += insts[i] +string("|");	
 		}
-		LOG_INFO(logger,"ctp.md subcribe "<<nCount<<"|"<<sout<<".");
+		LOG_INFO(logger,name_ <<" subcribe "<<nCount<<"|"<<sout<<".");
 		error = this->api_->SubscribeMarketData(insts, nCount);
 		if (error != 0){
-			LOG_ERROR(logger,"ctp.md subscribe  error "<<error);
+			LOG_ERROR(logger,name_ <<" subscribe  error "<<error);
 		}		
 	}
 
@@ -280,12 +289,29 @@ namespace StarQuant
 	
 	void CtpMDEngine::OnFrontConnected() {
 		estate_ = CONNECT_ACK;			// not used
-		LOG_INFO(logger,name_ <<"  frontend connected. ");		
+		LOG_INFO(logger,name_ <<"  frontend connected. ");
+		loginReqId_ = 0;
+		//autologin
+		if (autoconnect_ && !inconnectaction_ ){
+			std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(name_,"0",MSG_TYPE_ENGINE_CONNECT);
+			CMsgqRMessenger::Send(pmsg);
+		}
 	}
 
 	void CtpMDEngine::OnFrontDisconnected(int nReason) {
 		estate_ = CONNECTING;			// automatic connecting
-		LOG_INFO(logger,name_ <<"  frontend is  disconnected, nReason="<<nReason);			
+		loginReqId_++;
+		if (loginReqId_ % 4000 ==0){
+			loginReqId_ = 1;
+			string sout("CTP.MD disconnected, nReason=");
+			sout += to_string(nReason);
+			auto pmsgout = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+				MSG_TYPE_INFO_ENGINE_MDDISCONNECTED,
+				sout);
+			messenger_->send(pmsgout);			
+			LOG_INFO(logger,name_ <<"  front is  disconnected, nReason="<<nReason);	
+		}
+		
 	}
 
 	void CtpMDEngine::OnHeartBeatWarning(int nTimeLapse) {

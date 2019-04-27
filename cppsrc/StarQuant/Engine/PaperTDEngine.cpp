@@ -28,7 +28,7 @@ namespace StarQuant
 	}
 
 	void PaperTDEngine::init(){
-		name_ = "PAPER_TD";
+		name_ = "PAPER.TD";
 		if(logger == nullptr){
 			logger = SQLogger::getLogger("TDEngine.Paper");
 		}

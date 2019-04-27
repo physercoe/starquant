@@ -208,6 +208,7 @@ namespace StarQuant
 					break;
 				case CONNECTING:
 					msleep(1000);
+					count++;
 					break;
 				case CONNECT_ACK:
 					if(needauthentication_){
@@ -273,6 +274,7 @@ namespace StarQuant
 	}
 
 	bool CtpTDEngine::disconnect(){
+		inconnectaction_ = true;
 		if(estate_ == LOGIN_ACK){
 			LOG_INFO(logger,name_ <<" logouting ..");
 			CThostFtdcUserLogoutField logoutField = CThostFtdcUserLogoutField();
@@ -571,12 +573,12 @@ namespace StarQuant
 			LOG_ERROR(logger,name_ <<" logout failed: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
 		}
 		else{
-			string sout("Ctp td disconnected");
+			string sout("Ctp td logouted");
 			auto pmsgout = make_shared<InfoMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_INFO_ENGINE_TDDISCONNECTED,
 				sout);
 			messenger_->send(pmsgout);
-			estate_ = CONNECT_ACK;
+			estate_ = CONNECTING;
 			LOG_INFO(logger,name_ <<" Logout,BrokerID="<<pUserLogout->BrokerID<<" UserID="<<pUserLogout->UserID);
 		}
 	}
