@@ -58,14 +58,11 @@ namespace StarQuant
 		// }
 		if (CMsgqEMessenger::msgq_send_ == nullptr){
 		 	CMsgqEMessenger::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
-		}		
-		LOG_DEBUG(logger,CConfig::instance().SERVERPULL_URL);
-
-		//msg_pull_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PULL, CConfig::instance().SERVERPULL_URL);
-		//msg_pub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERSUB_URL);
-		//client_msg_pair_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PAIR, CConfig::instance().API_PORT);
-		//md_msg_pub_=  std::make_shared<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().API_ZMQ_DATA_PORT,false);
-		msg_relay_ = std::make_unique<CMsgqRMessenger>(CConfig::instance().SERVERPULL_URL,CConfig::instance().SERVERSUB_URL);
+		}
+		if (CMsgqRMessenger::msgq_send_ == nullptr){
+		 	CMsgqRMessenger::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERSUB_URL);
+		}				
+		msg_relay_ = std::make_unique<CMsgqRMessenger>(CConfig::instance().SERVERPULL_URL);
 	}
 
 	tradingengine::~tradingengine() {		
@@ -84,6 +81,10 @@ namespace StarQuant
 			if (t->joinable()){
 				t->join();
 				delete t;
+			}
+			else{
+				// pthread_cancel(t->native_handle());
+				// delete t;
 			}	
 		}
 		LOG_DEBUG(logger,"Exit trading engine");		
@@ -100,49 +101,38 @@ namespace StarQuant
 	//check gshutdown
 		while (!gShutdown) {
 			msleep(1 * 1000);
-	//flow count reset
-			RiskManager::instance().resetflow();
-
 	// switch day, at 20:30 everyday,  reset td engine, needconfirmation
 			time(&timer);
 			tm_info = *localtime(&timer);
 			if (tm_info.tm_hour == 20 && tm_info.tm_min == 30 && tm_info.tm_sec == 0){
-				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>("CTP_TD","0",MSG_TYPE_SWITCH_TRADING_DAY);
+				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0",MSG_TYPE_SWITCH_TRADING_DAY);
 				msg_relay_->send(pmsg);
 				RiskManager::instance().switchday();
 			}
 	// auto connect at 8:45, 1:15, 20:45
 			if (tm_info.tm_hour == 8 && tm_info.tm_min == 45 && tm_info.tm_sec == 0){
-				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>("CTP_TD","0",MSG_TYPE_ENGINE_CONNECT);
-				std::shared_ptr<MsgHeader> pmsg2 = make_shared<MsgHeader>("CTP_MD","0",MSG_TYPE_ENGINE_CONNECT);
+				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0",MSG_TYPE_ENGINE_CONNECT);
 				msg_relay_->send(pmsg);
-				msg_relay_->send(pmsg2);
 			}
 			if (tm_info.tm_hour == 13 && tm_info.tm_min == 15 && tm_info.tm_sec == 0){
-				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>("CTP_TD","0",MSG_TYPE_ENGINE_CONNECT);
-				std::shared_ptr<MsgHeader> pmsg2 = make_shared<MsgHeader>("CTP_MD","0",MSG_TYPE_ENGINE_CONNECT);
+				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0",MSG_TYPE_ENGINE_CONNECT);
 				msg_relay_->send(pmsg);
-				msg_relay_->send(pmsg2);
 			}
 			if (tm_info.tm_hour == 20 && tm_info.tm_min == 45 && tm_info.tm_sec == 0){
-				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>("CTP_TD","0",MSG_TYPE_ENGINE_CONNECT);
-				std::shared_ptr<MsgHeader> pmsg2 = make_shared<MsgHeader>("CTP_MD","0",MSG_TYPE_ENGINE_CONNECT);
+				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0",MSG_TYPE_ENGINE_CONNECT);
 				msg_relay_->send(pmsg);
-				msg_relay_->send(pmsg2);
 			}
-	// auto reset at 16:00 ,3:00
+	// auto reset at 16:00 ,2:35
 			if (tm_info.tm_hour == 16 && tm_info.tm_min == 0 && tm_info.tm_sec == 0){
-				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>("CTP_TD","0",MSG_TYPE_ENGINE_RESET);
-				std::shared_ptr<MsgHeader> pmsg2 = make_shared<MsgHeader>("CTP_MD","0",MSG_TYPE_ENGINE_RESET);
+				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0",MSG_TYPE_ENGINE_RESET);
 				msg_relay_->send(pmsg);
-				msg_relay_->send(pmsg2);
 			}
-			if (tm_info.tm_hour == 3 && tm_info.tm_min == 0 && tm_info.tm_sec == 0){
-				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>("CTP_TD","0",MSG_TYPE_ENGINE_RESET);
-				std::shared_ptr<MsgHeader> pmsg2 = make_shared<MsgHeader>("CTP_MD","0",MSG_TYPE_ENGINE_RESET);
+			if (tm_info.tm_hour == 2 && tm_info.tm_min == 35 && tm_info.tm_sec == 0){
+				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0",MSG_TYPE_ENGINE_RESET);
 				msg_relay_->send(pmsg);
-				msg_relay_->send(pmsg2);
 			}
+	//flow count reset
+			RiskManager::instance().resetflow();
 
 		}
 		// ctrl-c
@@ -174,11 +164,15 @@ namespace StarQuant
 					//threads_.push_back(new thread(TickRecordingService));
 				if (CConfig::instance()._loadapi["CTP"]){
 					std::shared_ptr<IEngine> ctpmdengine = make_shared<CtpMDEngine>();
-					std::shared_ptr<IEngine> ctptdengine = make_shared<CtpTDEngine>();
-					threads_.push_back(new std::thread(startengine,ctpmdengine));
-					threads_.push_back(new std::thread(startengine,ctptdengine));
 					pengines_.push_back(ctpmdengine);
-					pengines_.push_back(ctptdengine);
+					threads_.push_back(new std::thread(startengine,ctpmdengine));
+					for (auto iter = CConfig::instance()._accmap.begin(); iter != CConfig::instance()._accmap.end(); iter++){
+						if (iter->second.apitype == "CTP"){
+							std::shared_ptr<IEngine> ctptdengine = make_shared<CtpTDEngine>(iter->first);
+							threads_.push_back(new std::thread(startengine,ctptdengine));
+							pengines_.push_back(ctptdengine);						
+						}
+					}
 				}
 				if (CConfig::instance()._loadapi["TAP"]){
 					// std::shared_ptr<IEngine> tapmdengine = make_shared<TapMDEngine>();

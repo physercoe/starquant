@@ -5,6 +5,7 @@
 #include <Common/datastruct.h>
 #include <Common/logger.h>
 #include <Common/util.h>
+#include <Common/msgq.h>
 #include <Trade/ordermanager.h>
 #include <Trade/portfoliomanager.h>
 #include <Data/datamanager.h>
@@ -15,7 +16,7 @@ namespace StarQuant
 {
 	//extern std::atomic<bool> gShutdown;
 
-	CtpTDEngine::CtpTDEngine() 
+	CtpTDEngine::CtpTDEngine(const string& acc) 
 		: needauthentication_(false)
 		, needsettlementconfirm_(true)
 		, issettleconfirmed_(false)
@@ -25,7 +26,10 @@ namespace StarQuant
 		, frontID_(0)
 		, sessionID_(0)
 		, apiinited_(false)
+		, inconnectaction_(false)
+		, autoconnect_(false)
 	{
+		name_ = string("CTP") + DESTINATION_SEPARATOR + "TD" + DESTINATION_SEPARATOR + acc;
 		init();
 	}
 
@@ -47,21 +51,21 @@ namespace StarQuant
 	void CtpTDEngine::reset(){
 		disconnect();
 		releaseapi();
+		CConfig::instance().readConfig();
 		init();	
-		LOG_DEBUG(logger,"CTP TD reset");	
+		LOG_DEBUG(logger,name_ <<" reset");	
 	}	
 
 	void CtpTDEngine::init(){
-		name_ = "CTP_TD";
-
 		if(logger == nullptr){
 			logger = SQLogger::getLogger("TDEngine.CTP");
 		}
 		if (messenger_ == nullptr){
 			messenger_ = std::make_unique<CMsgqEMessenger>(name_, CConfig::instance().SERVERSUB_URL);	
-		}	
-		ctpacc_ = CConfig::instance()._apimap["CTP"];
-		string path = CConfig::instance().logDir() + "/ctp/td";
+		}
+		string acc = accAddress(name_);	
+		ctpacc_ = CConfig::instance()._accmap[acc];
+		string path = CConfig::instance().logDir() + "/ctp/td/" + acc;
 		boost::filesystem::path dir(path.c_str());
 		boost::filesystem::create_directory(dir);
 		this->api_ = CThostFtdcTraderApi::CreateFtdcTraderApi(path.c_str());
@@ -74,19 +78,20 @@ namespace StarQuant
 		}
 		estate_ = DISCONNECTED;
 		apiinited_ = false;
-		LOG_DEBUG(logger,"CTP TD inited, api version:"<<this->api_->GetApiVersion());
+		autoconnect_ = CConfig::instance().autoconnect;
+		LOG_DEBUG(logger, name_ <<" inited, api version:"<<this->api_->GetApiVersion());
 	}
 	void CtpTDEngine::stop(){
 		int tmp = disconnect();
 		estate_  = EState::STOP;
-		LOG_DEBUG(logger,"CTP TD stoped");	
+		LOG_DEBUG(logger, name_ <<" stoped");	
 
 	}
 
 	void CtpTDEngine::start(){
 		while(estate_ != EState::STOP){
 			auto pmsgin = messenger_->recv(1);
-			if (pmsgin == nullptr || pmsgin->destination_ != name_)
+			if (pmsgin == nullptr || (pmsgin->destination_ != name_  && ! startwith(pmsgin->destination_,DESTINATION_ALL) ) )
 				continue;
 			switch (pmsgin->msgtype_)
 			{
@@ -106,10 +111,10 @@ namespace StarQuant
 						insertOrder(pmsgin2);
 					}
 					else{
-						LOG_DEBUG(logger,"CTP_TD is not connected,can not insert order!");
+						LOG_DEBUG(logger,name_ <<" is not connected,can not insert order!");
 						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
 							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							"ctp Td is not connected,can not insert order!");
+							name_+ " is not connected,can not insert order!");
 						messenger_->send(pmsgout);
 					}
 					break;
@@ -119,10 +124,10 @@ namespace StarQuant
 						cancelOrder(pmsgin2);
 					}
 					else{
-						LOG_DEBUG(logger,"CTP_TD is not connected,can not cancel order!");
+						LOG_DEBUG(logger,name_ <<" is not connected,can not cancel order!");
 						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
 							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							"ctp Td is not connected,can not cancel order!");
+							name_ + " is not connected,can not cancel order!");
 						messenger_->send(pmsgout);
 					}
 					break;
@@ -131,10 +136,10 @@ namespace StarQuant
 						queryPosition(pmsgin);
 					}
 					else{
-						LOG_DEBUG(logger,"CTP_TD is not connected,can not qry pos!");
+						LOG_DEBUG(logger,name_ <<" is not connected,can not qry pos!");
 						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
 							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							"ctp Td is not connected,can not qry pos!");
+							name_ + " is not connected,can not qry pos!");
 						messenger_->send(pmsgout);
 					}
 					break;
@@ -143,10 +148,10 @@ namespace StarQuant
 						queryAccount(pmsgin);
 					}
 					else{
-						LOG_DEBUG(logger,"CTP_TD is not connected,can not qry acc!");
+						LOG_DEBUG(logger,name_ <<" is not connected,can not qry acc!");
 						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
 							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							"ctp Td is not connected,can not qry acc!");
+							name_ + " is not connected,can not qry acc!");
 						messenger_->send(pmsgout);
 					}
 					break;
@@ -164,7 +169,7 @@ namespace StarQuant
 							MSG_TYPE_TEST,
 							"test");
 						messenger_->send(pmsgout);
-						LOG_DEBUG(logger,"CTP_TD return test msg!");
+						LOG_DEBUG(logger,name_ <<" return test msg!");
 					}
 					break;
 				case MSG_TYPE_SWITCH_TRADING_DAY:
@@ -180,6 +185,7 @@ namespace StarQuant
 	}
 
 	bool CtpTDEngine::connect(){
+		inconnectaction_ = true;
 		THOST_TE_RESUME_TYPE privatetype = THOST_TERT_QUICK;// THOST_TERT_RESTART，THOST_TERT_RESUME, THOST_TERT_QUICK
 		THOST_TE_RESUME_TYPE publictype = THOST_TERT_QUICK;// THOST_TERT_RESTART，THOST_TERT_RESUME, THOST_TERT_QUICK
 		int error;
@@ -197,11 +203,11 @@ namespace StarQuant
 						apiinited_ = true;					
 					}
 					estate_ = CONNECTING;
-					LOG_INFO(logger,"CTP_TD api inited, connect Front!");
+					LOG_INFO(logger,name_ <<" api inited, connect Front!");
 					count++;
 					break;
 				case CONNECTING:
-					msleep(100);
+					msleep(1000);
 					break;
 				case CONNECT_ACK:
 					if(needauthentication_){
@@ -211,7 +217,7 @@ namespace StarQuant
 						strcpy(authField.AuthCode, ctpacc_.auth_code.c_str());
 						strcpy(authField.UserProductInfo,ctpacc_.productinfo.c_str());
 						strcpy(authField.AppID, ctpacc_.appid.c_str());
-						LOG_INFO(logger,"CTP_TD authenticating :"
+						LOG_INFO(logger,name_ <<" authenticating :"
 							<<authField.UserID<<"|"
 							<<authField.BrokerID<<"|"
 							<<authField.AuthCode<<"|"
@@ -220,7 +226,7 @@ namespace StarQuant
 						count++;
 						estate_ = AUTHENTICATING;
 						if (error != 0){
-							LOG_ERROR(logger,"Ctp td  authenticate  error");
+							LOG_ERROR(logger,name_ <<" authenticate  error");
 							estate_ = CONNECT_ACK;
 							msleep(1000);
 						}
@@ -233,7 +239,7 @@ namespace StarQuant
 					msleep(100);
 					break;
 				case AUTHENTICATE_ACK:
-					LOG_INFO(logger,"Ctp td logining ...");
+					LOG_INFO(logger,name_ <<" logining ...");
 					strcpy(loginField.BrokerID, ctpacc_.brokerid.c_str());
 					strcpy(loginField.UserID, ctpacc_.userid.c_str());
 					strcpy(loginField.Password, ctpacc_.password.c_str());
@@ -243,7 +249,7 @@ namespace StarQuant
 					count++;
 					estate_ = EState::LOGINING;
 					if (error != 0){
-						LOG_ERROR(logger,"Ctp TD login error:"<<error);
+						LOG_ERROR(logger,name_ <<" login error:"<<error);
 						estate_ = EState::AUTHENTICATE_ACK;
 						msleep(1000);
 					}
@@ -256,30 +262,32 @@ namespace StarQuant
 					break;
 			}
 			if(count > 20){
-				LOG_ERROR(logger,"too many tries fails, give up connecting");
+				LOG_ERROR(logger,name_ <<" too many tries fails, give up connecting");
 				//estate_ = EState::DISCONNECTED;
+				inconnectaction_ = false;
 				return false;
 			}			
 		}
+		inconnectaction_ = false;
 		return true;
 	}
 
 	bool CtpTDEngine::disconnect(){
 		if(estate_ == LOGIN_ACK){
-			LOG_INFO(logger,"Ctp Td logouting ..");
+			LOG_INFO(logger,name_ <<" logouting ..");
 			CThostFtdcUserLogoutField logoutField = CThostFtdcUserLogoutField();
 			strcpy(logoutField.BrokerID, ctpacc_.brokerid.c_str());
 			strcpy(logoutField.UserID, ctpacc_.userid.c_str());
 			int error = this->api_->ReqUserLogout(&logoutField, reqId_++);
 			estate_ = EState::LOGOUTING;
 			if (error != 0){
-				LOG_ERROR(logger,"ctp td logout error:"<<error);//TODO: send error msg to client
+				LOG_ERROR(logger,name_ <<" logout error:"<<error);//TODO: send error msg to client
 				return false;
 			}
 			return true;
 		}
 		else{
-			LOG_DEBUG(logger,"ctp td is not connected(logined), cannot disconnect!");
+			LOG_DEBUG(logger,name_ <<" is not connected(logined), cannot disconnect!");
 			return false;
 		}
 
@@ -287,7 +295,7 @@ namespace StarQuant
 
 	void CtpTDEngine::switchday(){
 		issettleconfirmed_ = false;
-		LOG_DEBUG(logger,"ctp td switch day reset settleconfirmed!");
+		LOG_DEBUG(logger,name_ <<" switch day reset settleconfirmed!");
 	}
 
 	void CtpTDEngine::insertOrder(shared_ptr<OrderMsg> pmsg){
@@ -407,13 +415,13 @@ namespace StarQuant
 		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
 		int error = api_->ReqQryTradingAccount(&myreq, reqId_++);
-		LOG_INFO(logger,"Ctp Td requests account information");			
+		LOG_INFO(logger,name_ <<" requests account information");			
 		if (error != 0){
 			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
 				MSG_TYPE_ERROR_QRY_ACC,
 				"Ctp td qry acc error");
 			messenger_->send(pmsgout);
-			LOG_ERROR(logger,"Ctp td qry acc error "<<error);
+			LOG_ERROR(logger,name_ <<" qry acc error "<<error);
 		}
 	}
 	/// 查询pos
@@ -422,33 +430,43 @@ namespace StarQuant
 		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
 		int error = this->api_->ReqQryInvestorPosition(&myreq, reqId_++);
-		LOG_INFO(logger,"Ctp td requests positions");		
+		LOG_INFO(logger,name_ <<" requests positions");		
 		if (error != 0){
 			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
 				MSG_TYPE_ERROR_QRY_POS,
 				"Ctp td qry pos error");
 			messenger_->send(pmsgout);
-			LOG_ERROR(logger,"Ctp td qry pos error "<<error);
+			LOG_ERROR(logger,name_ <<" qry pos error "<<error);
 		}
 	}	
 	////////////////////////////////////////////////////// begin callback/incoming function ///////////////////////////////////////
 	///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
 	void CtpTDEngine::OnFrontConnected() {
-		LOG_INFO(logger,"Ctp Td frontend connected");
+		LOG_INFO(logger,name_ <<" front connected.");
 		estate_ = CONNECT_ACK;
 		reqId_ = 0;
+		//autologin
+		if (autoconnect_ && !inconnectaction_ ){
+			std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(name_,"0",MSG_TYPE_ENGINE_CONNECT);
+			CMsgqRMessenger::Send(pmsg);
+		}
+			
 	}
 
 	void CtpTDEngine::OnFrontDisconnected(int nReason) {
-		string sout("Ctp td disconnected, nReason=");
-		sout += to_string(nReason);
-		auto pmsgout = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-			MSG_TYPE_INFO_ENGINE_TDDISCONNECTED,
-			sout);
-		messenger_->send(pmsgout);
-		LOG_INFO(logger,"Ctp td disconnected, nReason="<<nReason);
-		estate_ = DISCONNECTED;
-
+		estate_ = CONNECTING;
+		reqId_ ++;
+		// every 1 min login once
+		if (reqId_ % 4000 == 0){
+			reqId_ = 1;
+			string sout("Ctp td disconnected, nReason=");
+			sout += to_string(nReason);
+			auto pmsgout = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+				MSG_TYPE_INFO_ENGINE_TDDISCONNECTED,
+				sout);
+			messenger_->send(pmsgout);
+			LOG_INFO(logger, name_ <<" disconnected, nReason="<<nReason);
+		}
 	}
 	///心跳超时警告。当长时间未收到报文时，该方法被调用。
 	void CtpTDEngine::OnHeartBeatWarning(int nTimeLapse) {
@@ -458,7 +476,7 @@ namespace StarQuant
 			MSG_TYPE_INFO_HEARTBEAT_WARNING,
 			sout);
 		messenger_->send(pmsgout);		
-		LOG_INFO(logger,"Ctp td heartbeat overtime error, nTimeLapse="<<nTimeLapse);
+		LOG_INFO(logger,name_ <<" heartbeat overtime error, nTimeLapse="<<nTimeLapse);
 	}
 	///客户端认证响应
 	void CtpTDEngine::OnRspAuthenticate(CThostFtdcRspAuthenticateField *pRspAuthenticateField, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
@@ -470,11 +488,11 @@ namespace StarQuant
 				MSG_TYPE_ERROR_CONNECT,
 				sout);
 			messenger_->send(pmsgout);				
-			LOG_ERROR(logger,"Ctp Td authentication failed."<<pRspInfo->ErrorID<<errormsgutf8);
+			LOG_ERROR(logger,name_ <<" authentication failed."<<pRspInfo->ErrorID<<errormsgutf8);
 		}
 		else{
 			estate_ = AUTHENTICATE_ACK;
-			LOG_INFO(logger,"Ctp TD authenticated.");			
+			LOG_INFO(logger,name_ <<" authenticated.");			
 		}
 	}
 	/// 登录请求响应
@@ -489,12 +507,12 @@ namespace StarQuant
 				MSG_TYPE_ERROR_CONNECT,
 				sout);
 			messenger_->send(pmsgout);	
-			LOG_ERROR(logger,"Ctp td login failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);  
+			LOG_ERROR(logger,name_ <<" login failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);  
 		}
 		else{
 			frontID_ = pRspUserLogin->FrontID;
 			sessionID_ = pRspUserLogin->SessionID;
-			LOG_INFO(logger,"Ctp Td server user logged in,"
+			LOG_INFO(logger,name_ <<" user logged in,"
 							<<"TradingDay="<<pRspUserLogin->TradingDay
 							<<" LoginTime="<<pRspUserLogin->LoginTime
 							<<" frontID="<<pRspUserLogin->FrontID
@@ -512,9 +530,9 @@ namespace StarQuant
 					auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 						MSG_TYPE_ERROR_CONNECT,
 						sout);
-					LOG_ERROR(logger,"Ctp TD settlement confirming error");
+					LOG_ERROR(logger,name_ <<" settlement confirming error");
 				}
-				LOG_INFO(logger,"Ctp TD settlement confirming...");
+				LOG_INFO(logger,name_ <<" settlement confirming...");
 			}
 			else{
 				estate_ = LOGIN_ACK;
@@ -532,12 +550,12 @@ namespace StarQuant
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_CONNECT,
 				sout);	
-			LOG_ERROR(logger,"Settlement confirm error: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
+			LOG_ERROR(logger,name_ <<" Settlement confirm error: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
 		}
 		else{
 			estate_ = LOGIN_ACK;
 			issettleconfirmed_ = true;
-			LOG_INFO(logger,"Ctp td Settlement confirmed.ConfirmDate="<<pSettlementInfoConfirm->ConfirmDate<<"ConfirmTime="<<pSettlementInfoConfirm->ConfirmTime);
+			LOG_INFO(logger,name_ <<" Settlement confirmed.ConfirmDate="<<pSettlementInfoConfirm->ConfirmDate<<"ConfirmTime="<<pSettlementInfoConfirm->ConfirmTime);
 		}
 	}
 	///登出请求响应
@@ -550,7 +568,7 @@ namespace StarQuant
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_CONNECT,
 				sout);
-			LOG_ERROR(logger,"Ctp td logout failed: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
+			LOG_ERROR(logger,name_ <<" logout failed: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
 		}
 		else{
 			string sout("Ctp td disconnected");
@@ -559,7 +577,7 @@ namespace StarQuant
 				sout);
 			messenger_->send(pmsgout);
 			estate_ = CONNECT_ACK;
-			LOG_INFO(logger,"Ctp Td Logout,BrokerID="<<pUserLogout->BrokerID<<" UserID="<<pUserLogout->UserID);
+			LOG_INFO(logger,name_ <<" Logout,BrokerID="<<pUserLogout->BrokerID<<" UserID="<<pUserLogout->UserID);
 		}
 	}
 
@@ -593,9 +611,9 @@ namespace StarQuant
 					MSG_TYPE_ERROR_ORGANORDER,
 					pInputOrder->OrderRef);
 				messenger_->send(pmsgout);
-				LOG_ERROR(logger,"onRspOrder Insert, OrderManager cannot find order,OrderRef="<<pInputOrder->OrderRef);
+				LOG_ERROR(logger,name_ <<" onRspOrder Insert, OrderManager cannot find order,OrderRef="<<pInputOrder->OrderRef);
 			}
-			LOG_ERROR(logger,"Ctp Td OnRspOrderInsert: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8
+			LOG_ERROR(logger,name_ <<" OnRspOrderInsert: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8
 				<<"[OrderRef="<<pInputOrder->OrderRef
 				<<"InstrumentID="<<pInputOrder->InstrumentID
 				<<"LimitPrice="<<pInputOrder->LimitPrice
@@ -621,7 +639,7 @@ namespace StarQuant
 					MSG_TYPE_ERROR_INSERTORDER,
 					to_string(o->clientOrderID_));
 				messenger_->send(pmsgout);
-				LOG_ERROR(logger,"Ctp TD OnRsp cancel order error:"<<pRspInfo->ErrorID<<errormsgutf8);
+				LOG_ERROR(logger,name_ <<" OnRsp cancel order error:"<<pRspInfo->ErrorID<<errormsgutf8);
 			}
 			else
 			{
@@ -629,9 +647,9 @@ namespace StarQuant
 					MSG_TYPE_ERROR_ORGANORDER,
 					pInputOrderAction->OrderRef);
 				messenger_->send(pmsgout);
-				LOG_ERROR(logger,"OnRspOrderAction OrderManager cannot find order,OrderRef="<<pInputOrderAction->OrderRef);
+				LOG_ERROR(logger,name_ <<" OnRspOrderAction OrderManager cannot find order,OrderRef="<<pInputOrderAction->OrderRef);
 			}
-			LOG_ERROR(logger,"Ctp Td OnRspOrderAction: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8
+			LOG_ERROR(logger,name_ <<" OnRspOrderAction: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8
 				<<"[OrderRef="<<pInputOrderAction->OrderRef
 				<<"InstrumentID="<<pInputOrderAction->InstrumentID
 				<<"ActionFlag="<<pInputOrderAction->ActionFlag<<"]"
@@ -648,7 +666,7 @@ namespace StarQuant
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult){
 			if(pInvestorPosition == nullptr){
-				LOG_INFO(logger,"Ctp on qry pos return nullptr");
+				LOG_INFO(logger,name_ <<" on qry pos return nullptr");
 				return;
 			}
 			if ((pInvestorPosition->Position != 0.0) && (pInvestorPosition->YdPosition != 0.0)){
@@ -669,7 +687,7 @@ namespace StarQuant
 				messenger_->send(pmsg);
 				PortfolioManager::instance().Add(pmsg->toPos());
 			}
-			LOG_INFO(logger,"Ctp td OnRspQryInvestorPosition:"
+			LOG_INFO(logger,name_ <<" OnRspQryInvestorPosition:"
 				<<" InstrumentID="<<pInvestorPosition->InstrumentID
 				<<" InvestorID="<<pInvestorPosition->InvestorID
 				<<" OpenAmount="<<pInvestorPosition->OpenAmount
@@ -695,7 +713,7 @@ namespace StarQuant
 				MSG_TYPE_ERROR_QRY_POS,
 				sout);
 			messenger_->send(pmsgout);
-			LOG_ERROR(logger,"Ctp Td Qry pos error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
+			LOG_ERROR(logger,name_ <<" Qry pos error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
 		}
 	}
 	///请求查询资金账户响应 
@@ -703,7 +721,7 @@ namespace StarQuant
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult){
 			if(pTradingAccount == nullptr){
-				LOG_INFO(logger,"Ctp Td qry acc return nullptr");
+				LOG_INFO(logger,name_ <<" qry acc return nullptr");
 				return;
 			}
 			double balance = pTradingAccount->PreBalance - pTradingAccount->PreCredit - pTradingAccount->PreMortgage
@@ -722,7 +740,7 @@ namespace StarQuant
 			pmsg->data_.unrealizedPnL_ = pTradingAccount->PositionProfit;
 			messenger_->send(pmsg);
 			PortfolioManager::instance().accinfomap_[ctpacc_.userid] = pmsg->data_;
-			LOG_INFO(logger,"Ctp td OnRspQryTradingAccount:"
+			LOG_INFO(logger,name_ <<" OnRspQryTradingAccount:"
 				<<" AccountID="<<pTradingAccount->AccountID
 				<<" Available="<<pTradingAccount->Available
 				<<" PreBalance="<<pTradingAccount->PreBalance
@@ -746,7 +764,7 @@ namespace StarQuant
 				MSG_TYPE_ERROR_QRY_ACC,
 				sout);
 			messenger_->send(pmsgout);
-			LOG_ERROR(logger,"Ctp Td Qry Acc error:"<<errormsgutf8);
+			LOG_ERROR(logger,name_ <<" Qry Acc error:"<<errormsgutf8);
 		}
 	}
 	///请求查询合约响应
@@ -762,11 +780,11 @@ namespace StarQuant
 				MSG_TYPE_ERROR_QRY_CONTRACT,
 				sout);
 			messenger_->send(pmsgout);			
-			LOG_ERROR(logger,"Ctp Td Qry Instrument error:"<<errormsgutf8);
+			LOG_ERROR(logger,name_ <<" Qry Instrument error:"<<errormsgutf8);
 		}
 		else{
 			if(pInstrument == nullptr){
-				LOG_INFO(logger,"Ctp Td qry Instrument return nullptr");
+				LOG_INFO(logger,name_ <<" qry Instrument return nullptr");
 				return;
 			}
 			auto pmsg = make_shared<SecurityMsg>();
@@ -784,7 +802,7 @@ namespace StarQuant
 			if (it == DataManager::instance().securityDetails_.end()) {
 				DataManager::instance().securityDetails_[symbol] = pmsg->data_;
 			}			
-			LOG_INFO(logger,"Ctp Td OnRspQryInstrument:"
+			LOG_INFO(logger,name_ <<" OnRspQryInstrument:"
 				<<" InstrumentID="<<pInstrument->InstrumentID
 				<<" InstrumentName="<<pInstrument->InstrumentName
 				<<" ExchangeID="<<pInstrument->ExchangeID
@@ -809,13 +827,13 @@ namespace StarQuant
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR,
 				sout);
-			LOG_ERROR(logger,"Ctp td server OnRspError: ErrorID="<<pRspInfo->ErrorID <<"ErrorMsg="<<errormsgutf8);
+			LOG_ERROR(logger,name_ <<" server OnRspError: ErrorID="<<pRspInfo->ErrorID <<"ErrorMsg="<<errormsgutf8);
 		}
 	}
 	///报单通知
 	void CtpTDEngine::OnRtnOrder(CThostFtdcOrderField *pOrder) {
 		if(pOrder == nullptr){
-			LOG_INFO(logger,"Ctp td onRtnOrder return nullptr");
+			LOG_INFO(logger,name_ <<" onRtnOrder return nullptr");
 			return;
 		}
 		long nOrderref = std::stol(pOrder->OrderRef);
@@ -842,7 +860,7 @@ namespace StarQuant
 				MSG_TYPE_ERROR_ORGANORDER,
 				pOrder->OrderRef);
 			messenger_->send(pmsgout2);
-			LOG_ERROR(logger,"OnRtnOrder OrderManager cannot find orderref:"<<pOrder->OrderRef);	
+			LOG_ERROR(logger,name_ <<" OnRtnOrder OrderManager cannot find orderref:"<<pOrder->OrderRef);	
 		}
 		else {
 			o->orderStatus_ = CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
@@ -858,7 +876,7 @@ namespace StarQuant
 			pmsgout->data_.orderNo_ = o->orderNo_;
 			messenger_->send(pmsgout);
 		}
-		LOG_INFO(logger,"CTP trade server OnRtnOrder details:"
+		LOG_INFO(logger,name_ <<" OnRtnOrder details:"
 			<<" InstrumentID="<<pOrder->InstrumentID
 			<<" OrderRef="<<pOrder->OrderRef
 			<<" ExchangeID="<<pOrder->ExchangeID
@@ -881,7 +899,7 @@ namespace StarQuant
 	/// 成交通知
 	void CtpTDEngine::OnRtnTrade(CThostFtdcTradeField *pTrade) {
 		if(pTrade == nullptr){
-			LOG_INFO(logger,"Ctp td onRtnTrade return nullptr");
+			LOG_INFO(logger,name_ <<" onRtnTrade return nullptr");
 			return;
 		}
 		auto pmsg = make_shared<FillMsg>();
@@ -916,9 +934,9 @@ namespace StarQuant
 				MSG_TYPE_ERROR_ORGANORDER,
 				pTrade->OrderRef);
 			messenger_->send(pmsgout);			
-			LOG_ERROR(logger,"OnRtnTrade ordermanager cannot find orderref"<<pTrade->OrderRef);
+			LOG_ERROR(logger,name_ <<" OnRtnTrade ordermanager cannot find orderref"<<pTrade->OrderRef);
 		}	
-		LOG_INFO(logger,"CTP trade server OnRtnTrade details:"
+		LOG_INFO(logger,name_ <<" OnRtnTrade details:"
 			<<" TradeID="<<pTrade->TradeID
 			<<" OrderRef="<<pTrade->OrderRef
 			<<" InstrumentID="<<pTrade->InstrumentID
@@ -935,7 +953,7 @@ namespace StarQuant
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if(bResult){
 			if (pInputOrder == nullptr){
-				LOG_INFO(logger,"ctp td OnErrRtnOrderInsert return nullptr");
+				LOG_INFO(logger,name_ <<" OnErrRtnOrderInsert return nullptr");
 				return;
 			}			
 			string errormsgutf8;
@@ -962,9 +980,9 @@ namespace StarQuant
 					MSG_TYPE_ERROR_ORGANORDER,
 					pInputOrder->OrderRef);
 				messenger_->send(pmsgout);			
-				LOG_ERROR(logger,"OnErrRtnOrderInsert ordermanager cannot find orderref:"<<pInputOrder->OrderRef);
+				LOG_ERROR(logger,name_ <<" OnErrRtnOrderInsert ordermanager cannot find orderref:"<<pInputOrder->OrderRef);
 			}
-			LOG_ERROR(logger,"CTP td OnErrRtnOrderinsert:"
+			LOG_ERROR(logger,name_ <<" OnErrRtnOrderinsert:"
 				<<" ErrorMsg:"<<errormsgutf8
 				<<" InstrumentID="<<pInputOrder->InstrumentID
 				<<" OrderRef="<<pInputOrder->OrderRef
@@ -1000,9 +1018,9 @@ namespace StarQuant
 					MSG_TYPE_ERROR_ORGANORDER,
 					pOrderAction->OrderRef);
 				messenger_->send(pmsgout);
-				LOG_ERROR(logger,"OnErrRtnOrderAction OrderManager cannot find order,OrderRef="<<pOrderAction->OrderRef);
+				LOG_ERROR(logger,name_ <<" OnErrRtnOrderAction OrderManager cannot find order,OrderRef="<<pOrderAction->OrderRef);
 			}
-			LOG_ERROR(logger,"Ctp td OnErrRtnOrderAction: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);
+			LOG_ERROR(logger,name_ <<" OnErrRtnOrderAction: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);
 		}
 		else{
 			//cout<<"ctp td OnErrRtnOrderAction return no error"<<endl;

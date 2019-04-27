@@ -24,11 +24,13 @@ using namespace std;
 
 namespace StarQuant {
 
+// macro definations used 
 
 #define SERIALIZATION_SEPARATOR '|'
-#define RELAY_DESTINATION '.'
-#define DESTINATION_ALL "0"
-
+#define RELAY_DESTINATION '@'
+#define DESTINATION_ALL "*"
+#define DESTINATION_SEPARATOR '.'
+#define COMMODITY_SEPARATOR '&'
 
 enum CurrencyType {
     USD,
@@ -239,6 +241,7 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_ERROR_QRY_CONTRACT = 3408,
     MSG_TYPE_ERROR_CONNECT = 3409,  //login fail
     MSG_TYPE_ERROR_DISCONNECT = 3410,
+    MSG_TYPE_ERROR_NOACCOUNT = 3411,
 //  40*: test class msg
     MSG_TYPE_TEST = 4000,
 
@@ -247,7 +250,7 @@ enum MSG_TYPE : int32_t {
 };
 
 	MSG_TYPE MsgType(const string& str);
-
+    string accAddress(const string& str);
 
 	enum class RUN_MODE :uint8_t {
 		TRADE_MODE = 0, RECORD_MODE, REPLAY_MODE

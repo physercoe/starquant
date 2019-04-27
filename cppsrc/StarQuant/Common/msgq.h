@@ -103,10 +103,15 @@ namespace StarQuant {
 	class CMsgqRMessenger : public IMessenger {
 		private: 
 			std::unique_ptr<CMsgq> msgq_recv_;
-			std::unique_ptr<CMsgq> msgq_send_;		
+				
 		public:
-			CMsgqRMessenger(string url_recv, string url_send);
+			CMsgqRMessenger(string url_recv);
 			virtual ~CMsgqRMessenger(){};
+
+			static mutex sendlock_;
+			static std::unique_ptr<CMsgq> msgq_send_;
+			static void Send(std::shared_ptr<MsgHeader> pmsg,int mode = 0);
+			
 
 			virtual void send(std::shared_ptr<MsgHeader> pmsg,int mode = 0);
 			virtual std::shared_ptr<MsgHeader> recv(int mode = 0) {return nullptr;};

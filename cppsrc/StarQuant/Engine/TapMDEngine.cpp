@@ -38,7 +38,7 @@ namespace StarQuant
 		}	
 		// 创建Tap目录
 		name_ = "TAP_MD";
-		tapacc_ = CConfig::instance()._apimap["TAP"];
+		tapacc_ = CConfig::instance()._accmap["TAP"];
 		string path = CConfig::instance().logDir() + "/Tap/";
 		boost::filesystem::path dir(path.c_str());
 		boost::filesystem::create_directory(dir);

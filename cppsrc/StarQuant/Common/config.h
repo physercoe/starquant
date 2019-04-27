@@ -59,8 +59,9 @@ namespace StarQuant {
 		int _tickinterval =0;
 		int _brokerdelay = 0;
 		static CConfig& instance();
-		map<string,Account> _apimap;
+		map<string,Account> _accmap;
 
+		mutex readlock_;
 		void readConfig();
 
 		string _config_dir;
@@ -96,7 +97,7 @@ namespace StarQuant {
 		string SERVERSUB_URL = "tcp://localhost:55556";  // pub the requests to engines(which subscribe)
 		string SERVERPULL_URL = "tcp://localhost:55557"; //listen all the requests from clients
 		bool cpuaffinity = false;
-
+		bool autoconnect = true;
 		/*****************************************Risk setting**************/
 		bool riskcheck = false;
 		int sizeperorderlimit = 0;

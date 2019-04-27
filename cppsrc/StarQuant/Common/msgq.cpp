@@ -155,9 +155,19 @@ namespace StarQuant {
 	}
 
 	
-	CMsgqRMessenger::CMsgqRMessenger(string url_recv, string url_send){
+	std::mutex CMsgqRMessenger::sendlock_;
+	std::unique_ptr<CMsgq> CMsgqRMessenger::msgq_send_;
+
+	void CMsgqRMessenger::Send(shared_ptr<MsgHeader> Msg,int mode){
+		string msgout = Msg->serialize();
+		lock_guard<std::mutex> g(CMsgqRMessenger::sendlock_);
+		CMsgqRMessenger::msgq_send_->sendmsg(msgout,mode);
+	
+	}
+
+	CMsgqRMessenger::CMsgqRMessenger(string url_recv){
 		msgq_recv_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PULL, url_recv);
-		msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, url_send);
+		// msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, url_send);
 
 	}
 
@@ -167,7 +177,8 @@ namespace StarQuant {
 		// 				+ SERIALIZATION_SEPARATOR + to_string(Msg->msgtype_)
 		// 				+ Msg->serialize();
 		string msgout = Msg->serialize();
-		msgq_send_->sendmsg(msgout,mode);
+		lock_guard<std::mutex> g(CMsgqRMessenger::sendlock_);
+		CMsgqRMessenger::msgq_send_->sendmsg(msgout,mode);
 
 	}
 
@@ -183,7 +194,8 @@ namespace StarQuant {
 			}
 			else
 			{
-				msgq_send_->sendmsg(msgpull); //转发消息到各个engine
+				lock_guard<std::mutex> g(CMsgqRMessenger::sendlock_);
+				CMsgqRMessenger::msgq_send_->sendmsg(msgpull); //转发消息到各个engine
 			}
 	}
 

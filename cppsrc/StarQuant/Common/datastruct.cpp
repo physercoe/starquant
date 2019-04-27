@@ -20,6 +20,15 @@ MSG_TYPE MsgType(const string& msg){
     return msgtype_;
 }
 
+string accAddress(const string& msg){
+    string acc;
+    stringstream ss(msg);
+    getline(ss,acc,DESTINATION_SEPARATOR);
+    getline(ss,acc,DESTINATION_SEPARATOR);
+    getline(ss,acc,DESTINATION_SEPARATOR);    
+    return acc;
+}
+
 string TickMsg::serialize(){
     string ba; //bid ask price and size
     for (int i = 0;i < data_.depth_;i++){

@@ -15,6 +15,7 @@ namespace StarQuant {
 	{
 		// set up stocks from config
 		reset();
+		logger = SQLogger::getLogger("SYS");
 	}
 
 	OrderManager::~OrderManager()
@@ -43,7 +44,7 @@ namespace StarQuant {
 	void OrderManager::trackOrder(std::shared_ptr<Order> o)
 	{
 		if (o->orderSize_ == 0) {
-			PRINT_TO_FILE("ERROR:[%s,%d][%s]%s\n", __FILE__, __LINE__, __FUNCTION__, "Incorrect OrderSize.");
+			LOG_ERROR(logger,"Incorrect OrderSize.");			
 			return;
 		}
 
@@ -54,15 +55,14 @@ namespace StarQuant {
 		orders_[o->serverOrderID_] = o;		// add to map
 		cancels_[o->serverOrderID_] = false;
 		fills_[o->serverOrderID_] = 0;
-
-		PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Order is put under track. ServerOrderId=%d\n", __FILE__, __LINE__, __FUNCTION__, o->serverOrderID_);
+		LOG_INFO(logger,"Order is put under track. ServerOrderId="<<o->serverOrderID_);
 	}
 
 	void OrderManager::gotOrder(long oid)
 	{
 		if (!isTracked(oid))
 		{
-			PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]Order is not tracked. ServerOrderId= %d\n", __FILE__, __LINE__, __FUNCTION__, oid);
+			LOG_ERROR(logger,"Order is not tracked. ServerOrderId= "<<oid);
 			return;
 		}
 
@@ -77,14 +77,13 @@ namespace StarQuant {
 	{
 		if (!isTracked(fill.serverOrderID_))
 		{
-			PRINT_TO_FILE_AND_CONSOLE("ERROR:[%s,%d][%s]Order is not tracked. ServerOrderId= %d\n", __FILE__, __LINE__, __FUNCTION__, fill.serverOrderID_);
+			LOG_ERROR(logger,"Order is not tracked. ServerOrderId= "<<fill.serverOrderID_);			
 		}
 		else {
-			PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Order is filled. ServerOrderId=%d, price=%.2f\n", __FILE__, __LINE__, __FUNCTION__, fill.serverOrderID_, fill.tradePrice_);
+			LOG_INFO(logger,"Order is filled. ServerOrderId="<<fill.serverOrderID_<<"price = "<<fill.tradePrice_);
 			lock_guard<mutex> g(orderStatus_mtx);
 			orders_[fill.serverOrderID_]->orderStatus_ = OrderStatus::OS_Filled;			
 			// TODO: check for partial fill
-
 			PortfolioManager::instance().Adjust(fill);
 		}
 	}

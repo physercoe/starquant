@@ -50,7 +50,7 @@ namespace StarQuant
 		disconnect();
 		releaseapi();
 		init();	
-		LOG_DEBUG(logger,"CTP MD reset");	
+		LOG_DEBUG(logger,"CTP.MD reset");	
 	}	
 
 	void CtpMDEngine::init(){
@@ -58,37 +58,43 @@ namespace StarQuant
 		// 	lock_guard<mutex> g(IEngine::sendlock_);
 		// 	IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
 		// }
-		name_ = "CTP_MD";
+		name_ = "CTP.MD";
 		if(logger == nullptr){
 			logger = SQLogger::getLogger("MDEngine.CTP");
 		}
 
 		if (messenger_ == nullptr){
 			messenger_ = std::make_unique<CMsgqEMessenger>(name_, CConfig::instance().SERVERSUB_URL);	
-		}			
-		ctpacc_ = CConfig::instance()._apimap["CTP"];
-		string path = CConfig::instance().logDir() + "/ctp/md";
-		boost::filesystem::path dir(path.c_str());
-		boost::filesystem::create_directory(dir);
-		// 创建API对象
-		this->api_ = CThostFtdcMdApi::CreateFtdcMdApi(path.c_str());
-		this->api_->RegisterSpi(this);
-		estate_ = DISCONNECTED;
-		apiinited_ = false;
-		LOG_DEBUG(logger,"CTP MD inited");
+		}
+		for (auto iter = CConfig::instance()._accmap.begin(); iter != CConfig::instance()._accmap.end(); iter++){
+			if (iter->second.apitype == "CTP"){
+			//目前只采用第一个ctp账号的行情地址 
+			ctpacc_ = iter->second;
+			string path = CConfig::instance().logDir() + "/ctp/md";
+			boost::filesystem::path dir(path.c_str());
+			boost::filesystem::create_directory(dir);
+			// 创建API对象
+			this->api_ = CThostFtdcMdApi::CreateFtdcMdApi(path.c_str());
+			this->api_->RegisterSpi(this);
+			estate_ = DISCONNECTED;
+			apiinited_ = false;
+			LOG_DEBUG(logger,"CTP.MD inited, api version:"<<this->api_->GetApiVersion());
+			break;
+			}				
+		}
 
 	}
 
 	void CtpMDEngine::stop(){
 		int tmp = disconnect();
 		estate_ = EState::STOP; 
-		LOG_DEBUG(logger,"CTP MD stoped");	
+		LOG_DEBUG(logger,name_ <<"  stoped");	
 	}
 
 	void CtpMDEngine::start(){
 		while(estate_ != EState::STOP){
 			auto pmsgin = messenger_->recv(1);
-			if (pmsgin == nullptr || pmsgin->destination_ != name_)
+			if (pmsgin == nullptr || (pmsgin->destination_ != name_ && ! startwith(pmsgin->destination_,DESTINATION_ALL)) ) 
 				continue;
 			switch (pmsgin->msgtype_)
 			{
@@ -108,7 +114,7 @@ namespace StarQuant
 						subscribe(pmsgin2->data_);
 					}
 					else{
-						LOG_DEBUG(logger,"CTP MD is not connected,can not subscribe!");
+						LOG_DEBUG(logger,name_ <<"  is not connected,can not subscribe!");
 						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
 							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
 							"ctp md is not connected,can not subscribe");
@@ -121,7 +127,7 @@ namespace StarQuant
 						unsubscribe(pmsgin2->data_);
 					}
 					else{
-						LOG_DEBUG(logger,"CTP MD is not connected,can not unsubscribe!");
+						LOG_DEBUG(logger,name_ <<"  is not connected,can not unsubscribe!");
 						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
 							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
 							"ctp md is not connected,can not unsubscribe");
@@ -142,7 +148,7 @@ namespace StarQuant
 							MSG_TYPE_TEST,
 							"test");
 						messenger_->send(pmsgout);
-						LOG_DEBUG(logger,"CTP_MD return test msg!");
+						LOG_DEBUG(logger,"CTP.MD return test msg!");
 					}
 					break;
 				case MSG_TYPE_SWITCH_TRADING_DAY:
@@ -174,13 +180,13 @@ namespace StarQuant
 					}
 					estate_ = CONNECTING;			
 					count++;
-					LOG_INFO(logger,"CTP MD api inited, connecting to front...");		
+					LOG_INFO(logger,"CTP.MD api inited, connecting to front...");		
 					break;
 				case EState::CONNECTING:
 					msleep(100);
 					break;
 				case EState::CONNECT_ACK:
-					LOG_INFO(logger,"Ctp Md logining ...");//行情目前不需要认证
+					LOG_INFO(logger,"CTP.MD logining ...");//行情目前不需要认证
 					// strcpy(loginField.BrokerID, ctpacc_.brokerid.c_str());
 					// strcpy(loginField.UserID, ctpacc_.userid.c_str());
 					// strcpy(loginField.Password, ctpacc_.password.c_str());
@@ -189,7 +195,7 @@ namespace StarQuant
 					count++;
 					estate_ = EState::LOGINING;
 					if (error != 0){
-						LOG_ERROR(logger,"Ctp md login error : "<<error);//TODO: send error msg to client
+						LOG_ERROR(logger,"Ctp.md login error : "<<error);//TODO: send error msg to client
 						estate_ = EState::CONNECT_ACK;
 						msleep(1000);
 					}
@@ -212,21 +218,21 @@ namespace StarQuant
 
 	bool CtpMDEngine::disconnect() {
 		if (estate_ == LOGIN_ACK){
-			LOG_INFO(logger,"Ctp md logouting ..");
+			LOG_INFO(logger,name_ <<"  logouting ..");
 			CThostFtdcUserLogoutField logoutField = CThostFtdcUserLogoutField();
 			// strcpy(logoutField.BrokerID, ctpacc_.brokerid.c_str());
 			// strcpy(logoutField.UserID, ctpacc_.userid.c_str());
 			int error = this->api_->ReqUserLogout(&logoutField, loginReqId_);
 			estate_ = EState::LOGOUTING;
 			if (error != 0){
-				LOG_ERROR(logger,"ctp md logout error:"<<error);//TODO: send error msg to client
+				LOG_ERROR(logger,name_ <<"  logout error:"<<error);//TODO: send error msg to client
 				estate_ = EState::LOGIN_ACK;
 				return false;
 				}		
 			return true;
 		}
 		else{
-			LOG_DEBUG(logger,"ctp md is not connected(logined), cannot disconnect!");
+			LOG_DEBUG(logger,name_ <<"  is not connected(logined), cannot disconnect!");
 			return false;
 		}
 	}
@@ -242,10 +248,10 @@ namespace StarQuant
 			insts[i] = (char*)ctpticker.c_str();
 			sout += insts[i] +string("|");	
 		}
-		LOG_INFO(logger,"ctp md subcribe "<<nCount<<"|"<<sout<<".");
+		LOG_INFO(logger,"ctp.md subcribe "<<nCount<<"|"<<sout<<".");
 		error = this->api_->SubscribeMarketData(insts, nCount);
 		if (error != 0){
-			LOG_ERROR(logger,"ctp md subscribe  error "<<error);
+			LOG_ERROR(logger,"ctp.md subscribe  error "<<error);
 		}		
 	}
 
@@ -261,10 +267,10 @@ namespace StarQuant
 			insts[i] = (char*)ctpticker.c_str();
 			sout += insts[i] +string("|");		
 		}
-		LOG_INFO(logger,"ctp md unsubcribe "<<nCount<<"|"<<sout<<".");
+		LOG_INFO(logger,name_ <<"  unsubcribe "<<nCount<<"|"<<sout<<".");
 		error = this->api_->UnSubscribeMarketData(insts, nCount);
 		if (error != 0){
-			LOG_ERROR(logger,"ctp md unsubscribe  error "<<error);
+			LOG_ERROR(logger,name_ <<"  unsubscribe  error "<<error);
 		}		
 	}
 
@@ -274,31 +280,31 @@ namespace StarQuant
 	
 	void CtpMDEngine::OnFrontConnected() {
 		estate_ = CONNECT_ACK;			// not used
-		LOG_INFO(logger,"Ctp md frontend connected. ");		
+		LOG_INFO(logger,name_ <<"  frontend connected. ");		
 	}
 
 	void CtpMDEngine::OnFrontDisconnected(int nReason) {
 		estate_ = CONNECTING;			// automatic connecting
-		LOG_INFO(logger,"Ctp md frontend is  disconnected, nReason="<<nReason);			
+		LOG_INFO(logger,name_ <<"  frontend is  disconnected, nReason="<<nReason);			
 	}
 
 	void CtpMDEngine::OnHeartBeatWarning(int nTimeLapse) {
-		LOG_INFO(logger,"Ctp md heartbeat overtime error, nTimeLapse="<<nTimeLapse);
+		LOG_INFO(logger,name_ <<"  heartbeat overtime error, nTimeLapse="<<nTimeLapse);
 	}
 
 	void CtpMDEngine::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
-		LOG_ERROR(logger,"Ctp md OnRspError: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));  
+		LOG_ERROR(logger,name_ <<"  OnRspError: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));  
 	}
 
 	void CtpMDEngine::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
 			string errormsgutf8;			
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			LOG_ERROR(logger,"Ctp md login failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);
+			LOG_ERROR(logger,name_ <<"  login failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);
 		}
 		else{
 			estate_ = EState::LOGIN_ACK;
-			LOG_INFO(logger,"Ctp md server user logged in,"
+			LOG_INFO(logger,name_ <<"  server user logged in,"
 				<<"TradingDay="<<pRspUserLogin->TradingDay
 				<<"LoginTime="<<pRspUserLogin->LoginTime
 				<<"frontID="<<pRspUserLogin->FrontID
@@ -311,12 +317,12 @@ namespace StarQuant
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" ); 
-			LOG_ERROR(logger,"Ctp Md logout failed: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
+			LOG_ERROR(logger,name_ <<"  logout failed: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
 
 		}
 		else {
 			estate_ = EState::CONNECT_ACK;
-			LOG_INFO(logger,"Ctp Md Logout,BrokerID="<<pUserLogout->BrokerID<<" UserID="<<pUserLogout->UserID);
+			LOG_INFO(logger,name_ <<"  Logout,BrokerID="<<pUserLogout->BrokerID<<" UserID="<<pUserLogout->UserID);
 		}
 	}
 
@@ -324,13 +330,13 @@ namespace StarQuant
 	void CtpMDEngine::OnRspSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo !=nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult) {
-			LOG_INFO(logger,"Ctp md OnRspSubMarketData:InstrumentID="<<pSpecificInstrument->InstrumentID);
+			LOG_INFO(logger,name_ <<"  OnRspSubMarketData:InstrumentID="<<pSpecificInstrument->InstrumentID);
 		}
 		else {
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_SUBSCRIBE,
 				GBKToUTF8(pRspInfo->ErrorMsg));
-			LOG_ERROR(logger,"Ctp md OnRspSubMarketData failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
+			LOG_ERROR(logger,name_ <<"  OnRspSubMarketData failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
 		}
 
 	}
@@ -339,10 +345,10 @@ namespace StarQuant
 	void CtpMDEngine::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo !=nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult) {
-			LOG_INFO(logger,"Ctp md OnRspUnSubMarketData:InstrumentID="<<pSpecificInstrument->InstrumentID);
+			LOG_INFO(logger,name_ <<"  OnRspUnSubMarketData:InstrumentID="<<pSpecificInstrument->InstrumentID);
 		}
 		else {
-			LOG_ERROR(logger,"Ctp md OnRspUnSubMarketData failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
+			LOG_ERROR(logger,name_ <<"  OnRspUnSubMarketData failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
 		}
 	}
 
@@ -350,10 +356,10 @@ namespace StarQuant
 	void CtpMDEngine::OnRspSubForQuoteRsp(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo !=nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult) {
-			LOG_INFO(logger,"Ctp md OnRspSubForQuoteRsp:InstrumentID="<<pSpecificInstrument->InstrumentID);
+			LOG_INFO(logger,name_ <<"  OnRspSubForQuoteRsp:InstrumentID="<<pSpecificInstrument->InstrumentID);
 		}
 		else {
-			LOG_ERROR(logger,"Ctp md OnRspSubForQuotoRsp failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
+			LOG_ERROR(logger,name_ <<"  OnRspSubForQuotoRsp failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
 		}
 	}
 
@@ -361,16 +367,16 @@ namespace StarQuant
 	void CtpMDEngine::OnRspUnSubForQuoteRsp(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult) {
-			LOG_INFO(logger,"Ctp md OnRspUnSubForQuoteRsp:InstrumentID="<<pSpecificInstrument->InstrumentID);
+			LOG_INFO(logger,name_ <<"  OnRspUnSubForQuoteRsp:InstrumentID="<<pSpecificInstrument->InstrumentID);
 		}
 		else {
-			LOG_ERROR(logger,"Ctp md OnRspUnSubForQuoteRsp failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
+			LOG_ERROR(logger,name_ <<"  OnRspUnSubForQuoteRsp failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<GBKToUTF8(pRspInfo->ErrorMsg));
 		}
 	}
 
 	void CtpMDEngine::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData) {
 		if (pDepthMarketData == nullptr){
-			LOG_DEBUG(logger,"ctp md OnRtnDepthMarketData is nullptr");
+			LOG_DEBUG(logger,name_ <<"  OnRtnDepthMarketData is nullptr");
 			return;
 		}
 
@@ -383,7 +389,7 @@ namespace StarQuant
 		strcpy(b,pDepthMarketData->UpdateTime);
         std::sprintf(buf, "%c%c%c%c-%c%c-%c%c %c%c:%c%c:%c%c.%.3d", a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],b[0],b[1],b[3],b[4],b[6],b[7],pDepthMarketData->UpdateMillisec );
 
-		LOG_DEBUG(logger,"Ctp md OnRtnDepthMarketData at"<<arrivetime
+		LOG_DEBUG(logger,name_ <<"  OnRtnDepthMarketData at"<<arrivetime
 			<<" InstrumentID="<<pDepthMarketData->InstrumentID
 			<<" LastPrice="<<pDepthMarketData->LastPrice
 			<<" Volume="<<pDepthMarketData->Volume
@@ -428,7 +434,7 @@ namespace StarQuant
 
 	///询价通知
 	void CtpMDEngine::OnRtnForQuoteRsp(CThostFtdcForQuoteRspField *pForQuoteRsp) {
-		LOG_INFO(logger,"Ctp md OnRtnForQuoteRsp:"
+		LOG_INFO(logger,name_ <<"  OnRtnForQuoteRsp:"
 			<<"TradingDay="<<pForQuoteRsp->TradingDay
 			<<"ExchangeID="<<pForQuoteRsp->ExchangeID
 			<<"InstrumentID="<<pForQuoteRsp->InstrumentID

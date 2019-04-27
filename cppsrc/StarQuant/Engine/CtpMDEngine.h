@@ -24,6 +24,7 @@ namespace StarQuant
 		virtual void init();
 		virtual void start();
 		virtual void stop();
+		
 		virtual bool connect() ;
 		virtual bool disconnect() ;
 		void releaseapi();

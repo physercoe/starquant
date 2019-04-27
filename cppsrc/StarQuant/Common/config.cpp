@@ -45,7 +45,12 @@ namespace StarQuant {
 #ifdef _DEBUG
 		std::printf("Current path is : %s\n", boost::filesystem::current_path().string().c_str());
 #endif
+//  reset maps
+		_accmap.clear();
+		_loadapi.clear();
+
 // 读入合约相关信息数据，TODO:从 md qry得到相关数据
+		std::lock_guard<mutex> g(readlock_);
 		string contractpath = boost::filesystem::current_path().string() + "/etc/contract.yaml";
 		YAML::Node contractinfo = YAML::LoadFile(contractpath);
 		//std::cout<<contractinfo[0].  as<std::string>();
@@ -86,16 +91,22 @@ namespace StarQuant {
 		// const string msgq = config["msgq"].as<std::string>();
 		// _msgq = MSGQ::NANOMSG;
 		cpuaffinity = config["cpuaffinity"].as<bool>();
+		autoconnect = config["autoconnect"].as<bool>();
+
 		_mongodbaddr = config["dbaddr"].as<std::string>();
 		_mongodbname = config["dbname"].as<std::string>();
-		 
+
 		SERVERPUB_URL = config["serverpub_url"].as<std::string>();
 		SERVERSUB_URL = config["serversub_url"].as<std::string>();
 		SERVERPULL_URL = config["serverpull_url"].as<std::string>();
-		// read account info
+		// read api info
 		const std::vector<string> apis = config["apis"].as<std::vector<string>>();
 		for (auto s : apis){
 			_loadapi[s] = true;
+		}
+		// read account info
+		const std::vector<string> accs = config["accounts"].as<std::vector<string>>();
+		for (auto s : accs){
 			struct Account acc;
 			acc.id = s;
 			acc.apitype = config[s]["api"].as<std::string>();
@@ -110,8 +121,9 @@ namespace StarQuant {
 			acc.productinfo = config[s]["user_prod_info"].as<std::string>();
 			acc.intid = config[s]["intid"].as<int>();
 			acc.appid = config[s]["appid"].as<std::string>();
-			_apimap[s] = acc;
-		}
+			_accmap[s] = acc;
+		}		
+
 		// read risk info
 		riskcheck = config["risk"]["check"].as<bool>();
 		sizeperorderlimit = config["risk"]["sizeperorder"].as<int>();

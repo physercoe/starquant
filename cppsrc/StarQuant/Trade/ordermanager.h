@@ -5,6 +5,7 @@
 #include <mutex>
 #include <atomic>
 #include <Common/datastruct.h>
+#include <Common/logger.h>
 
 using namespace std;
 
@@ -23,6 +24,7 @@ namespace StarQuant {
 		static OrderManager& instance();
 
 		//std::atomic_int _count = { 0 };
+		std::shared_ptr<SQLogger> logger;
 		int _count = 0;
 		std::map<long, std::shared_ptr<Order>> orders_;
 		std::map<long, long> fills_;       // signed filled size

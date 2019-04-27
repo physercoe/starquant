@@ -26,7 +26,7 @@ namespace StarQuant
 		long m_brokerOrderId_;// record the order which this engine send
 		Account ctpacc_;
 
-		CtpTDEngine();
+		CtpTDEngine(const string& acc );
 		~CtpTDEngine();
 
 		virtual void init();
@@ -371,6 +371,9 @@ namespace StarQuant
 //TODO: isLast 处理大数据包
 		CThostFtdcTraderApi* api_;			
 		bool apiinited_;
+		bool inconnectaction_;
+		bool autoconnect_;
+		
 		OrderStatus CtpOrderStatusToOrderStatus(const char status);
 		OrderFlag CtpComboOffsetFlagToOrderFlag(const char flag);
 		char OrderFlagToCtpComboOffsetFlag(const OrderFlag flag);
