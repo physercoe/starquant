@@ -1,7 +1,7 @@
 Welcome to StarQuant
 ==================
 
-<p align="center">
+<p align="left">
    <img src ="https://img.shields.io/badge/language-c%2B%2B%7Cpython-orange.svg"/>
    <img src ="https://img.shields.io/badge/c%2B%2B-%3E11-blue.svg"/>
     <img src ="https://img.shields.io/badge/python-3.7-blue.svg" />
@@ -20,7 +20,7 @@ Welcome to StarQuant
 * 采用多进程和多线程模式，行情交易接口，策略执行，gui界面均为独立进程，进程之间通信延迟在百微秒量级（实测在30-100微秒之间），并可设置cpu亲和性实现绑核。
 *  支持微信实时推送和接收信息（itchat 或Server酱等方式)
  
-##系统架构
+## 系统架构
  
 系统主框架基于c++实现，采用c-s架构，基于事件驱动模式，采用模块化松耦合设计，服务端的行情，交易、数据记录为单独线程，服务端与gui界面、策略之间的进程通信采用消息队列方式（nanomsg），行情数据可以通过相关端口以消息形式转发到策略进程，策略下单操作也通过相关端口将指令转发到服务端，然后调用相关柜台api，行情api支持CTP，TAP等，数据可以记录到本地（csv文件或Mongodb数据库），策略可以采用python或c++实现。GUI是基于PyQt5，支持手动交易，策略交易，委托持仓账号等信息查看。
 
@@ -28,7 +28,7 @@ Welcome to StarQuant
 
 
 
-##开发环境
+## 开发环境
 本系统在开发过程中参考了已有的开源软件EliteQuant，vnpy,kungfu等。
 开发环境：Manjaro（arch，Linux内核4.14)，python 3.7.2，gcc 8.2
 第三方库：
@@ -40,7 +40,7 @@ libmongoc-1.0
 
 python依赖psutil，pyyaml,pyqt,qdarkstyle,tushare等包。
 
-##运行
+## 运行
 
 
 首先需要编译完成cppsrc下的库，需要事先安装boost，nanomsg以及CTP,TAP等柜台api的动态链接库。
@@ -57,14 +57,14 @@ $ make
 gui界面执行sqgui.py即可启动，backtest.py为回测执行文件，config_*.yaml为相应的配置文件，运行前请修改并且放到etc文件夹下
 mystrategy为相应的策略文件夹，其中策略可以单独运行
 
-##编写约定
+## 编写约定
 -------------------
 参考google 的c++ guide
 变量命名：类名采用驼峰式，单词首字母大写，不包含_字符；类成员变量字母一般小写，后加_，如data_,全局变量加g_修饰，函数一般大小写混合形式。
 
 
 
-##使用说明
+## 使用说明
 -------
 品种符号约定：
   采用全名的形式：交易所 类型 商品名 合约，如SHFE F RB 1905
@@ -84,7 +84,7 @@ mystrategy为相应的策略文件夹，其中策略可以单独运行
 ![ ](demos/bt3.png  "回测结果和历史数据展示")
 
 
-##当前状态
+## 当前状态
 
 本系统尚在开发过程中，基本功能、GUI等方面有待完善等。
 TODO:
