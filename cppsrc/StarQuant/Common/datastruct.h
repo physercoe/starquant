@@ -7,6 +7,8 @@
 #include <vector>
 #include <atomic>
 
+#include <APIs/Ctp/ThostFtdcUserApiDataType.h>
+#include <APIs/Ctp/ThostFtdcUserApiStruct.h>
 
 
 using namespace std;
@@ -157,6 +159,7 @@ enum class MSGQ_PROTOCOL : uint8_t {
 // -----------------------------msg type for interprocess communication-----------------
 enum MSG_TYPE : int32_t {
 //  10* datatype same as ticktype 
+    // furtures
     MSG_TYPE_TICK_L1 = 1000,
     MSG_TYPE_TICK_L5 = 1001,
     MSG_TYPE_TICK_L10 = 1002,
@@ -167,7 +170,11 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_BAR_1HOUR = 1014,
     MSG_TYPE_BAR_1DAY = 1015,
     MSG_TYPE_BAR_1WEEK = 1016,
-    MSG_TYPE_BAR_1MON = 1017,	
+    MSG_TYPE_BAR_1MON = 1017,
+    // stock 
+    MSG_TYPE_STOCK_TICK = 1020,	
+    MSG_TYPE_STOCK_BAR = 1021,
+    // others
     MSG_TYPE_Trade =1060,
     MSG_TYPE_Bid = 1061,
     MSG_TYPE_Ask = 1062,
@@ -200,28 +207,43 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_TIMER = 1301,
     MSG_TYPE_TASK_START = 1310,
     MSG_TYPE_TASK_STOP = 1311,
-//  20* engine action
-    // request
+//  20* engine requests
+    // md request
     MSG_TYPE_SUBSCRIBE_MARKET_DATA = 2001,
     MSG_TYPE_SUBSCRIBE_L2_MD = 2002,
     MSG_TYPE_SUBSCRIBE_INDEX = 2003,
     MSG_TYPE_SUBSCRIBE_ORDER_TRADE = 2004,
     MSG_TYPE_UNSUBSCRIBE = 2011,
+    // td request 
     MSG_TYPE_QRY_COMMODITY = 2021,	
     MSG_TYPE_QRY_CONTRACT   = 2022,
     MSG_TYPE_QRY_POS       = 2023,
     MSG_TYPE_QRY_ACCOUNT   = 2024,
     MSG_TYPE_ORDER         = 2031,  //insert order
-    MSG_TYPE_ORDER_ACTION  = 2032,  //cancel order
-    MSG_TYPE_CANCEL_ORDER = 2033,
-    MSG_TYPE_CANCEL_ALL = 2039,
+    MSG_TYPE_ORDER_CTP = 2032,
+    MSG_TYPE_ORDER_TAP = 2033,
+    MSG_TYPE_ORDER_XTP = 2034,
+    MSG_TYPE_ORDER_ACTION  = 2040,  //cancel order
+    MSG_TYPE_CANCEL_ORDER = 2041,
+    MSG_TYPE_CANCEL_ALL = 2042,
+    MSG_TYPE_ORDER_ACTION_CTP = 2043,
+    MSG_TYPE_ORDER_ACTION_TAP = 2044,
+    MSG_TYPE_ORDER_ACTION_XTP =2045,
+// 25* engine callback    
     //call back
-    MSG_TYPE_RSP_POS       = 2051,
-    MSG_TYPE_RTN_ORDER     = 2052, //order status
-    MSG_TYPE_RTN_TRADE     = 2053,
-    MSG_TYPE_RSP_ACCOUNT   = 2054,
-    MSG_TYPE_RSP_CONTRACT   = 2055,
-    MSG_TYPE_RSP_COMMODITY   = 2056,
+    MSG_TYPE_RSP_POS       = 2500,
+    MSG_TYPE_RTN_ORDER     = 2510, //order status
+    MSG_TYPE_RTN_ORDER_CTP     = 2511, 
+    MSG_TYPE_RTN_ORDER_TAP     = 2512, 
+    MSG_TYPE_RTN_ORDER_XTP     = 2513, 
+    MSG_TYPE_RTN_TRADE     = 2520,
+    MSG_TYPE_RTN_TRADE_CTP     = 2521,
+    MSG_TYPE_RTN_TRADE_TAP     = 2522,
+    MSG_TYPE_RTN_TRADE_XTP     = 2523,
+    MSG_TYPE_RSP_ACCOUNT   = 2530,
+    MSG_TYPE_RSP_CONTRACT   = 2540,
+    MSG_TYPE_RSP_COMMODITY   = 2541,
+
 //	31*: info class msg, mainly about sys
     MSG_TYPE_INFO   = 3100,
     MSG_TYPE_INFO_ENGINE_MDCONNECTED = 3101,
@@ -452,55 +474,97 @@ extern long m_serverOrderId;    // unique order id on server side defined in ord
 extern std::mutex oid_mtx;			 // mutex for increasing order id
 extern std::mutex orderStatus_mtx;  // mutex for changing order status
 
+
 class DLL_EXPORT_IMPORT Order {
 public:
     Order() { }
     ~Order(){}
-
-    long serverOrderID_ = -1;
-    long clientOrderID_ = -1;
-    long brokerOrderID_ = -1;
-    int clientID_ = 0;           // sid, get from client; -1=mannual
-    long permId_ = -1;				// for IB use
-    string orderNo_;
+// request msg header
+    string api_;                 // ctp, tap etc
+    string account_;             // account
+    int clientID_ = 0;           // client id, get from client; 0=mannual
+    long clientOrderID_ = -1;       // clientside id
+    string fullSymbol_;          //unique symbol for underlying commodity: exchange + type + commodityname + commodityno
+	string tag_;                   // reseverd for other use
+// server and callback content, for return orderstatus msg 
+    long serverOrderID_ = -1;       // orderref, unique sqserver id
+    long brokerOrderID_ = -1;       // for statistical use
+    string orderNo_;             //unique exchange order id,for ctp = exchangeID_+ orsysid
+    string localNo_;             //unique local id ,frontid +sessionid +orderref
     string createTime_;
-    string cancelTime_;
-    string fullSymbol_;
-    string account_;
-    string api_;				// IB, ctp etc
-	string tag_;                     // used for mark 
-    OrderType orderType_ = OrderType::OT_Market;						// MKT, LMT, STP, STPLMT, etc
-    OrderStatus orderStatus_ = OrderStatus::OS_UNKNOWN;				// OS_NEWBORN, etc
-    OrderFlag orderFlag_ = OrderFlag::OF_OpenPosition;
-    int orderSize_ = 0;
-    string fillNo_;					// < 0 = short, order size != trade size
-    int filledSize_ = 0;
-    double lastFilledPrice_ = 0.0;
-    double avgFilledPrice_ = 0.0;
-    double limitPrice_ = 0.0;
-    double stopPrice_ = 0.0;
-    double trailPrice_ = 0.0;
-    double trailingPercent_ = 0.0;
-    string timeInForce_;
-    bool outsideRegularTradingHour_ = false;
-    bool hidden_ = false;
-    bool allOrNone_ = false;
+    string updateTime_;
+    OrderStatus orderStatus_ = OrderStatus::OS_UNKNOWN;				
+    // OrderType orderType_ = OrderType::OT_Market;						// MKT, LMT, STP, STPLMT, etc
+    // OrderFlag orderFlag_ = OrderFlag::OF_OpenPosition;
+    // int orderSize_ = 0;
+    // string fillNo_;					// < 0 = short, order size != trade size
+    // int filledSize_ = 0;
+    // double lastFilledPrice_ = 0.0;
+    // double avgFilledPrice_ = 0.0;
+    // double limitPrice_ = 0.0;
+    // double stopPrice_ = 0.0;
+    // double trailPrice_ = 0.0;
+    // double trailingPercent_ = 0.0;
+    // string timeInForce_;
+    // bool outsideRegularTradingHour_ = false;
+    // bool hidden_ = false;
+    // bool allOrNone_ = false;
 };
+class DLL_EXPORT_IMPORT CtpOrder: public Order{
+public:
+    CtpOrder(){}
+    ~CtpOrder(){}
+    // request msg data
+    struct CThostFtdcInputOrderField orderField_ ;
+};
+
 
 class DLL_EXPORT_IMPORT OrderMsg: public MsgHeader{
 public:
     OrderMsg(): MsgHeader(),data_()
     {
-         msgtype_ = MSG_TYPE::MSG_TYPE_RTN_ORDER;
+         msgtype_ = MSG_TYPE::MSG_TYPE_ORDER;
     }
     ~OrderMsg() {}
 
     Order data_;
 
-    virtual string serialize();
     virtual void deserialize(const string& msgin);
     std::shared_ptr<Order> toPOrder();
 };
+
+
+
+class DLL_EXPORT_IMPORT CtpOrderMsg: public MsgHeader{
+public:
+    CtpOrderMsg(): MsgHeader(),data_()
+    {
+         msgtype_ = MSG_TYPE::MSG_TYPE_ORDER_CTP;
+    }
+    ~CtpOrderMsg() {}
+
+    CtpOrder data_;
+
+    virtual void deserialize(const string& msgin);
+    std::shared_ptr<Order> toPOrder();
+};
+
+
+
+class DLL_EXPORT_IMPORT OrderStatusMsg: public MsgHeader{
+public:
+    OrderStatusMsg(string des,string src): MsgHeader(des,src,MSG_TYPE::MSG_TYPE_RTN_ORDER),data_()
+    {       
+    }
+    ~OrderStatusMsg() {}
+
+    Order data_;
+    
+    void set(std::shared_ptr<Order> po);
+    virtual string serialize();
+};
+
+
 
 class DLL_EXPORT_IMPORT Position {
 public:

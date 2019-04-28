@@ -105,10 +105,9 @@ namespace StarQuant
 				case MSG_TYPE_ENGINE_DISCONNECT:
 					disconnect();
 					break;
-				case MSG_TYPE_ORDER:
+				case MSG_TYPE_ORDER_CTP:
 					if (estate_ == LOGIN_ACK){
-						auto pmsgin2 = static_pointer_cast<OrderMsg>(pmsgin);
-						insertOrder(pmsgin2);
+						insertOrder(static_pointer_cast<CtpOrderMsg>(pmsgin));
 					}
 					else{
 						LOG_DEBUG(logger,name_ <<" is not connected,can not insert order!");
@@ -120,8 +119,7 @@ namespace StarQuant
 					break;
 				case MSG_TYPE_CANCEL_ORDER:
 					if (estate_ == LOGIN_ACK){
-						auto pmsgin2 = static_pointer_cast<OrderActionMsg>(pmsgin);
-						cancelOrder(pmsgin2);
+						cancelOrder(static_pointer_cast<OrderActionMsg>(pmsgin));
 					}
 					else{
 						LOG_DEBUG(logger,name_ <<" is not connected,can not cancel order!");
@@ -300,43 +298,22 @@ namespace StarQuant
 		LOG_DEBUG(logger,name_ <<" switch day reset settleconfirmed!");
 	}
 
-	void CtpTDEngine::insertOrder(shared_ptr<OrderMsg> pmsg){
+	void CtpTDEngine::insertOrder(shared_ptr<CtpOrderMsg> pmsg){
 		lock_guard<mutex> g(oid_mtx);
 		pmsg->data_.serverOrderID_ = m_serverOrderId++;
 		pmsg->data_.brokerOrderID_ = m_brokerOrderId_++;
 		pmsg->data_.createTime_ = ymdhmsf();	
-		// begin call api's insert order		 TODO:加入不同订单类型
-		CThostFtdcInputOrderField orderfield = CThostFtdcInputOrderField();
-		string ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(pmsg->data_.fullSymbol_);
-		strcpy(orderfield.InstrumentID, ctpsym.c_str());
-		orderfield.VolumeTotalOriginal = std::abs(pmsg->data_.orderSize_);
-		orderfield.OrderPriceType = pmsg->data_.orderType_ == OrderType::OT_Market ? THOST_FTDC_OPT_AnyPrice : THOST_FTDC_OPT_LimitPrice;
-		orderfield.LimitPrice = pmsg->data_.orderType_ == OrderType::OT_Market ? 0.0 : pmsg->data_.limitPrice_;
-		orderfield.Direction = pmsg->data_.orderSize_ > 0 ? THOST_FTDC_D_Buy : THOST_FTDC_D_Sell;
-		orderfield.CombOffsetFlag[0] = OrderFlagToCtpComboOffsetFlag(pmsg->data_.orderFlag_);
-		strcpy(orderfield.OrderRef, to_string(pmsg->data_.serverOrderID_).c_str());
-		strcpy(orderfield.InvestorID, ctpacc_.userid.c_str());
-		strcpy(orderfield.UserID, ctpacc_.userid.c_str());
-		strcpy(orderfield.BrokerID, ctpacc_.brokerid.c_str());
-		orderfield.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;			// 投机单
-		orderfield.ContingentCondition = THOST_FTDC_CC_Immediately;		// 立即发单
-		orderfield.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;		// 非强平
-		orderfield.IsAutoSuspend = 0;									// 非自动挂起
-		orderfield.UserForceClose = 0;									// 非用户强平
-		orderfield.TimeCondition = THOST_FTDC_TC_GFD;					// 今日有效
-		orderfield.VolumeCondition = THOST_FTDC_VC_AV;					// 任意成交量
-		orderfield.MinVolume = 1;										// 最小成交量为1
-		// TODO: 判断FAK和FOK
-		//orderfield.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
-		//orderfield.TimeCondition = THOST_FTDC_TC_IOC;
-		//orderfield.VolumeCondition = THOST_FTDC_VC_CV;				// FAK; FOK uses THOST_FTDC_VC_AV
-		LOG_INFO(logger,"Insert Order: clientorderid ="<<pmsg->data_.clientOrderID_<<" instrumentsId = "<<ctpsym);
-		int i = api_->ReqOrderInsert(&orderfield, reqId_++);
+		strcpy(pmsg->orderField_.OrderRef, to_string(pmsg->data_.serverOrderID_).c_str());
+		strcpy(pmsg->orderField_.InvestorID, ctpacc_.userid.c_str());
+		strcpy(pmsg->orderField_.UserID, ctpacc_.userid.c_str());
+		strcpy(pmsg->orderField_.BrokerID, ctpacc_.brokerid.c_str());
+		int error = api_->ReqOrderInsert(&pmsg->orderField_, reqId_++);
+		LOG_INFO(logger, name_<<"Insert Order: clientorderid ="<<pmsg->data_.clientOrderID_<<" instrumentsId = "<<pmsg->orderField_.InstrumentID);		
 		lock_guard<mutex> gs(orderStatus_mtx);
 		pmsg->data_.orderStatus_ = OrderStatus::OS_Submitted;
 		std::shared_ptr<Order> o = pmsg->toPOrder();
 		OrderManager::instance().trackOrder(o);		
-		if (i != 0){
+		if (error != 0){
 			o->orderStatus_ = OrderStatus::OS_Error;
 			pmsg->data_.orderStatus_ = OrderStatus::OS_Error;
 			//send error msg
@@ -344,13 +321,43 @@ namespace StarQuant
 				MSG_TYPE_ERROR_INSERTORDER,
 				to_string(o->clientOrderID_));
 			messenger_->send(pmsgout);
-			LOG_ERROR(logger,"Ctp TD order insert error: "<<i);
+			LOG_ERROR(logger,name_<<" insertOrder error: "<<error);
 		}
 		//send OrderStatus
-		pmsg->destination_ = pmsg->source_;
-		pmsg->source_ = name_;
-		pmsg->msgtype_ = MSG_TYPE_RTN_ORDER;
-		messenger_->send(pmsg);
+		auto pmsgout = make_shared<OrderStatusMsg>(pmsg->source_,name_);
+		pmsgout->set(o);
+		messenger_->send(pmsgout);
+
+		//CThostFtdcInputOrderField orderfield = {}
+		//memcpy(&orderfield,&pmsg->orderField_,sizeof(CThostFtdcInputOrderField));
+		//CThostFtdcInputOrderField();
+
+		// string ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(pmsg->data_.fullSymbol_);
+		// strcpy(orderfield.InstrumentID, ctpsym.c_str());
+		// orderfield.VolumeTotalOriginal = std::abs(pmsg->data_.orderSize_);
+		// orderfield.OrderPriceType = pmsg->data_.orderType_ == OrderType::OT_Market ? THOST_FTDC_OPT_AnyPrice : THOST_FTDC_OPT_LimitPrice;
+		// orderfield.LimitPrice = pmsg->data_.orderType_ == OrderType::OT_Market ? 0.0 : pmsg->data_.limitPrice_;
+		// orderfield.Direction = pmsg->data_.orderSize_ > 0 ? THOST_FTDC_D_Buy : THOST_FTDC_D_Sell;
+		// orderfield.CombOffsetFlag[0] = OrderFlagToCtpComboOffsetFlag(pmsg->data_.orderFlag_);
+		// strcpy(orderfield.OrderRef, to_string(pmsg->data_.serverOrderID_).c_str());
+		// strcpy(orderfield.InvestorID, ctpacc_.userid.c_str());
+		// strcpy(orderfield.UserID, ctpacc_.userid.c_str());
+		// strcpy(orderfield.BrokerID, ctpacc_.brokerid.c_str());
+		// orderfield.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;			// 投机单
+		// orderfield.ContingentCondition = THOST_FTDC_CC_Immediately;		// 立即发单
+		// orderfield.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;		// 非强平
+		// orderfield.IsAutoSuspend = 0;									// 非自动挂起
+		// orderfield.UserForceClose = 0;									// 非用户强平
+		// orderfield.TimeCondition = THOST_FTDC_TC_GFD;					// 今日有效
+		// orderfield.VolumeCondition = THOST_FTDC_VC_AV;					// 任意成交量
+		// orderfield.MinVolume = 1;										// 最小成交量为1
+		// // TODO: 判断FAK和FOK
+		// //orderfield.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
+		// //orderfield.TimeCondition = THOST_FTDC_TC_IOC;
+		// //orderfield.VolumeCondition = THOST_FTDC_VC_CV;				// FAK; FOK uses THOST_FTDC_VC_AV
+
+
+
 	}
 
 	void CtpTDEngine::cancelOrder(shared_ptr<OrderActionMsg> pmsg){
