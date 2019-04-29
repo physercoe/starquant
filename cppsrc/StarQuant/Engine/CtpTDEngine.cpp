@@ -302,13 +302,14 @@ namespace StarQuant
 		lock_guard<mutex> g(oid_mtx);
 		pmsg->data_.serverOrderID_ = m_serverOrderId++;
 		pmsg->data_.brokerOrderID_ = m_brokerOrderId_++;
+		pmsg->data_.localNo_ = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + to_string(orderRef_) ;
 		pmsg->data_.createTime_ = ymdhmsf();	
-		strcpy(pmsg->orderField_.OrderRef, to_string(pmsg->data_.serverOrderID_).c_str());
-		strcpy(pmsg->orderField_.InvestorID, ctpacc_.userid.c_str());
-		strcpy(pmsg->orderField_.UserID, ctpacc_.userid.c_str());
-		strcpy(pmsg->orderField_.BrokerID, ctpacc_.brokerid.c_str());
-		int error = api_->ReqOrderInsert(&pmsg->orderField_, reqId_++);
-		LOG_INFO(logger, name_<<"Insert Order: clientorderid ="<<pmsg->data_.clientOrderID_<<" instrumentsId = "<<pmsg->orderField_.InstrumentID);		
+		strcpy(pmsg->data_.orderField_.OrderRef, to_string(orderRef_++).c_str());
+		strcpy(pmsg->data_.orderField_.InvestorID, ctpacc_.userid.c_str());
+		strcpy(pmsg->data_.orderField_.UserID, ctpacc_.userid.c_str());
+		strcpy(pmsg->data_.orderField_.BrokerID, ctpacc_.brokerid.c_str());
+		int error = api_->ReqOrderInsert(&(pmsg->data_.orderField_), reqId_++);
+		LOG_INFO(logger, name_<<"Insert Order: clientorderid ="<<pmsg->data_.clientOrderID_<<" FullSymbol = "<<pmsg->data_.fullSymbol_);		
 		lock_guard<mutex> gs(orderStatus_mtx);
 		pmsg->data_.orderStatus_ = OrderStatus::OS_Submitted;
 		std::shared_ptr<Order> o = pmsg->toPOrder();
@@ -362,7 +363,7 @@ namespace StarQuant
 
 	void CtpTDEngine::cancelOrder(shared_ptr<OrderActionMsg> pmsg){
 		CThostFtdcInputOrderActionField myreq = CThostFtdcInputOrderActionField();
-		string oref = to_string(pmsg->data_.serverOrderID_);
+		string oref;
 		long coid = pmsg->data_.clientOrderID_;
 		string ctpsym;
 		std::shared_ptr<Order> o;
@@ -374,7 +375,7 @@ namespace StarQuant
 			o = OrderManager::instance().retrieveOrderFromServerOrderId(pmsg->data_.serverOrderID_);
 		}
 		if (o != nullptr){
-			oref = to_string(o->serverOrderID_);
+			oref = stringsplit(o->localNo_,'-')[2];
 			coid = o->clientOrderID_;
 			ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(o->fullSymbol_);
 		}
@@ -395,7 +396,7 @@ namespace StarQuant
 		myreq.ActionFlag = THOST_FTDC_AF_Delete;
 		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
-		//myreq.OrderActionRef = int(m_brokerOrderId_++);//TODO: int <-> long is unsafe, use another way
+		myreq.OrderActionRef = m_brokerOrderId_++;
 		int i = this->api_->ReqOrderAction(&myreq, reqId_++);
 		if (i != 0){
 			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
@@ -407,13 +408,8 @@ namespace StarQuant
 		}
 		lock_guard<mutex> g2(orderStatus_mtx);
 		o->orderStatus_ = OrderStatus::OS_PendingCancel;
-		auto pmsgout = make_shared<OrderMsg>();
-		pmsgout->destination_ = pmsg->source_;
-		pmsgout->source_ = name_;
-		pmsgout->msgtype_ = MSG_TYPE_RTN_ORDER;
-		pmsgout->data_.serverOrderID_ = o->serverOrderID_;
-		pmsgout->data_.clientOrderID_ = o->clientOrderID_;
-		pmsgout->data_.orderStatus_ = o->orderStatus_;
+		auto pmsgout = make_shared<OrderStatusMsg>(pmsg->source_,name_);
+		pmsgout->set(o);
 		messenger_->send(pmsgout);
 
 	}
@@ -521,6 +517,7 @@ namespace StarQuant
 		else{
 			frontID_ = pRspUserLogin->FrontID;
 			sessionID_ = pRspUserLogin->SessionID;
+			orderRef_ = stoi(pRspUserLogin->MaxOrderRef) + 1;
 			LOG_INFO(logger,name_ <<" user logged in,"
 							<<"TradingDay="<<pRspUserLogin->TradingDay
 							<<" LoginTime="<<pRspUserLogin->LoginTime
@@ -597,7 +594,8 @@ namespace StarQuant
 		{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pInputOrder->OrderRef));
+			string oref = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + pInputOrder->OrderRef;
+			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,oref);
 			if (o != nullptr) {
 				lock_guard<mutex> g(orderStatus_mtx);
 				o->orderStatus_ = OS_Error;	
@@ -605,13 +603,8 @@ namespace StarQuant
 					MSG_TYPE_ERROR_INSERTORDER,
 					to_string(o->clientOrderID_));
 				messenger_->send(pmsgout);
-				auto pmsgout2 = make_shared<OrderMsg>();
-				pmsgout2->destination_ = to_string(o->clientID_);
-				pmsgout2->source_ = name_;
-				pmsgout2->msgtype_ = MSG_TYPE_RTN_ORDER;
-				pmsgout2->data_.serverOrderID_ = o->serverOrderID_;
-				pmsgout2->data_.clientOrderID_ = o->clientOrderID_;
-				pmsgout2->data_.orderStatus_ = OS_Error;
+				auto pmsgout2 = make_shared<OrderStatusMsg>(to_string(o->clientID_),name_);
+				pmsgout2->set(o);
 				messenger_->send(pmsgout2);
 		
 			}
@@ -641,11 +634,15 @@ namespace StarQuant
 		{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+
 			long oid = std::stol(pInputOrderAction->OrderRef);
-			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(oid);
+			string localno = to_string(pInputOrderAction->FrontID) + "-" + to_string(pInputOrderAction->SessionID)
+				+ "-" + pInputOrderAction->OrderRef;
+			//std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(oid);
+			auto o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,localno);
 			if (o != nullptr) {
 				auto pmsgout = make_shared<ErrorMsg>(to_string(o->clientID_), name_,
-					MSG_TYPE_ERROR_INSERTORDER,
+					MSG_TYPE_ERROR_CANCELORDER,
 					to_string(o->clientOrderID_));
 				messenger_->send(pmsgout);
 				LOG_ERROR(logger,name_ <<" OnRsp cancel order error:"<<pRspInfo->ErrorID<<errormsgutf8);
@@ -654,9 +651,9 @@ namespace StarQuant
 			{
 				auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 					MSG_TYPE_ERROR_ORGANORDER,
-					pInputOrderAction->OrderRef);
+					localno);
 				messenger_->send(pmsgout);
-				LOG_ERROR(logger,name_ <<" OnRspOrderAction OrderManager cannot find order,OrderRef="<<pInputOrderAction->OrderRef);
+				LOG_ERROR(logger,name_ <<" OnRspOrderAction OrderManager cannot find order,localNo="<<localno);
 			}
 			LOG_ERROR(logger,name_ <<" OnRspOrderAction: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8
 				<<"[OrderRef="<<pInputOrderAction->OrderRef
@@ -845,44 +842,41 @@ namespace StarQuant
 			LOG_INFO(logger,name_ <<" onRtnOrder return nullptr");
 			return;
 		}
-		long nOrderref = std::stol(pOrder->OrderRef);
-		shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(nOrderref);
-		if (o == nullptr) {			// create an order
+		string localno = to_string(pOrder->FrontID) + "-" + to_string(pOrder->SessionID) + "-" + pOrder->OrderRef ;
+		//long nOrderref = std::stol(pOrder->OrderRef);
+		//bool isotherorder = (pOrder->FrontID != frontID_) || (pOrder->SessionID != sessionID_) ; 
+		shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,localno);
+		if ( o == nullptr) {			// create an order
 			lock_guard<mutex> g(oid_mtx);
-			auto pmsgout = make_shared<OrderMsg>();
-			pmsgout->destination_ = DESTINATION_ALL;
-			pmsgout->source_ = name_;
-			pmsgout->msgtype_ = MSG_TYPE_RTN_ORDER;
-			pmsgout->data_.account_ = ctpacc_.userid;
-			pmsgout->data_.serverOrderID_ = m_serverOrderId++;
-			pmsgout->data_.api_ = "others";
-			pmsgout->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pOrder->InstrumentID);
-			pmsgout->data_.orderSize_ = (pOrder->Direction == '0'? 1 : -1) * pOrder->VolumeTotalOriginal;
-			pmsgout->data_.limitPrice_ = pOrder->LimitPrice;
-			pmsgout->data_.orderStatus_ = CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
-			pmsgout->data_.orderFlag_ = CtpComboOffsetFlagToOrderFlag(pOrder->CombOffsetFlag[0]);
-			pmsgout->data_.orderNo_ = pOrder->OrderSysID;
-			pmsgout->data_.orderType_ = OrderType::OT_Limit;
+			o = make_shared<Order>();
+			o->api_ = "UNKNOWN";
+			o->account_ = ctpacc_.id;    
+			o->fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pOrder->InstrumentID);
+			string tag = string("Direction:") + pOrder->Direction + "CombOffsetFlag:" + pOrder->CombOffsetFlag 
+				+ "LimitPrice:" + to_string(pOrder->LimitPrice) + "VolumeTotalOriginal:" + to_string(pOrder->VolumeTotalOriginal);
+			o->tag_ =  tag;
+
+			o->serverOrderID_ = m_serverOrderId++;
+			o->brokerOrderID_ = m_brokerOrderId_++;
+			o->orderNo_ = pOrder->OrderSysID;
+			o->localNo_ = localno;
+			o->createTime_ = pOrder->InsertTime;
+			o->orderStatus_ =CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
+			OrderManager::instance().trackOrder(o);
+			auto pmsgout = make_shared<OrderStatusMsg>(DESTINATION_ALL,name_);
+			pmsgout->set(o);
 			messenger_->send(pmsgout);	
-			OrderManager::instance().trackOrder(pmsgout->toPOrder());
 			auto pmsgout2 = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_ORGANORDER,
-				pOrder->OrderRef);
+				localno);
 			messenger_->send(pmsgout2);
-			LOG_ERROR(logger,name_ <<" OnRtnOrder OrderManager cannot find orderref:"<<pOrder->OrderRef);	
+			LOG_ERROR(logger,name_ <<" OnRtnOrder OrderManager cannot find LocalNo:"<<localno);	
 		}
 		else {
 			o->orderStatus_ = CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
-			o->orderFlag_ = CtpComboOffsetFlagToOrderFlag(pOrder->CombOffsetFlag[0]);
 			o->orderNo_ = pOrder->OrderSysID;
-			auto pmsgout = make_shared<OrderMsg>();
-			pmsgout->destination_ = to_string(o->clientID_);
-			pmsgout->source_ = name_;
-			pmsgout->msgtype_ = MSG_TYPE_RTN_ORDER;
-			pmsgout->data_.serverOrderID_ = o->serverOrderID_;
-			pmsgout->data_.clientOrderID_ = o->clientOrderID_;
-			pmsgout->data_.orderStatus_ = o->orderStatus_;
-			pmsgout->data_.orderNo_ = o->orderNo_;
+			auto pmsgout = make_shared<OrderStatusMsg>(to_string(o->clientID_),name_);
+			pmsgout->set(o);
 			messenger_->send(pmsgout);
 		}
 		LOG_INFO(logger,name_ <<" OnRtnOrder details:"
@@ -916,34 +910,40 @@ namespace StarQuant
 		pmsg->source_ = name_;
 		pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pTrade->InstrumentID);
 		pmsg->data_.tradeTime_ = pTrade->TradeTime;
-		pmsg->data_.serverOrderID_ = std::stol(pTrade->OrderRef);
+		//pmsg->data_.serverOrderID_ = std::stol(pTrade->OrderRef);
 		pmsg->data_.orderNo_ = pTrade->OrderSysID;
 		//pmsg->data_.tradeId = std::stoi(pTrade->TraderID);
 		pmsg->data_.tradeNo_ = pTrade->TradeID;
 		pmsg->data_.tradePrice_ = pTrade->Price;
 		pmsg->data_.tradeSize_ = (pTrade->Direction == THOST_FTDC_D_Buy ? 1 : -1)*pTrade->Volume;
 		pmsg->data_.fillFlag_ = CtpComboOffsetFlagToOrderFlag(pTrade->OffsetFlag);
-		auto o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pTrade->OrderRef));
-		if (o != nullptr) {
+		//auto o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pTrade->OrderRef));
+
+		string localno = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + pTrade->OrderRef;		
+		auto o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,localno);
+		auto o2 = OrderManager::instance().retrieveOrderFromOrderNo(pTrade->OrderSysID);
+		bool islocalorder = ( (o != nullptr) && !(o2 != nullptr && o2->localNo_ != localno) );
+		if (islocalorder) {
+			pmsg->data_.serverOrderID_ = o->serverOrderID_;
 			pmsg->data_.clientOrderID_ = o->clientOrderID_;
 			pmsg->data_.brokerOrderID_ = o->brokerOrderID_;
 			pmsg->data_.account_ = o->account_;
 			pmsg->data_.clientID_ = o->clientID_;
 			pmsg->data_.api_ = o->api_;
-			o->fillNo_ = pTrade->TradeID;
+			//o->fillNo_ = pTrade->TradeID;
 			OrderManager::instance().gotFill(pmsg->data_);
 			messenger_->send(pmsg);
 
 		}
 		else {
-			pmsg->data_.api_ = "others";
+			pmsg->data_.api_ = "UNKONWN";
 			pmsg->data_.account_ = ctpacc_.userid;
 			messenger_->send(pmsg);
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_ORGANORDER,
-				pTrade->OrderRef);
+				pTrade->OrderSysID);
 			messenger_->send(pmsgout);			
-			LOG_ERROR(logger,name_ <<" OnRtnTrade ordermanager cannot find orderref"<<pTrade->OrderRef);
+			LOG_ERROR(logger,name_ <<" OnRtnTrade ordermanager cannot find orderNo:"<<pTrade->OrderSysID);
 		}	
 		LOG_INFO(logger,name_ <<" OnRtnTrade details:"
 			<<" TradeID="<<pTrade->TradeID
@@ -967,7 +967,8 @@ namespace StarQuant
 			}			
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pInputOrder->OrderRef));
+			string localno = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + pInputOrder->OrderRef;
+			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,localno);
 			if (o != nullptr) {
 				lock_guard<mutex> g(orderStatus_mtx);
 				o->orderStatus_ = OS_Error;			// rejected
@@ -975,13 +976,9 @@ namespace StarQuant
 					MSG_TYPE_ERROR_INSERTORDER,
 					to_string(o->clientOrderID_));
 				messenger_->send(pmsgout);
-				auto pmsgout2 = make_shared<OrderMsg>();
-				pmsgout2->destination_ = to_string(o->clientID_);
-				pmsgout2->source_ = name_;
-				pmsgout2->msgtype_ = MSG_TYPE_RTN_ORDER;
-				pmsgout2->data_.serverOrderID_ = o->serverOrderID_;
-				pmsgout2->data_.clientOrderID_ = o->clientOrderID_;
-				pmsgout2->data_.orderStatus_ = OS_Error;
+
+				auto pmsgout2 = make_shared<OrderStatusMsg>(to_string(o->clientID_),name_);
+				pmsgout2->set(o);
 				messenger_->send(pmsgout2);	
 			}
 			else {
@@ -1013,8 +1010,8 @@ namespace StarQuant
 		if(bResult){
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			long oid = std::stol(pOrderAction->OrderRef);
-			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(oid);
+			string localno = to_string(pOrderAction->FrontID) + "-" + to_string(pOrderAction->SessionID) + "-" + pOrderAction->OrderRef;
+			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,localno);
 			if (o != nullptr) {
 				auto pmsgout = make_shared<ErrorMsg>(to_string(o->clientID_), name_,
 					MSG_TYPE_ERROR_CANCELORDER,
@@ -1027,7 +1024,7 @@ namespace StarQuant
 					MSG_TYPE_ERROR_ORGANORDER,
 					pOrderAction->OrderRef);
 				messenger_->send(pmsgout);
-				LOG_ERROR(logger,name_ <<" OnErrRtnOrderAction OrderManager cannot find order,OrderRef="<<pOrderAction->OrderRef);
+				LOG_ERROR(logger,name_ <<" OnErrRtnOrderAction OrderManager cannot find order,OrderRef="<<localno);
 			}
 			LOG_ERROR(logger,name_ <<" OnErrRtnOrderAction: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);
 		}

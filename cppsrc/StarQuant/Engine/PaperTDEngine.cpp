@@ -18,6 +18,7 @@ namespace StarQuant
 	PaperTDEngine::PaperTDEngine() 
 	{
 		m_brokerOrderId_ = 0;
+		fillID_ = 0;
 		init();
 	}
 
@@ -61,9 +62,9 @@ namespace StarQuant
 				case MSG_TYPE_ENGINE_DISCONNECT:
 					disconnect();
 					break;
-				case MSG_TYPE_ORDER:
+				case MSG_TYPE_ORDER_PAPER:
 					if (estate_ == LOGIN_ACK){
-						auto pmsgin2 = static_pointer_cast<OrderMsg>(pmsgin);
+						auto pmsgin2 = static_pointer_cast<PaperOrderMsg>(pmsgin);
 						insertOrder(pmsgin2);
 					}
 					else{
@@ -147,13 +148,16 @@ namespace StarQuant
 	}
 
 
-	void PaperTDEngine::insertOrder(shared_ptr<OrderMsg> pmsg){
+	void PaperTDEngine::insertOrder(shared_ptr<PaperOrderMsg> pmsg){
 		lock_guard<mutex> g(oid_mtx);
 		pmsg->data_.serverOrderID_ = m_serverOrderId++;
 		pmsg->data_.brokerOrderID_ = m_brokerOrderId_++;
+		pmsg->data_.orderNo_ = string("PAPER-") + to_string(pmsg->data_.brokerOrderID_);
+		pmsg->data_.localNo_ = pmsg->data_.orderNo_;
 		pmsg->data_.createTime_ = ymdhmsf();
 		pmsg->data_.orderStatus_ = OrderStatus::OS_Submitted;
-		std::shared_ptr<Order> o = pmsg->toPOrder();
+
+		auto o = static_pointer_cast<PaperOrder>(pmsg->toPOrder());
 		OrderManager::instance().trackOrder(o);
 		// begin simulate trade, now only support L1
 		if (DataManager::instance().orderBook_.find(o->fullSymbol_) != DataManager::instance().orderBook_.end()){
@@ -167,12 +171,15 @@ namespace StarQuant
 			pmsgfill->source_ = name_;
 			pmsgfill->data_.fullSymbol_ = o->fullSymbol_;
 			pmsgfill->data_.tradeTime_ = ymdhmsf();
+			pmsgfill->data_.orderNo_ = o->orderNo_;
 			pmsgfill->data_.serverOrderID_ = o->serverOrderID_;
 			pmsgfill->data_.clientOrderID_ = o->clientOrderID_;
 			pmsgfill->data_.brokerOrderID_ = o->brokerOrderID_;
-			pmsgfill->data_.tradeId_ = o->brokerOrderID_;
+			pmsgfill->data_.tradeId_ = fillID_++;
+			pmsgfill->data_.tradeNo_ = to_string(pmsgfill->data_.tradeId_);
 			pmsgfill->data_.account_ = o->account_;     
 			pmsgfill->data_.api_ = o->api_;   
+
 			if (o->orderType_ == OrderType::OT_Market){
 				pmsgfill->data_.fillFlag_ = o->orderFlag_;
 				if (o->orderSize_ > 0){
@@ -257,13 +264,11 @@ namespace StarQuant
 			OrderManager::instance().gotFill(pmsgfill->data_);	
 			lock_guard<mutex> gs(orderStatus_mtx);					
 			o->orderStatus_ = OrderStatus::OS_Filled;
-			pmsg->data_.orderStatus_ = OrderStatus::OS_Filled;
-			pmsg->destination_ = pmsg->source_;
-			pmsg->source_ = name_;
-			pmsg->msgtype_ = MSG_TYPE_RTN_ORDER;
-			messenger_->send(pmsg);
+			auto pos = make_shared<OrderStatusMsg>(pmsg->source_,name_);
+			pos->set(o);
+			messenger_->send(pos);
 			messenger_->send(pmsgfill);
-			LOG_INFO(logger,"Order filled by paper td,  Order: clientorderid ="<<o->clientOrderID_<<"fullsymbol = "<<o->fullSymbol_);
+			LOG_INFO(logger,name_<<" Fill Order: clientorderid ="<<o->clientOrderID_<<"fullsymbol = "<<o->fullSymbol_);
 		}
 		else
 		{
@@ -280,7 +285,7 @@ namespace StarQuant
 	}
 	
 	void PaperTDEngine::cancelOrder(shared_ptr<OrderActionMsg> pmsg){
-		LOG_INFO(logger,"Paper td dont support cancelorder yet!");
+		LOG_INFO(logger,name_<<" don't support cancelorder yet!");
 	}
 	
 	// 查询账户

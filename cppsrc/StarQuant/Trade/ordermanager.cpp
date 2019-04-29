@@ -43,10 +43,10 @@ namespace StarQuant {
 
 	void OrderManager::trackOrder(std::shared_ptr<Order> o)
 	{
-		if (o->orderSize_ == 0) {
-			LOG_ERROR(logger,"Incorrect OrderSize.");			
-			return;
-		}
+		// if (o->orderSize_ == 0) {
+		// 	LOG_ERROR(logger,"Incorrect OrderSize.");			
+		// 	return;
+		// }
 
 		auto iter = orders_.find(o->serverOrderID_);
 		if (iter != orders_.end())			// order exists
@@ -105,28 +105,6 @@ namespace StarQuant {
 		}
 		return nullptr;
 	}
-
-	std::shared_ptr<Order> OrderManager::retrieveOrderFromBrokerOrderId(long oid) {
-		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
-			if (iterator->second->brokerOrderID_ == oid)
-			{
-				return iterator->second;
-			}
-		}
-
-		return nullptr;
-	}
-
-	std::shared_ptr<Order> OrderManager::retrieveOrderFromBrokerOrderIdAndApi(long oid, string acc) {
-		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
-			if ((iterator->second->brokerOrderID_ == oid) && (iterator->second->account_ == acc))
-			{
-				return iterator->second;
-			}
-		}
-
-		return nullptr;
-	}
 	std::shared_ptr<Order> OrderManager::retrieveOrderFromSourceAndClientOrderId(int source, long oid) {
 		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
 			if ((iterator->second->clientOrderID_ == oid) && (iterator->second->clientID_ == source))
@@ -138,9 +116,7 @@ namespace StarQuant {
 		return nullptr;
 	}
 
-
-
-	std::shared_ptr<Order> OrderManager::retrieveOrderFromOrderNo(string ono) {
+	std::shared_ptr<Order> OrderManager::retrieveOrderFromOrderNo(const string& ono) {
 		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
 			if ((iterator->second->orderNo_ == ono))
 			{
@@ -151,16 +127,39 @@ namespace StarQuant {
 		return nullptr;
 	}
 
-	std::shared_ptr<Order> OrderManager::retrieveOrderFromMatchNo(string fno) {
+	std::shared_ptr<Order> OrderManager::retrieveOrderFromAccAndBrokerOrderId(const string& acc, int oid) {
 		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
-			if ((iterator->second->fillNo_ == fno))
+			if ((iterator->second->brokerOrderID_ == oid) && (iterator->second->account_ == acc))
 			{
 				return iterator->second;
 			}
 		}
-
 		return nullptr;
 	}
+
+
+
+
+	std::shared_ptr<Order> OrderManager::retrieveOrderFromAccAndLocalNo(const string& acc, const string& ono) {
+		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
+			if ((iterator->second->localNo_ == ono) && (iterator->second->account_ == acc))
+			{
+				return iterator->second;
+			}
+		}
+		return nullptr;
+	}
+
+	// std::shared_ptr<Order> OrderManager::retrieveOrderFromMatchNo(string fno) {
+	// 	for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
+	// 		if ((iterator->second->fillNo_ == fno))
+	// 		{
+	// 			return iterator->second;
+	// 		}
+	// 	}
+
+	// 	return nullptr;
+	// }
 
 
 	vector<std::shared_ptr<Order>> OrderManager::retrieveOrder(const string& fullsymbol) {

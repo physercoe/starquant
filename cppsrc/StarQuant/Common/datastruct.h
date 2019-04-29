@@ -219,10 +219,12 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_QRY_CONTRACT   = 2022,
     MSG_TYPE_QRY_POS       = 2023,
     MSG_TYPE_QRY_ACCOUNT   = 2024,
-    MSG_TYPE_ORDER         = 2031,  //insert order
+    MSG_TYPE_ORDER         = 2030,  //insert order
+    MSG_TYPE_ORDER_PAPER = 2031,
     MSG_TYPE_ORDER_CTP = 2032,
-    MSG_TYPE_ORDER_TAP = 2033,
-    MSG_TYPE_ORDER_XTP = 2034,
+    MSG_TYPE_ORDER_CTP_PARKED = 2033,
+    MSG_TYPE_ORDER_TAP = 2034,
+    MSG_TYPE_ORDER_XTP = 2035,
     MSG_TYPE_ORDER_ACTION  = 2040,  //cancel order
     MSG_TYPE_CANCEL_ORDER = 2041,
     MSG_TYPE_CANCEL_ALL = 2042,
@@ -494,22 +496,32 @@ public:
     string createTime_;
     string updateTime_;
     OrderStatus orderStatus_ = OrderStatus::OS_UNKNOWN;				
-    // OrderType orderType_ = OrderType::OT_Market;						// MKT, LMT, STP, STPLMT, etc
-    // OrderFlag orderFlag_ = OrderFlag::OF_OpenPosition;
-    // int orderSize_ = 0;
-    // string fillNo_;					// < 0 = short, order size != trade size
-    // int filledSize_ = 0;
-    // double lastFilledPrice_ = 0.0;
-    // double avgFilledPrice_ = 0.0;
-    // double limitPrice_ = 0.0;
-    // double stopPrice_ = 0.0;
-    // double trailPrice_ = 0.0;
-    // double trailingPercent_ = 0.0;
-    // string timeInForce_;
-    // bool outsideRegularTradingHour_ = false;
-    // bool hidden_ = false;
-    // bool allOrNone_ = false;
 };
+
+class DLL_EXPORT_IMPORT PaperOrder: public Order{
+public:
+    PaperOrder(){}
+    ~PaperOrder(){}
+
+    OrderType orderType_ = OrderType::OT_Market;						// MKT, LMT, STP, STPLMT, etc
+    OrderFlag orderFlag_ = OrderFlag::OF_OpenPosition;
+    int orderSize_ = 0;
+    string fillNo_;					// < 0 = short, order size != trade size
+    int filledSize_ = 0;
+    double lastFilledPrice_ = 0.0;
+    double avgFilledPrice_ = 0.0;
+    double limitPrice_ = 0.0;
+    double stopPrice_ = 0.0;
+    double trailPrice_ = 0.0;
+    double trailingPercent_ = 0.0;
+    string timeInForce_;
+    bool outsideRegularTradingHour_ = false;
+    bool hidden_ = false;
+    bool allOrNone_ = false;
+};
+
+
+
 class DLL_EXPORT_IMPORT CtpOrder: public Order{
 public:
     CtpOrder(){}
@@ -518,6 +530,13 @@ public:
     struct CThostFtdcInputOrderField orderField_ ;
 };
 
+class DLL_EXPORT_IMPORT CtpParkedOrder: public Order{
+public:
+    CtpParkedOrder(){}
+    ~CtpParkedOrder(){}
+    // request msg data
+    struct CThostFtdcParkedOrderField parkedOrderField_ ;
+};
 
 class DLL_EXPORT_IMPORT OrderMsg: public MsgHeader{
 public:
@@ -533,6 +552,19 @@ public:
     std::shared_ptr<Order> toPOrder();
 };
 
+class DLL_EXPORT_IMPORT PaperOrderMsg: public MsgHeader{
+public:
+    PaperOrderMsg(): MsgHeader(),data_()
+    {
+         msgtype_ = MSG_TYPE::MSG_TYPE_ORDER_PAPER;
+    }
+    ~PaperOrderMsg() {}
+
+    PaperOrder data_;
+
+    virtual void deserialize(const string& msgin);
+    std::shared_ptr<Order> toPOrder();
+};
 
 
 class DLL_EXPORT_IMPORT CtpOrderMsg: public MsgHeader{
@@ -549,6 +581,20 @@ public:
     std::shared_ptr<Order> toPOrder();
 };
 
+
+class DLL_EXPORT_IMPORT CtpParkedOrderMsg: public MsgHeader{
+public:
+    CtpParkedOrderMsg(): MsgHeader(),data_()
+    {
+         msgtype_ = MSG_TYPE::MSG_TYPE_ORDER_CTP;
+    }
+    ~CtpParkedOrderMsg() {}
+
+    CtpParkedOrder data_;
+
+    virtual void deserialize(const string& msgin);
+    std::shared_ptr<Order> toPOrder();
+};
 
 
 class DLL_EXPORT_IMPORT OrderStatusMsg: public MsgHeader{

@@ -37,11 +37,11 @@ namespace StarQuant {
 		void gotFill(Fill& fill);
 		void gotCancel(long oid);
 		std::shared_ptr<Order> retrieveOrderFromServerOrderId(long oid);
-		std::shared_ptr<Order> retrieveOrderFromBrokerOrderId(long oid);
-		std::shared_ptr<Order> retrieveOrderFromBrokerOrderIdAndApi(long oid, string acc);
 		std::shared_ptr<Order> retrieveOrderFromSourceAndClientOrderId(int source, long oid);
-		std::shared_ptr<Order> retrieveOrderFromOrderNo(string ono);
-		std::shared_ptr<Order> retrieveOrderFromMatchNo(string fno);
+		std::shared_ptr<Order> retrieveOrderFromOrderNo(const string& ono);
+		std::shared_ptr<Order> retrieveOrderFromAccAndBrokerOrderId(const string& acc,int oid);		
+		std::shared_ptr<Order> retrieveOrderFromAccAndLocalNo(const string& acc,const string& ono);
+		//std::shared_ptr<Order> retrieveOrderFromMatchNo(string fno);
 		vector<std::shared_ptr<Order>> retrieveOrder(const string& fullsymbol);
 		vector<std::shared_ptr<Order>> retrieveNonFilledOrderPtr();
 		vector<std::shared_ptr<Order>> retrieveNonFilledOrderPtr(const string& fullsymbol);

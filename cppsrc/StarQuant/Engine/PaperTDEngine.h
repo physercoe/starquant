@@ -20,6 +20,7 @@ namespace StarQuant
 	public:
 		string name_;
 		long m_brokerOrderId_;
+		long fillID_;
 
 		PaperTDEngine();
 		~PaperTDEngine();
@@ -30,7 +31,7 @@ namespace StarQuant
 		virtual bool connect() ;
 		virtual bool disconnect() ;
 
-		void insertOrder(shared_ptr<OrderMsg> pmsg);
+		void insertOrder(shared_ptr<PaperOrderMsg> pmsg);
 		void cancelOrder(shared_ptr<OrderActionMsg> pmsg);
 		void queryAccount(shared_ptr<MsgHeader> pmsg);
 		void queryPosition(shared_ptr<MsgHeader> pmsg);

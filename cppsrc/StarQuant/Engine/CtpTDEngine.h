@@ -23,7 +23,7 @@ namespace StarQuant
 		bool needauthentication_;
 		bool needsettlementconfirm_;
 		bool issettleconfirmed_;
-		long m_brokerOrderId_;// record the order which this engine send
+		int m_brokerOrderId_;
 		Account ctpacc_;
 
 		CtpTDEngine(const string& acc );
@@ -38,7 +38,7 @@ namespace StarQuant
 		void releaseapi();
 		void reset();
 
-		void insertOrder(shared_ptr<OrderMsg> pmsg);
+		void insertOrder(shared_ptr<CtpOrderMsg> pmsg);
 		void cancelOrder(shared_ptr<OrderActionMsg> pmsg);
 		void queryAccount(shared_ptr<MsgHeader> pmsg);
 		void queryPosition(shared_ptr<MsgHeader> pmsg);
@@ -365,9 +365,9 @@ namespace StarQuant
 
 
 		int reqId_;							// 操作请求编号
-		int orderRef_;						// 订单编号
 		int frontID_;						// 前置机编号
 		int sessionID_;						// 会话编号，以上三组编号唯一确定订单
+		int orderRef_;						// 订单编号
 //TODO: isLast 处理大数据包
 		CThostFtdcTraderApi* api_;			
 		bool apiinited_;

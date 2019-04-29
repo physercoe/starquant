@@ -149,13 +149,57 @@ std::shared_ptr<Order> OrderMsg::toPOrder(){
     o->updateTime_ = data_.updateTime_;
     o->orderStatus_ = data_.orderStatus_;
 
-    // o->orderType_ = data_.orderType_;
-    // o->orderSize_ = data_.orderSize_ ;
-    // o->limitPrice_ = data_.limitPrice_;
-    // o->stopPrice_ = data_.stopPrice_ ;
-    // o->orderFlag_ = data_.orderFlag_;
     return o;
 }
+
+void PaperOrderMsg::deserialize(const string& msgin){
+    vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    destination_ = v[0];
+    source_ = v[1];
+    data_.api_ = v[3];
+    data_.account_ = v[4];
+    data_.clientID_ = stoi(v[5]);
+    data_.clientOrderID_ = stol(v[6]);
+    data_.fullSymbol_ = v[7];
+    data_.tag_ = v[8];
+
+    data_.orderType_ = static_cast<OrderType>(stoi(v[9]));
+    data_.orderSize_ = stoi(v[10]);
+    if (data_.orderType_ == OrderType::OT_Limit){
+        data_.limitPrice_ = stof(v[11]);
+    }else if (data_.orderType_ == OrderType::OT_StopLimit){
+        data_.stopPrice_ = stof(v[11]);
+    }
+    data_.orderFlag_ = static_cast<OrderFlag>(stoi(v[12]));
+
+}
+
+std::shared_ptr<Order> PaperOrderMsg::toPOrder(){
+    auto o = make_shared<PaperOrder>();
+    o->api_ = data_.api_;
+    o->account_ = data_.account_;    
+    o->clientID_ = data_.clientID_;
+    o->clientOrderID_ = data_.clientOrderID_;
+    o->fullSymbol_ = data_.fullSymbol_;
+    o->tag_ =  data_.tag_;
+    
+    o->serverOrderID_ = data_.serverOrderID_;
+    o->brokerOrderID_ = data_.brokerOrderID_;
+    o->orderNo_ = data_.orderNo_;
+    o->localNo_ = data_.localNo_;
+    o->createTime_ = data_.createTime_;
+    o->updateTime_ = data_.updateTime_;
+    o->orderStatus_ = data_.orderStatus_;
+
+    o->orderType_ = data_.orderType_;
+    o->orderSize_ = data_.orderSize_ ;
+    o->limitPrice_ = data_.limitPrice_;
+    o->stopPrice_ = data_.stopPrice_ ;
+    o->orderFlag_ = data_.orderFlag_;
+
+    return o;
+}
+
 
 void CtpOrderMsg::deserialize(const string& msgin){
     vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
@@ -219,8 +263,67 @@ std::shared_ptr<Order> CtpOrderMsg::toPOrder(){
     o->updateTime_ = data_.updateTime_;
     o->orderStatus_ = data_.orderStatus_;
     memcpy(&o->orderField_, &data_.orderField_,sizeof(CThostFtdcInputOrderField));
-    return static_pointer_cast<Order>(o);
+    //return static_pointer_cast<Order>(o);
+    return o;
 }
+
+
+void CtpParkedOrderMsg::deserialize(const string& msgin){
+    vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    destination_ = v[0];
+    source_ = v[1];
+    data_.api_ = v[3];
+    data_.account_ = v[4];
+    data_.clientID_ = stoi(v[5]);
+    data_.clientOrderID_ = stol(v[6]);
+    data_.fullSymbol_ = v[7];
+    data_.tag_ = v[8];
+
+    data_.parkedOrderField_ = {};
+    strcpy(data_.parkedOrderField_.InstrumentID,v[9].c_str());
+    data_.parkedOrderField_.OrderPriceType = v[10][0];
+    data_.parkedOrderField_.Direction = v[11][0];
+    strcpy(data_.parkedOrderField_.CombOffsetFlag,v[12].c_str());
+    strcpy(data_.parkedOrderField_.CombHedgeFlag,v[13].c_str());
+    data_.parkedOrderField_.LimitPrice = stof(v[14]);
+    data_.parkedOrderField_.VolumeTotalOriginal = stoi(v[15]);
+    data_.parkedOrderField_.TimeCondition = v[16][0];
+    strcpy(data_.parkedOrderField_.GTDDate,v[17].c_str());
+    data_.parkedOrderField_.VolumeCondition = v[18][0];
+    data_.parkedOrderField_.MinVolume = stoi(v[19]);
+    data_.parkedOrderField_.ContingentCondition = v[20][0];
+    data_.parkedOrderField_.StopPrice = stof(v[21]);
+    data_.parkedOrderField_.ForceCloseReason = v[22][0];
+    data_.parkedOrderField_.IsAutoSuspend = stoi(v[23]);
+    data_.parkedOrderField_.UserForceClose = stoi(v[24]);
+    data_.parkedOrderField_.IsSwapOrder = stoi(v[25]);
+    strcpy(data_.parkedOrderField_.BusinessUnit,v[26].c_str());
+    strcpy(data_.parkedOrderField_.CurrencyID,v[27].c_str());   
+
+}
+
+std::shared_ptr<Order> CtpParkedOrderMsg::toPOrder(){
+    auto o = make_shared<CtpParkedOrder>();
+    o->api_ = data_.api_;
+    o->account_ = data_.account_;    
+    o->clientID_ = data_.clientID_;
+    o->clientOrderID_ = data_.clientOrderID_;
+    o->fullSymbol_ = data_.fullSymbol_;
+    o->tag_ =  data_.tag_;
+    
+    o->serverOrderID_ = data_.serverOrderID_;
+    o->brokerOrderID_ = data_.brokerOrderID_;
+    o->orderNo_ = data_.orderNo_;
+    o->localNo_ = data_.localNo_;
+    o->createTime_ = data_.createTime_;
+    o->updateTime_ = data_.updateTime_;
+    o->orderStatus_ = data_.orderStatus_;
+    memcpy(&o->parkedOrderField_, &data_.parkedOrderField_,sizeof(CThostFtdcParkedOrderField));
+    //return static_pointer_cast<Order>(o);
+    return o;
+}
+
+
 
 void OrderStatusMsg::set(std::shared_ptr<Order> po){
     data_.api_ = po->api_;
