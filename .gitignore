@@ -56,7 +56,7 @@ cmake-build-debug/
 extra_dump.py
 .DS_Store
 # user defined 
-.vscode/
+*.vscode/
 *.pyc
 *__pycache__/
 /data/*
