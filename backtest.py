@@ -4,18 +4,18 @@ from pandas import Timestamp
 import os
 import yaml
 
-from source.event.event import EventType
-from source.event.backtest_event_engine import BacktestEventEngine
+from source.common.datastruct import EventType
+from source.engine.backtest_event_engine import BacktestEventEngine
 from source.data.backtest_data_feed_quandl import BacktestDataFeedQuandl
 from source.data.backtest_data_feed_local import BacktestDataFeedLocal
 from source.data.backtest_data_feed_tushare import BacktestDataFeedTushare
 from source.data.data_board import DataBoard
-from source.brokerage.backtest_brokerage import BacktestBrokerage
-from source.position.portfolio_manager import PortfolioManager
-from source.performance.performance_manager import PerformanceManager
-from source.risk.risk_manager import PassThroughRiskManager
-from source.strategy.mystrategy import strategy_list
-from source.order.order_manager import OrderManager
+from source.trade.backtest_brokerage import BacktestBrokerage
+from source.trade.portfolio_manager import PortfolioManager
+from source.trade.performance_manager import PerformanceManager
+from source.trade.risk_manager import PassThroughRiskManager
+from mystrategy import strategy_list
+from source.trade.order_manager import OrderManager
 class Backtest(object):
     """
     Event driven backtest engine
@@ -158,11 +158,11 @@ if __name__ == '__main__':
     config = None
     try:
         path = os.path.abspath(os.path.dirname(__file__))
-        config_file = os.path.join(path, 'config_backtest.yaml')
+        config_file = os.path.join(path, 'etc/config_backtest.yaml')
         with open(os.path.expanduser(config_file)) as fd:
             config = yaml.load(fd)
     except IOError:
         print("config.yaml is missing")
 
     backtest = Backtest(config)
-    results = backtest.run()
+    backtest.run()

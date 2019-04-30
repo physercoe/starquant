@@ -67,7 +67,9 @@
 			"typeinfo": "cpp",
 			"utility": "cpp",
 			"valarray": "cpp",
-			"variant": "cpp"
+			"variant": "cpp",
+			"algorithm": "cpp",
+			"cinttypes": "cpp"
 		}
 	}
 }

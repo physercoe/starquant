@@ -5,12 +5,27 @@ import sys
 import os
 import webbrowser
 import psutil
+
+
 from queue import Queue, Empty
 from PyQt5 import QtCore, QtWidgets, QtGui, QtWebEngineWidgets
 from datetime import datetime
+import requests
+import itchat
 
-from source.event.event import *   #EventType
-from source.order.order_flag import OrderFlag
+from source.common.datastruct import *   
+
+
+from mystrategy import strategy_list
+from source.data.data_board import DataBoard
+from source.trade.order_manager import OrderManager
+from source.strategy.strategy_manager import StrategyManager
+from source.trade.portfolio_manager import PortfolioManager
+from source.trade.risk_manager import PassThroughRiskManager
+from source.trade.account_manager import AccountManager
+from source.engine.live_event_engine import LiveEventEngine
+from source.common.client_mq import ClientMq
+
 from .ui_market_window import MarketWindow
 from .ui_order_window import OrderWindow
 from .ui_fill_window import FillWindow
@@ -19,19 +34,15 @@ from .ui_closeposition_window import ClosePositionWindow
 from .ui_account_window import AccountWindow
 from .ui_strategy_window import StrategyWindow
 from .ui_log_window import LogWindow
-from mystrategy import strategy_list
-from source.data.data_board import DataBoard
-from source.order.order_manager import OrderManager
-from source.strategy.strategy_manager import StrategyManager
-from source.position.portfolio_manager import PortfolioManager
-from source.risk.risk_manager import PassThroughRiskManager
-from source.account.account_manager import AccountManager
-from source.event.live_event_engine import LiveEventEngine
-from source.event.client_mq import ClientMq
-from ..order.order_event import OrderEvent
-from ..order.order_type import OrderType
-from ..order.order_status import OrderStatus
-from .MatplotlibWidget import MatplotlibWidget
+from .ui_bt_dataview import BtDataViewWidget
+from .ui_bt_resultsoverview import BtResultViewWidget
+from .ui_bt_posview import BtPosViewWidget
+from .ui_bt_txnview import BtTxnViewWidget
+from .ui_manual_window import ManualWindow 
+from .ui_bt_setting import BtSettingWindow
+from .ui_web_window import WebWindow
+
+from ..common import datastruct
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, config_server, config_client, lang_dict):
@@ -88,7 +99,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # 1. set up gui windows
         self.setGeometry(50, 50, 600, 400)
         self.setWindowTitle(lang_dict['Prog_Name'])
-        self.setWindowIcon(QtGui.QIcon("logo.png"))       
+        self.setWindowIcon(QtGui.QIcon("source/gui/image/star.png"))       
         self.init_menu()
         self.init_status_bar()  
         self.init_central_area()
@@ -115,6 +126,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._outgoing_request_events_engine.start()
         self._client_mq.start()
         self._flowrate_timer.start(5000)
+
     #################################################################################################
     # -------------------------------- Event Handler   --------------------------------------------#
     #################################################################################################
@@ -123,85 +135,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def open_proj_folder(self):
         webbrowser.open('.')
-
-    def send_cmd(self):
-        try:
-            cmdstr= str(self.cmd.text()) + '|' + str(datetime.now())
-            gr = GeneralReqEvent()
-            gr.req = cmdstr
-            self._outgoing_request_events_engine.put(gr)   
-        except:
-            print('send cmd error')
-
-    def subsrcibe(self):
-        ss = SubscribeEvent()
-        echa = ['SHFE','ZCE','DCE','CFFEX','INE','OPTION','SSE']
-        stype = ['F','O','T','Z']
-
-        sno = str(self.sym.text())
-        sname = str(self.sym_name.text())
-        stypeid = self.sec_type.currentIndex()
-        echid = self.exchange.currentIndex()
-        s = echa[echid] + ' ' + stype[stypeid] + ' ' + sname.upper() + ' ' + sno  #合约全称        
-        try:
-            ss.api = self.account.currentText()+'_MD'
-            ss.content = s
-            ss.source = 0
-            self._outgoing_request_events_engine.put(ss)
-        except:
-            print('subsribe error')
-
-
-    def place_order(self):
-        echa = ['SHFE','ZCE','DCE','CFFEX','INE','OPTION','SSE']
-        stype = ['F','O','T','Z']
-
-        sno = str(self.sym.text())
-        sname = str(self.sym_name.text())
-        stypeid = self.sec_type.currentIndex()
-        echid = self.exchange.currentIndex()
-
-        s = echa[echid] + ' ' + stype[stypeid] + ' ' + sname.upper() + ' ' + sno  #合约全称
-        print(s)
-        n = self.direction.currentIndex()
-        f = self.order_flag.currentIndex()
-        p = str(self.order_price.text())
-        q = str(self.order_quantity.text())
-        t = self.order_type.currentIndex()
-        a = self.account.currentText() + '_TD'
-        #print("manual order ",s,n,f,p,q,t)
-        # to be checked by risk manger
-        try:
-            o = OrderEvent()
-            o.api = a
-            o.source = 0
-            o.client_order_id = self.manualorderid
-            self.manualorderid = self.manualorderid + 1
-            o.full_symbol = s
-            o.order_size = int(q) if (n == 0) else -1 * int(q)
-            o.order_flag = OrderFlag(f)
-            o.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
-            # o.account = self._config_client['account']
-            
-            if (t == 0):
-                o.order_type = OrderType.MKT
-                self._outgoing_request_events_engine.put(o)
-            elif (t == 1):
-                o.order_type = OrderType.LMT
-                o.limit_price = float(p)
-                self._outgoing_request_events_engine.put(o)
-            elif (t == 2):
-                o.order_type = OrderType.STP
-                self._outgoing_request_events_engine.put(o)
-            elif (t == 3):
-                o.order_type = OrderType.STPLMT
-                o.stop_price = float(p)
-                self._outgoing_request_events_engine.put(o)
-            else:
-                pass
-        except:
-            print('place order error')
-
 
     def reload_strategy(self):
         self._strategy_manager.reload_strategy()
@@ -285,6 +218,8 @@ class MainWindow(QtWidgets.QMainWindow):
             #self.order_window.
             msg = o.serialize()
             print('client send msg: ' + msg)
+            text = o.api + str(o.source) + str(o.client_order_id)
+            requests.get('https://sc.ftqq.com/SCU49995T54cd0bf4d42dd8448359347830d62bd85cc3f69d085ee.send?text=%s &desp=%s'%(text,msg))
             self._outgoing_queue.put(msg)
 
     def _outgoing_account_request_handler(self, a):
@@ -302,6 +237,8 @@ class MainWindow(QtWidgets.QMainWindow):
         msg = gr.serialize()
         print('client send msg: ' + msg)
         self._outgoing_queue.put(msg)
+    
+
 
     def _outgoing_general_msg_request_handler(self, g):
         self.log_window.update_table(g)           # append to log window
@@ -365,73 +302,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def init_central_area(self):
         self.central_widget = QtWidgets.QStackedWidget()      
-        # self.central_widget = QtWidgets.QWidget()
-
-
-
-
 
 #-------Trade Widgets----------
         tradewidget = QtWidgets.QWidget()
         hbox = QtWidgets.QHBoxLayout()
         #-------------------------------- Top Left ------------------------------------------#
         topleft = MarketWindow(self._symbols, self._lang_dict)
-        # self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        # self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 763, 967))
-        # self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
-        # topleft = MatplotlibWidget(self.scrollAreaWidgetContents)
         self.market_window = topleft
 
-        # -------------------------------- Top right ------------------------------------------#
-
-
-        topright = QtWidgets.QFrame()
-        topright.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        topright.setFont(self._font)
-        place_order_layout = QtWidgets.QFormLayout()
-        self.sym = QtWidgets.QLineEdit()
-        self.sym_name = QtWidgets.QLineEdit()
-        self.sec_type = QtWidgets.QComboBox()
-        self.sec_type.addItems([self._lang_dict['Future'], self._lang_dict['Option'], self._lang_dict['Stock'],self._lang_dict['Index']])
-        self.direction = QtWidgets.QComboBox()
-        self.direction.addItems([self._lang_dict['Long'], self._lang_dict['Short']])
-        self.order_flag = QtWidgets.QComboBox()
-        self.order_flag.addItems([self._lang_dict['Open'], self._lang_dict['Close'], self._lang_dict['Close_Today'],self._lang_dict['Close_Yesterday'], self._lang_dict['Force_Close'],self._lang_dict['Force_Off'],self._lang_dict['Local_Forceclose']])
-        self.order_price = QtWidgets.QLineEdit()
-        self.order_quantity = QtWidgets.QLineEdit()
-        self.order_type = QtWidgets.QComboBox()
-        self.order_type.addItems([self._lang_dict['MKT'], self._lang_dict['LMT'], self._lang_dict['STP'],self._lang_dict['STPLMT'],self._lang_dict['FAK'], self._lang_dict['FOK']])
-        self.exchange = QtWidgets.QComboBox()
-        self.exchange.addItems(['上期所','郑商所','大商所','中金所','能源','期权','上证'])
-        self.account = QtWidgets.QComboBox()
-        # self.account.addItems(['FROM', 'CONFIG'])
-        self.account.addItems([str(element) for element in self._config_server['apis']])
-        self.btn_order = QtWidgets.QPushButton(self._lang_dict['Place_Order'])
-        self.btn_order.clicked.connect(self.place_order)     # insert order
-        self.sym_name.returnPressed.connect(self.subsrcibe) # subscbre market data
-        self.sym.returnPressed.connect(self.subsrcibe)  # subscbre market data
-        self.cmd = QtWidgets.QLineEdit()
-        self.cmd.returnPressed.connect(self.send_cmd)
-        self.btn_cmd = QtWidgets.QPushButton('Enter')
-        self.btn_cmd.clicked.connect(self.send_cmd)
-        
-        place_order_layout.addRow(QtWidgets.QLabel(self._lang_dict['Discretionary']))
-        place_order_layout.addRow(self._lang_dict['Symbol'], self.sym)
-        place_order_layout.addRow(self._lang_dict['Name'], self.sym_name)
-        place_order_layout.addRow(self._lang_dict['Security_Type'], self.sec_type)
-        place_order_layout.addRow(self._lang_dict['Direction'], self.direction)
-        place_order_layout.addRow(self._lang_dict['Order_Flag'], self.order_flag)
-        place_order_layout.addRow(self._lang_dict['Price'], self.order_price)
-        place_order_layout.addRow(self._lang_dict['Quantity'], self.order_quantity)
-        place_order_layout.addRow(self._lang_dict['Order_Type'], self.order_type)
-        place_order_layout.addRow(self._lang_dict['Exchange'], self.exchange)
-        place_order_layout.addRow(self._lang_dict['Account'], self.account)
-        place_order_layout.addRow(self.btn_order)
-        place_order_layout.addRow(QtWidgets.QLabel('Console'))
-        place_order_layout.addRow('Command',self.cmd)
-        place_order_layout.addRow(self.btn_cmd)
-        topright.setLayout(place_order_layout)
-
+         
         # -------------------------------- bottom Left ------------------------------------------#
         bottomleft = QtWidgets.QTabWidget()
         bottomleft.setFont(self._font)
@@ -503,204 +382,50 @@ class MainWindow(QtWidgets.QMainWindow):
         bottomright.setLayout(strategy_manager_layout)
 
         # --------------------------------------------------------------------------------------#
-        dockmanual = QtWidgets.QDockWidget('Manual Control Center',self)
-        dockmanual.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable|QtWidgets.QDockWidget.DockWidgetMovable)
-        # dockmanual.setFloating(True)
-        dockmanual.setAllowedAreas(QtCore.Qt.RightDockWidgetArea|QtCore.Qt.LeftDockWidgetArea)
-        dockmanual.setWidget(topright)
-        self.addDockWidget(QtCore.Qt.RightDockWidgetArea,dockmanual)
-        splitter1 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+
+        reserveredwidget = QtWidgets.QWidget()
+
+        splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         splitter1.addWidget(topleft)
-        # splitter1.addWidget(topright)
-        splitter1.setSizes([400,])
+        splitter1.addWidget(bottomleft)
+        splitter1.setSizes([600,300])
 
-        splitter2 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        splitter2.addWidget(bottomleft)
+        splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        splitter2.addWidget(reserveredwidget)
         splitter2.addWidget(bottomright)
-        splitter2.setSizes([400, 200])
+        splitter2.setSizes([400, 400])
 
-        splitter3 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter3.addWidget(splitter1)
         splitter3.addWidget(splitter2)
-        splitter3.setSizes([400, 100])
+        splitter3.setSizes([800, 300])
+
         hbox.addWidget(splitter3)
         tradewidget.setLayout(hbox)
 
 #---------Backtest ----------------------------------------
         backtestwidget = QtWidgets.QWidget()
         bt_hbox = QtWidgets.QHBoxLayout()
-      # bt top left---result
-        bt_topmiddle = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        # bt_topmiddle_layout = QtWidgets.QHBoxLayout()
-        bt_topmiddle1 = QtWidgets.QFrame()
-        # bt_topmiddle1 = QtWidgets.QColumnView()
-        # bt_topmiddle1 = QtWidgets.QTreeView()
-        # model = QtWidgets.QFileSystemModel()
-        # model.setRootPath(QtCore.QDir.rootPath())
-        # bt_topmiddle1.setModel(model)
-        # bt_topmiddle1.setRootIndex(model.index(QtCore.QDir.homePath()))
-        
-        bt_topmiddle2 = QtWidgets.QTabWidget()
-        # bt_web_addr = QtWidgets.QLineEdit()
-        # bt_web_btn_go = QtWidgets.QPushButton('Go') 
-        # bt_web_tablayout = QtWidgets.QHBoxLayout()
-        # bt_web_tablayout.addWidget(QtWidgets.QLabel('URL'))
-        # bt_web_tablayout.addWidget(bt_web_addr)
-        # bt_web_tablayout.addWidget(bt_web_btn_go)
-        # bt_web =  QtWebEngineWidgets.QWebEngineView()
-        # bt_web.load(QtCore.QUrl("http://localhost:8888"))
-        # bt_topmiddle = QtWidgets.QFrame()
-        # bt_topmiddle_layout = QtWidgets.QFormLayout()
-        # bt_topmiddle_layout.addRow(bt_web_tablayout)
-        # bt_topmiddle_layout.addRow(bt_web)
-        # bt_topmiddle.setLayout(bt_topmiddle_layout)
-        # bt_web_btn_go.clicked.connect(showurl)
-        bt_topmiddle2.setDocumentMode(True)
-        bt_topmiddle2.setMovable(True)
-        bt_topmiddle2.setTabsClosable(True)
-        bt_resulttab1 = QtWidgets.QTextBrowser()
-        bt_topmiddle2.addTab(bt_resulttab1, 'Result')
-
-        # bt_topmiddle.addWidget(bt_topmiddle1)
-        bt_topmiddle.addWidget(bt_topmiddle2)
-        
-
-
-    #   bt top right setting
-        bt_left = QtWidgets.QFrame()
-        bt_left.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        bt_left.setFont(self._font)
-        bt_setting_layout = QtWidgets.QFormLayout()
-        bt_sym = QtWidgets.QLineEdit()
-        bt_sym_multi = QtWidgets.QLineEdit()
-        bt_sym_layout = QtWidgets.QHBoxLayout()
-        bt_sym_layout.addWidget(QtWidgets.QLabel('Symbol'))
-        bt_sym_layout.addWidget(bt_sym)  
-        bt_sym_layout.addWidget(QtWidgets.QLabel('Mulitpliers'))
-        bt_sym_layout.addWidget(bt_sym_multi)
-
-        bt_margin = QtWidgets.QLineEdit()
-        bt_commision = QtWidgets.QLineEdit()
-        bt_margin_layout = QtWidgets.QHBoxLayout()
-        bt_margin_layout.addWidget(QtWidgets.QLabel('Margin'))
-        bt_margin_layout.addWidget(bt_margin)  
-        bt_margin_layout.addWidget(QtWidgets.QLabel('Commision'))
-        bt_margin_layout.addWidget(bt_commision)
-
-        bt_starttime = QtWidgets.QDateTimeEdit()
-        bt_starttime.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
-        bt_starttime.setCalendarPopup(True)
-        bt_endtime = QtWidgets.QDateTimeEdit()
-        bt_endtime.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
-        bt_endtime.setCalendarPopup(True)
-        bt_time_layout = QtWidgets.QHBoxLayout()         
-        bt_time_layout.addWidget(QtWidgets.QLabel('Start time'))
-        bt_time_layout.addWidget(bt_starttime)
-        bt_time_layout.addWidget(QtWidgets.QLabel('End time'))
-        bt_time_layout.addWidget(bt_endtime)
-
-        bt_datasource = QtWidgets.QComboBox()
-        bt_datasource.addItems(['CSV','MongoDB','Tushare'])
-        bt_datascale = QtWidgets.QComboBox()
-        bt_datascale.addItems(['Tick','Bar'])
-        bt_data_layout = QtWidgets.QHBoxLayout()
-        bt_data_layout.addWidget(QtWidgets.QLabel('Data Source'))
-        bt_data_layout.addWidget(bt_datasource)  
-        bt_data_layout.addWidget(QtWidgets.QLabel('Data Scale'))
-        bt_data_layout.addWidget(bt_datascale)
-
-  
-
-        bt_btn_strat_reload = QtWidgets.QPushButton(self._lang_dict['Load_Strat'])
-        # self.btn_strat_reload.clicked.connect(self.reload_strategy)
-        bt_btn_strat_start = QtWidgets.QPushButton(self._lang_dict['Start_Strat'])
-        # self.btn_strat_start.clicked.connect(self.start_strategy)
-        bt_btn_strat_stop = QtWidgets.QPushButton(self._lang_dict['Stop_Strat'])
-        # self.btn_strat_stop.clicked.connect(self.stop_strategy)
-        # bt_btn_edit = QtWidgets.QPushButton('Open')
-        # bt_btn_save = QtWidgets.QPushButton('Save')
-
-        # bt_btn_editor_layout = QtWidgets.QHBoxLayout()
-        # bt_btn_editor_layout.addWidget(bt_btn_edit)
-        # bt_btn_editor_layout.addWidget(bt_btn_save)
-        bt_btn_strat_layout = QtWidgets.QHBoxLayout()
-        bt_btn_strat_layout.addWidget(bt_btn_strat_start)
-        bt_btn_strat_layout.addWidget(bt_btn_strat_stop)
-        bt_btn_strat_layout.addWidget(bt_btn_strat_reload)
-        
-
-
-        bt_strategy_window = StrategyWindow(self._lang_dict, self._strategy_manager)
-        # bt_editor = QtWidgets.QTextEdit()
-        # bt_editor.setMinimumHeight(800)
-        
-        bt_setting_layout.addRow(QtWidgets.QLabel('Backtest Setting'))
-        bt_setting_layout.addRow(bt_data_layout)
-        bt_setting_layout.addRow(bt_sym_layout)
-        bt_setting_layout.addRow(bt_margin_layout)
-        # bt_setting_layout.addRow('start time', bt_starttime)
-        # bt_setting_layout.addRow('end time', bt_endtime)
-        bt_setting_layout.addRow(bt_time_layout)
-
-        bt_setting_layout.addRow(QtWidgets.QLabel('Strategy Lists'))
-        bt_setting_layout.addRow(bt_strategy_window)
-        bt_setting_layout.addRow(bt_btn_strat_layout)
-        # bt_setting_layout.addRow(QtWidgets.QLabel('Jupyter Notebook(Web)'))
-        # bt_setting_layout.addRow(bt_btn_editor_layout)
-        # bt_setting_layout.addRow(bt_editor)
-
-        bt_left.setLayout(bt_setting_layout)
-    #  bottom left:  log
+      # bt top middle---result
+        bt_topmiddle = QtWidgets.QTabWidget()
+        bt_resulttab1 = BtResultViewWidget()
+        bt_resulttab2 = BtPosViewWidget()
+        bt_resulttab3 = BtTxnViewWidget()
+        bt_topmiddle.addTab(bt_resulttab1, 'OverView and Returns')
+        bt_topmiddle.addTab(bt_resulttab2, 'Position')
+        bt_topmiddle.addTab(bt_resulttab3, 'Transactions')
+    #  bottom middle:  data
         bt_bottommiddle = QtWidgets.QTabWidget()
         bt_bottommiddle.setFont(self._font)
-        bt_logtab1 = QtWidgets.QTextBrowser()
-        bt_bottommiddle.addTab(bt_logtab1, 'Data')
-
-    #  bottom right :  jupyter notebook
-        # bt_right = QtWidgets.QFrame()
-        # bt_right.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        # bt_right.setFont(self._font)
-        # bt_strategy_manager_layout = QtWidgets.QFormLayout()
-        #TODO: change manager 
-        
-        bt_web_addr = QtWidgets.QLineEdit()
-        bt_web_btn_jn = QtWidgets.QPushButton('Jupyter Notebook') 
-        bt_web_btn_jn.clicked.connect(lambda:bt_web.load(QtCore.QUrl("http://localhost:8888")))
-        bt_web_btn_go = QtWidgets.QPushButton('Go') 
-        bt_web_btn_go.clicked.connect(lambda:bt_web.load(QtCore.QUrl(bt_web_addr.text())))
-        bt_web_tablayout = QtWidgets.QHBoxLayout()
-        bt_web_tablayout.addWidget(bt_web_btn_jn)
-        bt_web_tablayout.addWidget(QtWidgets.QLabel('Web'))
-        bt_web_tablayout.addWidget(bt_web_addr)
-        bt_web_tablayout.addWidget(bt_web_btn_go)
-        bt_web =  QtWebEngineWidgets.QWebEngineView()
-        
-        bt_web.setMinimumHeight(1000)
-        # bt_web.setMinimumWidth(1000)
-        bt_web.load(QtCore.QUrl("http://localhost:8888"))
-
-        bt_right = QtWidgets.QFrame()
-        bt_right_layout = QtWidgets.QFormLayout()
-        bt_right_layout.addRow(bt_web_tablayout)
-        bt_right_layout.addRow(bt_web)
-        bt_right.setLayout(bt_right_layout)
-  
-        # bt_strategy_manager_layout.addRow(QtWidgets.QLabel('Strategy Lists'))
-        # bt_strategy_manager_layout.addRow(bt_strategy_window)
-        # bt_strategy_manager_layout.addRow(bt_btn_strat_layout)
-        # bt_right.setLayout(bt_strategy_manager_layout)
+        bt_datatab1 = BtDataViewWidget()
+        bt_bottommiddle.addTab(bt_datatab1, 'Data')
+     
+      
+    #   bt  left: setting
+        bt_left = BtSettingWindow()
 
     #-------------------------------- 
-
-        dockweb = QtWidgets.QDockWidget('Web Browser',self)
-        dockweb.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable|QtWidgets.QDockWidget.DockWidgetMovable)
-        # dockweb.setFloating(True)
-        dockweb.setAllowedAreas(QtCore.Qt.RightDockWidgetArea|QtCore.Qt.LeftDockWidgetArea)
-        dockweb.setWidget(bt_right)
-        self.addDockWidget(QtCore.Qt.RightDockWidgetArea,dockweb)   
-        self.tabifyDockWidget(dockmanual,dockweb)
-        dockmanual.raise_()
-
+ 
         bt_splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         bt_splitter1.addWidget(bt_topmiddle)
         bt_splitter1.addWidget(bt_bottommiddle)
@@ -722,6 +447,24 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 #--------------------mainwindow----------------------
+        manualwidget = ManualWindow(self._config_server['apis'],self._config_server['accounts'])
+        dockmanual = QtWidgets.QDockWidget('Manual Control Center',self)
+        dockmanual.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable|QtWidgets.QDockWidget.DockWidgetMovable)
+        # dockmanual.setFloating(True)
+        dockmanual.setAllowedAreas(QtCore.Qt.RightDockWidgetArea|QtCore.Qt.LeftDockWidgetArea)
+        dockmanual.setWidget(manualwidget)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea,dockmanual)
+
+        webwidget = WebWindow()
+        dockweb = QtWidgets.QDockWidget('Web Browser',self)
+        dockweb.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable|QtWidgets.QDockWidget.DockWidgetMovable)
+        # dockweb.setFloating(True)
+        dockweb.setAllowedAreas(QtCore.Qt.RightDockWidgetArea|QtCore.Qt.LeftDockWidgetArea)
+        dockweb.setWidget(webwidget)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea,dockweb)   
+        self.tabifyDockWidget(dockmanual,dockweb)
+        dockmanual.raise_()
+
         self.central_widget.addWidget(tradewidget)
         self.central_widget.addWidget(backtestwidget)
         self.central_widget.setCurrentIndex(0)
@@ -759,11 +502,14 @@ class AboutWidget(QtWidgets.QDialog):
 
         text = u"""
             StarQuant
-            易数量化交易系统
+            易数交易系统
             Lightweight Algorithmic Trading System            
             Language: C++,Python
             Contact: dr.wb@qq.com
             License：MIT
+
+            莫道交易如浪深，莫言策略似沙沉。
+            千回万测虽辛苦，实盘验后始得金。
      
             """
         label = QtWidgets.QLabel()

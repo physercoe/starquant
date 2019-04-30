@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from mystrategy import strategy_list,strategy_list_reload,startstrategy
 from multiprocessing import Process
-from source.event.event import *   #EventType
+from source.common.datastruct import *   #EventType
 class StrategyManager(object):
     def __init__(self, config_client, outgoing_request_event_engine, order_manager, portfolio_manager):
         self._config_client = config_client

@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 from .data_feed_base import DataFeedBase
-from ..data.bar_event import BarEvent
+from ..common.datastruct import BarEvent
 
 
 class LiveDataFeed(DataFeedBase):

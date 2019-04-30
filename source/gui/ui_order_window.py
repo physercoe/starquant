@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
-from ..order.order_event import OrderEvent
-from ..order.order_status_event import OrderStatusEvent
-from ..order.order_status import OrderStatus
-from source.event.event import *   #EventType
+
+from source.common.datastruct import *   #EventType
 class OrderWindow(QtWidgets.QTableWidget):
     '''
     Order Monitor

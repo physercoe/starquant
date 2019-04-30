@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
-from ..position.position_event import PositionEvent
-from ..order.fill_event import FillEvent
+from ..common.datastruct import PositionEvent,FillEvent
+
 
 class PositionWindow(QtWidgets.QTableWidget):
     position_signal = QtCore.pyqtSignal(type(PositionEvent()))

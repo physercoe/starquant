@@ -12,7 +12,7 @@ Welcome to StarQuant
 
 [中文](README.md) 
 
-**StarQuant** is light-weighted, integrated algo-backtest/trade system for individual trader, it is mainly used for future trading at present, stock and other commodity will be included in future.
+**StarQuant** is light-weighted, integrated algo-backtest/trade system/platform for individual trader, it is mainly used for future trading at present, stock and other commodity will be included in future.
 
 ## Features
 * strategy bactested in python, run directly in live；
@@ -95,7 +95,7 @@ To be continued
 
 ## Current State
 
-Current StarQuant is still under development, when it is finished there will be a release version.
+Currently StarQuant is still under development, when it is finished there will be a release version.
 TODO:
 1. ...
 

@@ -1,10 +1,10 @@
 Region: cn      # TODO: cn uptick is red, downtick is green; us is opposite
-Prog_Name: 易数量化交易系统（StarQuant, version=0.1）
+Prog_Name: 易数交易系统（StarQuant）
 File: 文件
 Folder: 文件夹
 Open_Folder: 打开文件夹
 Exit: 退出
-Exit_App: 退出易数量化交易系统
+Exit_App: 退出易数交易系统
 #------------------ Top Left ---------------#
 Market: 行情
 FullSymbol: 合约全称

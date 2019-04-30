@@ -106,6 +106,8 @@ namespace StarQuant
 					disconnect();
 					break;
 				case MSG_TYPE_ORDER_CTP:
+					if (pmsgin->destination_ != name_)
+						break;
 					if (estate_ == LOGIN_ACK){
 						insertOrder(static_pointer_cast<CtpOrderMsg>(pmsgin));
 					}
@@ -118,6 +120,8 @@ namespace StarQuant
 					}
 					break;
 				case MSG_TYPE_CANCEL_ORDER:
+					if (pmsgin->destination_ != name_)
+						break;				
 					if (estate_ == LOGIN_ACK){
 						cancelOrder(static_pointer_cast<OrderActionMsg>(pmsgin));
 					}
@@ -130,6 +134,8 @@ namespace StarQuant
 					}
 					break;
 				case MSG_TYPE_QRY_POS:
+					if (pmsgin->destination_ != name_)
+						break;				
 					if (estate_ == LOGIN_ACK){
 						queryPosition(pmsgin);
 					}
@@ -142,6 +148,8 @@ namespace StarQuant
 					}
 					break;
 				case MSG_TYPE_QRY_ACCOUNT:
+					if (pmsgin->destination_ != name_)
+						break;				
 					if (estate_ == LOGIN_ACK){
 						queryAccount(pmsgin);
 					}

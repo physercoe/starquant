@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
-from ..account.account_event import AccountEvent
+from ..common.datastruct import AccountEvent
 
 class AccountWindow(QtWidgets.QTableWidget):
     account_signal = QtCore.pyqtSignal(type(AccountEvent()))

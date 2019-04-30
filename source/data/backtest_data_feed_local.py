@@ -5,8 +5,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 from .data_feed_base import DataFeedBase
-from .bar_event import BarEvent
-from .tick_event import TickEvent
+from ..common.datastruct import BarEvent,TickEvent
+
 
 class BacktestDataFeedLocal(DataFeedBase):
     """

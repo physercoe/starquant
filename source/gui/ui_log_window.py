@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
-from ..event.event import InfoEvent
+from ..common.datastruct import InfoEvent
 
 class LogWindow(QtWidgets.QTableWidget):
     msg_signal = QtCore.pyqtSignal(type(InfoEvent()))

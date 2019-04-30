@@ -13,7 +13,7 @@ try:
     from lib.starquant import tradingengine_    # windows
 except ImportError:
     from lib.libstarquant import tradingengine_   # linux
-
+import itchat
 # https://stackoverflow.com/questions/4938723/what-is-the-correct-way-to-make-my-pyqt-application-quit-when-killed-from-the-co
 signal(SIGINT, SIG_DFL)
 
@@ -73,9 +73,10 @@ def stop_server():
 
 server_process = None
 
+
+
+       
+
 if __name__ == "__main__":
-    # server_process = Process(target=start_server)
-    # server_process.start()
-    # atexit.register(stop_server)
 
     main()

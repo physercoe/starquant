@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
-from ..order.fill_event import FillEvent
+from ..common.datastruct import FillEvent
 
 class FillWindow(QtWidgets.QTableWidget):
     fill_signal = QtCore.pyqtSignal(type(FillEvent()))

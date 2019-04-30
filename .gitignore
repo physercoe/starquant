@@ -55,3 +55,15 @@ Debug/
 cmake-build-debug/
 extra_dump.py
 .DS_Store
+# user defined 
+.vscode/
+*.pyc
+*__pycache__/
+/data/*
+/etc/*
+/result/*
+/log/*
+/docs/*
+/mystrategy/*
+!/mystrategy/Examplestrategy.py
+!/mystrategy/__init__.py

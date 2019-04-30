@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import sys 
-sys.path.append("..") 
-from source.strategy.strategy_base import StrategyBase
-from source.order.order_event import OrderEvent
-from source.order.order_type import OrderType
-from source.event.event import *
-from source.order.order_manager import OrderManager
-from source.position.portfolio_manager import PortfolioManager
-from source.event.trade_engine import TradeEngine
 import os
 import yaml
 import datetime
+sys.path.append("..") 
+from source.strategy.strategy_base import StrategyBase
+from source.common.datastruct import *
+from source.trade.order_manager import OrderManager
+from source.trade.portfolio_manager import PortfolioManager
+from source.engine.trade_engine import TradeEngine
 import mystrategy 
 
 """
@@ -20,6 +18,7 @@ template for strategy run independantly, write its own event handler
 """
 class ExampleStrategy(StrategyBase):
     ID = 9999
+    name = "example"
     def __init__(self, events_engine,order_manager,portfolio_manager):
         super(ExampleStrategy, self).__init__(events_engine,order_manager,portfolio_manager)
         self.id = 9999

@@ -3,18 +3,7 @@
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
 
-from ..order.order_event import OrderEvent
-from ..order.order_type import OrderType
-from ..order.order_flag import OrderFlag
-from ..data.tick_event import TickEvent, TickType
-from ..order.order_status_event import OrderStatusEvent
-from ..order.fill_event import FillEvent
-from ..event.event import InfoEvent,MSG_TYPE
-from ..position.position_event import PositionEvent
-from ..position.contract_event import ContractEvent
-from ..data.historical_event import HistoricalEvent
-from ..account.account_event import AccountEvent
-from ..event.event import *
+from ..common.datastruct import *
 
 
 class StrategyBase(metaclass=ABCMeta):
@@ -147,7 +136,7 @@ class StrategyBase(metaclass=ABCMeta):
 
 
     # wrapper function for easy use   
-    def buy_open(self,symbol,size,type='mkt',price = 0.0,api = 'CTP_TD'):
+    def buy_open(self,symbol,size,type='mkt',price = 0.0,api = 'CTP.TD'):
         o = OrderEvent()
         o.api = api
         o.full_symbol = symbol
@@ -165,7 +154,7 @@ class StrategyBase(metaclass=ABCMeta):
         #print('place order buy open')
         self.place_order(o)
 
-    def buy_close(self,symbol,size,type='mkt',price = 0.0,closetoday = False, api = 'CTP_TD'):
+    def buy_close(self,symbol,size,type='mkt',price = 0.0,closetoday = False, api = 'CTP.TD'):
         o = OrderEvent()
         o.api = api
         o.full_symbol = symbol
@@ -191,7 +180,7 @@ class StrategyBase(metaclass=ABCMeta):
         #print('place order buy close')
         self.place_order(o)
 
-    def sell_open(self,symbol,size,type='mkt',price = 0.0,api = 'CTP_TD'):
+    def sell_open(self,symbol,size,type='mkt',price = 0.0,api = 'CTP.TD'):
         o = OrderEvent()
         o.api = api
         o.full_symbol = symbol
@@ -209,7 +198,7 @@ class StrategyBase(metaclass=ABCMeta):
         #print('place order sell open')
         self.place_order(o)  
 
-    def sell_close(self,symbol,size,type='mkt',price = 0.0,closetoday = False,api = 'CTP_TD'):
+    def sell_close(self,symbol,size,type='mkt',price = 0.0,closetoday = False,api = 'CTP.TD'):
         o = OrderEvent()
         o.api = api
         o.full_symbol = symbol

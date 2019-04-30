@@ -6,7 +6,7 @@ import tushare as ts
 from datetime import datetime, timedelta
 
 from .data_feed_base import DataFeedBase
-from .bar_event import BarEvent
+from ..common.datastruct import BarEvent
 
 class BacktestDataFeedTushare(DataFeedBase):
     """
