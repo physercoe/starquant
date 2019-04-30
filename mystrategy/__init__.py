@@ -120,3 +120,19 @@ def startsid(sid):
         strategy.register_event()
         tradeengine.id = strategy.id
         tradeengine.start()        
+
+def backtestsid(sid):
+
+    config_backtest = None
+    try:
+        path = os.path.abspath(os.path.dirname(__file__))
+        configfilename = '../etc/config_backtest_' +str(sid) + '.yaml'
+        config_file = os.path.join(path, configfilename)
+        with open(os.path.expanduser(config_file), encoding='utf8') as fd:
+            config_backtest = yaml.load(fd)
+    except IOError:
+        print("config_bactest_" +str(sid) +".yaml is missing")
+        
+    from source.engine.backtest import Backtest        
+    bt = Backtest(config_backtest)
+    bt.run()

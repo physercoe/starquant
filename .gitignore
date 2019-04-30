@@ -58,6 +58,7 @@ extra_dump.py
 # user defined 
 *.vscode/
 *.pyc
+*.yaml
 *__pycache__/
 /data/*
 /etc/*
@@ -67,3 +68,4 @@ extra_dump.py
 /mystrategy/*
 !/mystrategy/Examplestrategy.py
 !/mystrategy/__init__.py
+*.ipynb_checkpoints/

@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from pandas import Timestamp
-import os
+import os,sys
 import yaml
+sys.path.insert(0,"../..")
 
 from source.common.datastruct import EventType
 from source.engine.backtest_event_engine import BacktestEventEngine
@@ -14,8 +15,9 @@ from source.trade.backtest_brokerage import BacktestBrokerage
 from source.trade.portfolio_manager import PortfolioManager
 from source.trade.performance_manager import PerformanceManager
 from source.trade.risk_manager import PassThroughRiskManager
-from mystrategy import strategy_list
 from source.trade.order_manager import OrderManager
+from mystrategy import strategy_list
+
 class Backtest(object):
     """
     Event driven backtest engine
@@ -158,7 +160,7 @@ if __name__ == '__main__':
     config = None
     try:
         path = os.path.abspath(os.path.dirname(__file__))
-        config_file = os.path.join(path, 'etc/config_backtest.yaml')
+        config_file = os.path.join(path, '../../etc/config_backtest.yaml')
         with open(os.path.expanduser(config_file)) as fd:
             config = yaml.load(fd)
     except IOError:
