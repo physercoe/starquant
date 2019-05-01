@@ -385,6 +385,8 @@ namespace StarQuant
 	void CtpTDEngine::cancelOrder(shared_ptr<OrderActionMsg> pmsg){
 		CThostFtdcInputOrderActionField myreq = CThostFtdcInputOrderActionField();
 		string oref;
+		int ofront;
+		int osess;
 		long coid = pmsg->data_.clientOrderID_;
 		string ctpsym;
 		std::shared_ptr<Order> o;
@@ -396,8 +398,10 @@ namespace StarQuant
 			o = OrderManager::instance().retrieveOrderFromServerOrderId(pmsg->data_.serverOrderID_);
 		}
 		if (o != nullptr){
-			oref = stringsplit(o->localNo_,'-')[2];
-			coid = o->clientOrderID_;
+			vector<string> locno = stringsplit(o->localNo_,'-');
+			ofront = stoi(locno[0]);
+			osess = stoi(locno[1]);
+			oref = locno[2];
 			ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(o->fullSymbol_);
 		}
 		else
@@ -412,8 +416,8 @@ namespace StarQuant
 		strcpy(myreq.InstrumentID, ctpsym.c_str());
 		//strcpy(myreq.ExchangeID, o->.c_str());			// TODO: check the required field
 		strcpy(myreq.OrderRef, oref.c_str());
-		myreq.FrontID = frontID_;
-		myreq.SessionID = sessionID_;
+		myreq.FrontID = ofront;
+		myreq.SessionID = osess;
 		myreq.ActionFlag = THOST_FTDC_AF_Delete;
 		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
