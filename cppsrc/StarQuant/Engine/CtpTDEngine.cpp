@@ -120,6 +120,8 @@ namespace StarQuant
 					}
 					break;
 				case MSG_TYPE_CANCEL_ORDER:
+				case MSG_TYPE_ORDER_ACTION:
+				case MSG_TYPE_ORDER_ACTION_CTP:
 					if (pmsgin->destination_ != name_)
 						break;				
 					if (estate_ == LOGIN_ACK){
@@ -307,19 +309,30 @@ namespace StarQuant
 	}
 
 	void CtpTDEngine::insertOrder(shared_ptr<CtpOrderMsg> pmsg){
-		lock_guard<mutex> g(oid_mtx);
-		pmsg->data_.serverOrderID_ = m_serverOrderId++;
-		pmsg->data_.brokerOrderID_ = m_brokerOrderId_++;
-		pmsg->data_.localNo_ = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + to_string(orderRef_) ;
-		pmsg->data_.createTime_ = ymdhmsf();	
 		strcpy(pmsg->data_.orderField_.OrderRef, to_string(orderRef_++).c_str());
 		strcpy(pmsg->data_.orderField_.InvestorID, ctpacc_.userid.c_str());
 		strcpy(pmsg->data_.orderField_.UserID, ctpacc_.userid.c_str());
 		strcpy(pmsg->data_.orderField_.BrokerID, ctpacc_.brokerid.c_str());
 		int error = api_->ReqOrderInsert(&(pmsg->data_.orderField_), reqId_++);
-		LOG_INFO(logger, name_<<"Insert Order: clientorderid ="<<pmsg->data_.clientOrderID_<<" FullSymbol = "<<pmsg->data_.fullSymbol_);		
 		lock_guard<mutex> gs(orderStatus_mtx);
 		pmsg->data_.orderStatus_ = OrderStatus::OS_Submitted;
+		lock_guard<mutex> g(oid_mtx);
+		pmsg->data_.serverOrderID_ = m_serverOrderId++;
+		pmsg->data_.brokerOrderID_ = m_brokerOrderId_++;
+		pmsg->data_.localNo_ = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + to_string(orderRef_) ;
+		pmsg->data_.createTime_ = ymdhmsf();			
+		pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pmsg->data_.orderField_.InstrumentID);
+		pmsg->data_.price_ = pmsg->data_.orderField_.LimitPrice;
+		int dir_ = pmsg->data_.orderField_.Direction != THOST_FTDC_D_Sell ? 1:-1 ;
+		pmsg->data_.quantity_ = dir_ * pmsg->data_.orderField_.VolumeTotalOriginal;
+		pmsg->data_.flag_ = CtpComboOffsetFlagToOrderFlag(pmsg->data_.orderField_.CombOffsetFlag[0]);
+		pmsg->data_.tag_ = pmsg->data_.tag_ 
+			+ "h" + pmsg->data_.orderField_.CombHedgeFlag
+			+ "p" + pmsg->data_.orderField_.OrderPriceType
+			+ "c" + pmsg->data_.orderField_.ContingentCondition + "-" + to_string(pmsg->data_.orderField_.StopPrice)
+			+ "t" + pmsg->data_.orderField_.TimeCondition
+			+ "v" + pmsg->data_.orderField_.VolumeCondition;
+		LOG_INFO(logger, name_<<"Insert Order: clientorderid ="<<pmsg->data_.clientOrderID_<<" FullSymbol = "<<pmsg->data_.fullSymbol_);				
 		std::shared_ptr<Order> o = pmsg->toPOrder();
 		OrderManager::instance().trackOrder(o);		
 		if (error != 0){
@@ -416,6 +429,7 @@ namespace StarQuant
 		}
 		lock_guard<mutex> g2(orderStatus_mtx);
 		o->orderStatus_ = OrderStatus::OS_PendingCancel;
+		o->updateTime_ = ymdhmsf();
 		auto pmsgout = make_shared<OrderStatusMsg>(pmsg->source_,name_);
 		pmsgout->set(o);
 		messenger_->send(pmsgout);
@@ -606,7 +620,8 @@ namespace StarQuant
 			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,oref);
 			if (o != nullptr) {
 				lock_guard<mutex> g(orderStatus_mtx);
-				o->orderStatus_ = OS_Error;	
+				o->orderStatus_ = OS_Error;
+				o->updateTime_ = ymdhmsf();	
 				auto pmsgout = make_shared<ErrorMsg>(to_string(o->clientID_), name_,
 					MSG_TYPE_ERROR_INSERTORDER,
 					to_string(o->clientOrderID_));
@@ -674,36 +689,80 @@ namespace StarQuant
 		}
 	}
 	///请求查询投资者持仓响应
-	// TODO: 针对上期所持仓的今昨分条返回（有昨仓、无今仓），读取昨仓数据
-	// TODO: 汇总总仓, 计算持仓均价, 读取冻结
 	void CtpTDEngine::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult){
 			if(pInvestorPosition == nullptr){
-				LOG_INFO(logger,name_ <<" on qry pos return nullptr");
+				LOG_INFO(logger,name_ <<" onRspQrypos return nullptr.");
 				return;
+			}			
+			string fullsym = CConfig::instance().CtpSymbolToSecurityFullName(pInvestorPosition->InstrumentID);
+			string exchid = stringsplit(fullsym,' ')[0];
+			string key = ctpacc_.userid + "." + fullsym + "." + pInvestorPosition->PosiDirection;
+			
+			// auto pos = PortfolioManager::instance().retrievePosition(key);
+			std::shared_ptr<Position> pos;
+			if (posbuffer_.find(key) == posbuffer_.end() ){
+				pos = std::make_shared<Position>();
+				pos->key_ = key;
+				pos->account_ = ctpacc_.userid;
+				pos->fullSymbol_ = fullsym;
+				pos->api_ = "StarQuant";
+				posbuffer_[key] = pos;
+			}else
+			{
+				pos = posbuffer_[key];
 			}
-			if ((pInvestorPosition->Position != 0.0) && (pInvestorPosition->YdPosition != 0.0)){
-				auto pmsg = make_shared<PosMsg>();
-				pmsg->destination_ = DESTINATION_ALL;
-				pmsg->source_ = name_;
-				pmsg->data_.posNo_ = to_string(pInvestorPosition->SettlementID);
-				pmsg->data_.type_ = 'a';
-				pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pInvestorPosition->InstrumentID);
-				pmsg->data_.size_ = (pInvestorPosition->PosiDirection == THOST_FTDC_PD_Long ? 1 : -1) * pInvestorPosition->Position;
-				pmsg->data_.avgPrice_ = pInvestorPosition->PositionCost / pInvestorPosition->Position;
-				pmsg->data_.openpl_ = pInvestorPosition->PositionProfit;
-				pmsg->data_.closedpl_ = pInvestorPosition->CloseProfit;
-				pmsg->data_.account_ = ctpacc_.userid;
-				pmsg->data_.preSize_ = pInvestorPosition->YdPosition;
-				pmsg->data_.freezedSize_ = (pInvestorPosition->PosiDirection == THOST_FTDC_PD_Long ? pInvestorPosition->LongFrozen : pInvestorPosition->ShortFrozen);
-				pmsg->data_.api_ = name_;				
+			
+			if (exchid == "SHFE"){
+				if ((pInvestorPosition->YdPosition != 0 ) && (pInvestorPosition->TodayPosition == 0))
+					pos->preSize_ = pInvestorPosition->Position;
+			}else{
+				pos->preSize_ = pInvestorPosition->Position - pInvestorPosition->TodayPosition;
+			}
+			double cost = pos->avgPrice_ * pos->size_;
+			pos->size_ += (pInvestorPosition->PosiDirection == THOST_FTDC_PD_Long ? 1 : -1) * pInvestorPosition->Position;
+			pos->openpl_ += pInvestorPosition->PositionProfit;
+			if (pos->size_ != 0){
+				cost += pInvestorPosition->PositionCost;
+				pos->avgPrice_ = cost /pos->size_;
+			}
+			if (pos->size_ > 0){
+				pos->freezedSize_ += pInvestorPosition->ShortFrozen;
+			}
+			else{
+				pos->freezedSize_ += pInvestorPosition->LongFrozen;
+			}
+			pos->closedpl_ += pInvestorPosition->CloseProfit;
+			if (bIsLast){
+				auto pmsg = make_shared<PosMsg>(DESTINATION_ALL,name_);
+				pmsg->set(pos);				
 				messenger_->send(pmsg);
-				PortfolioManager::instance().Add(pmsg->toPos());
+				PortfolioManager::instance().Add(pos);
+				posbuffer_.erase(key);
 			}
+			// if ((pInvestorPosition->Position != 0.0) && (pInvestorPosition->YdPosition != 0.0)){
+			// 	auto pmsg = make_shared<PosMsg>();
+			// 	pmsg->destination_ = DESTINATION_ALL;
+			// 	pmsg->source_ = name_;
+			// 	// pmsg->data_.posNo_ = to_string(pInvestorPosition->SettlementID);
+			// 	pmsg->data_.type_ = 'a';
+			// 	pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pInvestorPosition->InstrumentID);
+			// 	pmsg->data_.size_ = (pInvestorPosition->PosiDirection == THOST_FTDC_PD_Long ? 1 : -1) * pInvestorPosition->Position;
+			// 	pmsg->data_.avgPrice_ = pInvestorPosition->PositionCost / pInvestorPosition->Position;
+			// 	pmsg->data_.openpl_ = pInvestorPosition->PositionProfit;
+			// 	pmsg->data_.closedpl_ = pInvestorPosition->CloseProfit;
+			// 	pmsg->data_.account_ = ctpacc_.userid;
+			// 	pmsg->data_.preSize_ = pInvestorPosition->YdPosition;
+			// 	pmsg->data_.freezedSize_ = (pInvestorPosition->PosiDirection == THOST_FTDC_PD_Long ? pInvestorPosition->LongFrozen : pInvestorPosition->ShortFrozen);
+			// 	pmsg->data_.api_ = "CTP";				
+			// 	messenger_->send(pmsg);
+			// 	PortfolioManager::instance().Add(pmsg->toPos());
+			// }
 			LOG_INFO(logger,name_ <<" OnRspQryInvestorPosition:"
 				<<" InstrumentID="<<pInvestorPosition->InstrumentID
 				<<" InvestorID="<<pInvestorPosition->InvestorID
+				<<" Position="<<pInvestorPosition->Position
 				<<" OpenAmount="<<pInvestorPosition->OpenAmount
 				<<" OpenVolume="<<pInvestorPosition->OpenVolume
 				<<" PosiDirection="<<pInvestorPosition->PosiDirection
@@ -766,7 +825,7 @@ namespace StarQuant
 				<<" FrozenMargin="<<pTradingAccount->FrozenMargin
 				<<" CloseProfit="<<pTradingAccount->CloseProfit
 				<<" PositionProfit="<<pTradingAccount->PositionProfit
-				<<" Balance="<<balance
+				<<" Balance="<<pTradingAccount->Balance
 			);
 		}
 		else {			
@@ -860,15 +919,22 @@ namespace StarQuant
 			o->api_ = "UNKNOWN";
 			o->account_ = ctpacc_.id;    
 			o->fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pOrder->InstrumentID);
-			string tag = string("Direction:") + pOrder->Direction + "CombOffsetFlag:" + pOrder->CombOffsetFlag 
-				+ "LimitPrice:" + to_string(pOrder->LimitPrice) + "VolumeTotalOriginal:" + to_string(pOrder->VolumeTotalOriginal);
-			o->tag_ =  tag;
-
+			o->price_ = pOrder->LimitPrice;
+			int dir_ = pOrder->Direction != THOST_FTDC_D_Sell ? 1:-1 ;
+			o->quantity_ = dir_ * pOrder->VolumeTotalOriginal ;
+			o->flag_ = CtpComboOffsetFlagToOrderFlag(pOrder->CombOffsetFlag[0]);
+			o->tag_ = string("") 
+				+ "h" + pOrder->CombHedgeFlag
+				+ "p" + pOrder->OrderPriceType
+				+ "c" + pOrder->ContingentCondition + "-" + to_string(pOrder->StopPrice)
+				+ "t" + pOrder->TimeCondition
+				+ "v" + pOrder->VolumeCondition;
 			o->serverOrderID_ = m_serverOrderId++;
 			o->brokerOrderID_ = m_brokerOrderId_++;
 			o->orderNo_ = pOrder->OrderSysID;
 			o->localNo_ = localno;
-			o->createTime_ = pOrder->InsertTime;
+			o->createTime_ = string(pOrder->InsertDate) + string(pOrder->InsertTime);
+			o->updateTime_ = ymdhmsf();
 			o->orderStatus_ =CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
 			OrderManager::instance().trackOrder(o);
 			auto pmsgout = make_shared<OrderStatusMsg>(DESTINATION_ALL,name_);
@@ -883,6 +949,7 @@ namespace StarQuant
 		else {
 			o->orderStatus_ = CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
 			o->orderNo_ = pOrder->OrderSysID;
+			o->updateTime_ = ymdhmsf();
 			auto pmsgout = make_shared<OrderStatusMsg>(to_string(o->clientID_),name_);
 			pmsgout->set(o);
 			messenger_->send(pmsgout);
@@ -930,8 +997,22 @@ namespace StarQuant
 		string localno = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + pTrade->OrderRef;		
 		auto o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,localno);
 		auto o2 = OrderManager::instance().retrieveOrderFromOrderNo(pTrade->OrderSysID);
-		bool islocalorder = ( (o != nullptr) && !(o2 != nullptr && o2->localNo_ != localno) );
-		if (islocalorder) {
+		//bool islocalorder = ( (o != nullptr) && !(o2 != nullptr && o2->localNo_ != localno) );
+		if (o2 != nullptr) {
+			pmsg->data_.serverOrderID_ = o2->serverOrderID_;
+			pmsg->data_.clientOrderID_ = o2->clientOrderID_;
+			pmsg->data_.brokerOrderID_ = o2->brokerOrderID_;
+			pmsg->data_.account_ = o2->account_;
+			pmsg->data_.clientID_ = o2->clientID_;
+			pmsg->data_.api_ = o2->api_;
+			//o->fillNo_ = pTrade->TradeID;
+			OrderManager::instance().gotFill(pmsg->data_);
+			messenger_->send(pmsg);
+			auto pmsgos = make_shared<OrderStatusMsg>(to_string(o2->clientID_),name_);
+			pmsgos->set(o2);
+			messenger_->send(pmsgos);				
+		}
+		else if (o != nullptr) {
 			pmsg->data_.serverOrderID_ = o->serverOrderID_;
 			pmsg->data_.clientOrderID_ = o->clientOrderID_;
 			pmsg->data_.brokerOrderID_ = o->brokerOrderID_;
@@ -940,8 +1021,10 @@ namespace StarQuant
 			pmsg->data_.api_ = o->api_;
 			//o->fillNo_ = pTrade->TradeID;
 			OrderManager::instance().gotFill(pmsg->data_);
-			messenger_->send(pmsg);
-
+			messenger_->send(pmsg);	
+			auto pmsgos = make_shared<OrderStatusMsg>(to_string(o->clientID_),name_);
+			pmsgos->set(o);
+			messenger_->send(pmsgos);		
 		}
 		else {
 			pmsg->data_.api_ = "UNKONWN";
@@ -980,6 +1063,7 @@ namespace StarQuant
 			if (o != nullptr) {
 				lock_guard<mutex> g(orderStatus_mtx);
 				o->orderStatus_ = OS_Error;			// rejected
+				o->updateTime_ = ymdhmsf();
 				auto pmsgout = make_shared<ErrorMsg>(to_string(o->clientID_), name_,
 					MSG_TYPE_ERROR_INSERTORDER,
 					to_string(o->clientOrderID_));

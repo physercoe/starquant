@@ -86,30 +86,54 @@ class ManualWindow(QtWidgets.QFrame):
             print('send cmd error')
 
     def subsrcibe(self,ss):
+        ss.destination = self.api_type.currentText() + '.MD'
+        ss.source = '0'
         self.subscribe_signal.emit(ss)
 
 
-    def place_order(self,of):
+    def place_order_ctp(self,of):
         try:
             o = OrderEvent()
-            o.api = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+            o.msg_type = MSG_TYPE.MSG_TYPE_ORDER_CTP
+            o.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+            o.source = '0'
+            o.api = 'StarQuant' #self.api_type.currentText() 
             o.account = self.accounts.currentText()
-            o.source = 0
+            o.clientID = 0
             o.client_order_id = self.manualorderid
             self.manualorderid = self.manualorderid + 1
-            o.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+            # o.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+            o.orderfield = of
+            self.order_signal.emit(o)
+        except:
+            print('place order error')
 
+    def place_order_paper(self,of):
+        try:
+            o = OrderEvent()
+            o.msg_type = MSG_TYPE.MSG_TYPE_ORDER_PAPER
+            o.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+            o.source = '0'
+
+            o.api = 'StarQuant' #self.api_type.currentText() 
+            o.account = self.accounts.currentText()
+            o.clientID = 0
+            o.client_order_id = self.manualorderid
+            self.manualorderid = self.manualorderid + 1
+            # o.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
             o.orderfield = of
             self.order_signal.emit(o)
         except:
             print('place order error')
 
     def qryacc(self,qa):
-        qa.api = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+        qa.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+        qa.source = '0'
         self.qryacc_signal.emit(qa)
 
     def qrypos(self,qp):
-        qp.api = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+        qp.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+        qp.source = '0'
         self.qrypos_signal.emit(qp)   
 
        
@@ -178,11 +202,14 @@ class ManualWindow(QtWidgets.QFrame):
 
         self.api_widget = QtWidgets.QStackedWidget() 
         ctpapi = CtpApiWindow()
+        ctpapi.subscribe_signal.connect(self.subsrcibe)
         ctpapi.qryacc_signal.connect(self.qryacc)
         ctpapi.qrypos_signal.connect(self.qrypos)
-        ctpapi.orderfield_signal.connect(self.place_order)
+        ctpapi.orderfield_signal.connect(self.place_order_ctp)
+
         paperapi = PaperApiWindow()
-        paperapi.orderfield_signal.connect(self.place_order)
+        paperapi.orderfield_signal.connect(self.place_order_paper)
+
         self.api_widget.addWidget(ctpapi)
         self.api_widget.addWidget(paperapi)
         self.api_widget.setCurrentIndex(0)
@@ -342,12 +369,10 @@ class CtpApiWindow(QtWidgets.QFrame):
     def qry(self):
         if(self.qry_type.currentText() == 'Account'):
             qa = QryAccEvent()
-            qa.source = 0
             self.qryacc_signal.emit(qa)
             return
         if (self.qry_type.currentText() == 'Position'):
             qp = QryPosEvent()
-            qp.source = 0
             self.qrypos_signal.emit(qp)
             return
         
@@ -380,8 +405,6 @@ class CtpApiWindow(QtWidgets.QFrame):
     def subscribe(self):
         ss = SubscribeEvent()
         ss.content = str(self.sym.text())
-        ss.source = 0
-        ss.api = 'CTP.MD'
         self.subscribe_signal.emit()
         return
         

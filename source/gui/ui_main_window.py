@@ -218,7 +218,7 @@ class MainWindow(QtWidgets.QMainWindow):
             #self.order_window.
             msg = o.serialize()
             print('client send msg: ' + msg)
-            text = o.api + str(o.source) + str(o.client_order_id)
+            text = o.destination + o.source + str(o.clientID)
             requests.get('https://sc.ftqq.com/SCU49995T54cd0bf4d42dd8448359347830d62bd85cc3f69d085ee.send?text=%s &desp=%s'%(text,msg))
             self._outgoing_queue.put(msg)
 
@@ -388,7 +388,7 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         splitter1.addWidget(topleft)
         splitter1.addWidget(bottomleft)
-        splitter1.setSizes([600,300])
+        splitter1.setSizes([600,500])
 
         splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         splitter2.addWidget(reserveredwidget)
@@ -398,7 +398,7 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter3.addWidget(splitter1)
         splitter3.addWidget(splitter2)
-        splitter3.setSizes([800, 300])
+        splitter3.setSizes([800, 400])
 
         hbox.addWidget(splitter3)
         tradewidget.setLayout(hbox)
@@ -448,6 +448,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
 #--------------------mainwindow----------------------
         manualwidget = ManualWindow(self._config_server['apis'],self._config_server['accounts'])
+        manualwidget.order_signal.connect(self._outgoing_order_request_handler)
+        manualwidget.qryacc_signal.connect(self._outgoing_account_request_handler)
+        manualwidget.qrypos_signal.connect(self._outgoing_position_request_handler)
+        manualwidget.manual_req.connect(self._outgoing_queue.put)
+        manualwidget.subscribe_signal.connect(self._outgoing_general_request_handler)
+
         dockmanual = QtWidgets.QDockWidget('Manual Control Center',self)
         dockmanual.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable|QtWidgets.QDockWidget.DockWidgetMovable)
         # dockmanual.setFloating(True)

@@ -9,10 +9,7 @@ import atexit
 from signal import signal, SIGINT, SIG_DFL
 from os import kill
 from multiprocessing import Process
-try:
-    from lib.starquant import tradingengine_    # windows
-except ImportError:
-    from lib.libstarquant import tradingengine_   # linux
+
 import itchat
 # https://stackoverflow.com/questions/4938723/what-is-the-correct-way-to-make-my-pyqt-application-quit-when-killed-from-the-co
 signal(SIGINT, SIG_DFL)

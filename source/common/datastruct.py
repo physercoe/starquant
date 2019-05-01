@@ -105,6 +105,7 @@ class MSG_TYPE(Enum):
     MSG_TYPE_TEST = 4000
 
 class EventType(Enum):
+    HEADER = 0
     TICK = 1000
     BAR = 1011
     HISTORICAL = 1076
@@ -345,9 +346,13 @@ class Event(object):
     """
     Base Event class for event-driven system
     """
+    def __init__(self):
+        self.destination = ''
+        self.source = ''
+        self.event_type = EventType.HEADER
     @property
     def typename(self):
-        return self.type.name
+        return self.event_type.name
 
 class AccountEvent(Event):
     """
@@ -363,12 +368,12 @@ class AccountEvent(Event):
         self.margin = 0.0
         self.closed_pnl = 0.0
         self.open_pnl = 0.0
-        self.brokerage = ''
-        self.api = ''
         self.timestamp = ''
 
     def deserialize(self, msg):
         v = msg.split('|')
+        self.destination = v[0]
+        self.source = v[1]
         self.account_id = v[3]
         self.preday_balance = float(v[4])
         self.balance = float(v[5])
@@ -440,8 +445,7 @@ class TickEvent(Event):
         """
         self.event_type = EventType.TICK
         self.tick_type = TickType.Trade
-        self.source = ''
-        self.destination = ''
+
         self.timestamp = Timestamp('1970-01-01', tz='UTC')
         self.full_symbol = ''
         self.price = 0.0
@@ -495,6 +499,7 @@ class TickEvent(Event):
 
             if (self.tick_type == TickType.Tick_L1):
                 # print('tickl1 deserialize')
+                self.depth = 1
                 self.bid_price_L1 = float(v[7])
                 self.bid_size_L1 = int(v[8])
                 self.ask_price_L1 = float(v[9])
@@ -505,8 +510,9 @@ class TickEvent(Event):
                 self.low = float(v[14])
                 self.pre_close = float(v[15])
                 self.upper_limit_price = float(v[16])
-                self.lower_limit_price = float(v[17])
+                self.lower_limit_price = float(v[17])                
             elif (self.tick_type == TickType.Tick_L5):
+                self.depth = 5
                 self.bid_price_L1 = float(v[7])
                 self.bid_size_L1 = int(v[8])
                 self.ask_price_L1 = float(v[9])
@@ -599,49 +605,59 @@ class OrderEvent(Event):
         Initialises order
         """
         self.event_type = EventType.ORDER
-        self.server_order_id = -1
-        self.client_order_id = -1
-        self.broker_order_id = -1
-        self.full_symbol =  ''
-        self.order_type = OrderType.MKT
-        self.order_flag = OrderFlag.OPEN
-        self.order_status = OrderStatus.UNKNOWN
-        self.limit_price = 0.0
-        self.stop_price = 0.0
-        self.order_size = 0         # short < 0, long > 0
-        self.fill_price = 0.0
-        self.fill_size = 0
-        self.create_time = None
-        self.fill_time = None
-        self.cancel_time = None
-        self.account = ''
-        self.source = -1              # sid
+        self.msg_type = MSG_TYPE.MSG_TYPE_ORDER
+
         self.api = ''
-        self.orderNo = ''        # used in tap 委托编码，服务器端唯一识别标志
+        self.account = ''
+        self.clientID = -1 
+        self.client_order_id = -1
         self.tag = ''             #用于其他区分标志
+
+        self.full_symbol =  ''
+        self.price = 0.0
+        self.quantity = 0
+        self.flag_ = OrderFlag.OPEN
+        self.server_order_id = -1
+        self.broker_order_id = -1
+        self.orderNo = ''        # used in tap 委托编码，服务器端唯一识别标志
+        self.localNo = ''        # orderref
+        self.create_time = None
+        self.update_time = None
+        self.order_status = OrderStatus.UNKNOWN
+
         self.orderfield = None
         
     def serialize(self):
-        msg = ''
-        if self.order_type == OrderType.MKT:
-            msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|'+ str(self.client_order_id) + '|' \
-                  + str(OrderType.MKT.value) + '|' + self.full_symbol + '|' + str(self.order_size) + '|' + '0.0' +'|' \
-                  + str(self.order_flag.value)  + '|' + self.tag
-        elif self.order_type == OrderType.LMT:
-            msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|' + str(self.client_order_id) + '|' \
-                  + str(OrderType.LMT.value)+ '|' + self.full_symbol + '|' + str(self.order_size) + '|' + str(self.limit_price) + '|' \
-                  + str(self.order_flag.value) + '|' + self.tag
-        elif self.order_type == OrderType.STP:
-            msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|' + str(self.client_order_id) + '|' \
-                  + str(OrderType.STP.value) + '|' + self.full_symbol + '|' + str(self.order_size) + '|' + '0.0' +'|' \
-                  + str(self.order_flag.value)     + '|' + self.tag          
-        elif self.order_type == OrderType.STPLMT:
-            msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|' + str(self.client_order_id) + '|' \
-                  + str(OrderType.STPLMT.value)+ '|' + self.full_symbol + '|' + str(self.order_size) + '|' + str(self.stop_price) + '|' \
-                  + str(self.order_flag.value) + '|' + self.tag
-        else:
-            print("unknown order type")            
+
+        msg = str( self.destination  + '|' + self.source + '|' + str(self.msg_type.value)
+            + '|' + self.api 
+            + '|' + self.account 
+            + '|' + str(self.clientID)
+            + '|' + str(self.client_order_id)
+            + '|' + self.tag)
+        if (self.orderfield):
+            msg = msg + '|' + self.orderfield.serialize()
         return msg
+
+        # if self.order_type == OrderType.MKT:
+        #     msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|'+ str(self.client_order_id) + '|' \
+        #           + str(OrderType.MKT.value) + '|' + self.full_symbol + '|' + str(self.order_size) + '|' + '0.0' +'|' \
+        #           + str(self.order_flag.value)  + '|' + self.tag
+        # elif self.order_type == OrderType.LMT:
+        #     msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|' + str(self.client_order_id) + '|' \
+        #           + str(OrderType.LMT.value)+ '|' + self.full_symbol + '|' + str(self.order_size) + '|' + str(self.limit_price) + '|' \
+        #           + str(self.order_flag.value) + '|' + self.tag
+        # elif self.order_type == OrderType.STP:
+        #     msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|' + str(self.client_order_id) + '|' \
+        #           + str(OrderType.STP.value) + '|' + self.full_symbol + '|' + str(self.order_size) + '|' + '0.0' +'|' \
+        #           + str(self.order_flag.value)     + '|' + self.tag          
+        # elif self.order_type == OrderType.STPLMT:
+        #     msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_ORDER.value) + '|' + str(self.account) + '|' + str(self.client_order_id) + '|' \
+        #           + str(OrderType.STPLMT.value)+ '|' + self.full_symbol + '|' + str(self.order_size) + '|' + str(self.stop_price) + '|' \
+        #           + str(self.order_flag.value) + '|' + self.tag
+        # else:
+        #     print("unknown order type")            
+        # return msg
 
 class OrderStatusEvent(Event):
     """
@@ -653,74 +669,65 @@ class OrderStatusEvent(Event):
         upon reconnect, open order event info will be received to recreate an order
         """
         self.event_type = EventType.ORDERSTATUS
-        self.server_order_id = -1
-        self.client_order_id = -1
-        self.broker_order_id = -1
-        self.full_symbol = ''
-        self.order_size = 0
-        self.order_flag = OrderFlag.OPEN
-        self.limit_price = 0.0
-        self.stop_price = 0.0
-        self.fill_size = 0
-        self.fill_price = 0.0
-        self.create_time = ''
-        self.cancel_time = ''
-        self.account = ''
-        self.source = -1
+
         self.api = ''
-        self.tag = ''
-        self.orderNo = ''
-        self.order_status = OrderStatus.UNKNOWN
-        self.timestamp = ''
+        self.account = ''
+        self.clientID = -1 
+        self.client_order_id = -1
+        self.tag = ''             #用于其他区分标志
+
+        self.full_symbol =  ''
         self.price = 0.0
-        self.order_type = OrderType.MKT
+        self.quantity = 0
+        self.flag_ = OrderFlag.OPEN
+        self.server_order_id = -1
+        self.broker_order_id = -1
+        self.orderNo = ''        # used in tap 委托编码，服务器端唯一识别标志
+        self.localNo = ''        # orderref
+        self.create_time = None
+        self.update_time = None
+        self.order_status = OrderStatus.UNKNOWN
 
     def deserialize(self, msg):
         v = msg.split('|')
-        self.server_order_id = int(v[3])
-        self.client_order_id = int(v[4])
-        self.broker_order_id = int(v[5])
-        self.full_symbol = v[6]
-        self.order_size = int(v[7])
-        self.order_flag = OrderFlag((int(v[8])))
-        self.order_type = OrderType(int(v[9]))
-        self.price = float(v[10])
-        self.fill_size = int(v[11])
-        self.fill_price = float(v[12])
-        self.create_time = v[13]
-        self.cancel_time = v[14]
-        self.account = v[15]
-        self.source = int(v[16])
-        self.api = v[17]
-        self.tag = v[18]
-        self.orderNo = v[19]
-        self.order_status = OrderStatus(int(v[20]))
-        self.timestamp = v[21]
+
+        self.api = v[3]
+        self.account = v[4]
+        self.clientID = int(v[5])
+        self.client_order_id = int(v[6])
+        self.tag = v[7]             
+
+        self.full_symbol =  v[8]
+        self.price = float(v[9])
+        self.quantity = int(v[10])
+        self.flag_ = OrderFlag(int(v[11]))
+        self.server_order_id = int(v[12])
+        self.broker_order_id = int(v[13])
+        self.orderNo = v[14]        
+        self.localNo = v[15]        
+        self.create_time = v[16]
+        self.update_time = v[17]
+        self.order_status = OrderStatus(int(v[18]))
 
     def to_order(self):
         o = OrderEvent()
-        o.server_order_id = self.server_order_id
+        o.api =  self.api 
+        o.account =  self.account 
+        o.clientID = self.clientID  
         o.client_order_id = self.client_order_id
+        o.tag = self.tag        
+
+        o.full_symbol = self.full_symbol 
+        o.price = self.price
+        o.quantity = self.quantity 
+        o.flag_ = self.flag_ 
+        o.server_order_id = self.server_order_id 
         o.broker_order_id = self.broker_order_id
-        o.full_symbol = self.full_symbol
-        o.order_type = self.order_type
-        o.order_flag = self.order_flag
-        o.order_status = self.order_status
-        if (self.order_type == OrderType.LMT):
-            o.limit_price = self.price
-        elif (self.order_type == OrderType.STPLMT):
-            o.stop_price = self.price
-        o.order_size = self.order_size
-        o.fill_price = self.fill_price
-        o.fill_size = self.fill_size
-        o.create_time = self.create_time
-        o.fill_time = ''
-        o.cancel_time = self.cancel_time
-        o.account =  self.account
-        o.source = self.source  # sid
-        o.api = self.api
-        o.tag = self.tag
-        o.orderNo = self.orderNo
+        o.orderNo = self.orderNo 
+        o.localNo = self.localNo 
+        o.create_time = self.create_time 
+        o.update_time = self.update_time 
+        o.order_status = self.order_status 
 
         return o
 
@@ -735,7 +742,7 @@ class FillEvent(Event):
         self.event_type = EventType.FILL
         self.server_order_id = -1
         self.client_order_id = -1
-        self.broker_order_id = -1
+        self.clientID = -1
         self.orderNo = ''
         self.broker_fill_id = ''
         self.full_symbol = ''
@@ -747,8 +754,7 @@ class FillEvent(Event):
         self.exchange = ''
         self.commission = 0.0
         self.account = ''
-        self.source = -1
-        self.api = 'none'
+        self.api = 'none'   #appid 
 
     def to_position(self):
         """
@@ -767,9 +773,11 @@ class FillEvent(Event):
 
     def deserialize(self, msg):
         v = msg.split('|')
+        self.destination = v[0]
+        self.source = v[1]
         self.server_order_id = int(v[3])
         self.client_order_id = int(v[4])
-        self.broker_order_id = int(v[5])
+        self.clientID = int(v[5])
         self.orderNo = v[6]
         self.broker_fill_id = v[7]
         self.fill_time = v[8]
@@ -780,7 +788,7 @@ class FillEvent(Event):
         self.commission = float(v[13])
         self.account = v[14]
         self.api = v[15]
-        self.source = int(v[16])
+
 
 class PositionEvent(Event):
     """
@@ -791,6 +799,9 @@ class PositionEvent(Event):
         Initialises order
         """
         self.event_type = EventType.POSITION
+        self.key = ''
+        self.account = ''
+        self.api = ''        
         self.full_symbol = ''
         self.average_cost = 0.0
         self.size = 0
@@ -798,37 +809,39 @@ class PositionEvent(Event):
         self.freezed_size = 0
         self.realized_pnl = 0.0
         self.unrealized_pnl = 0.0
-        self.account = ''
         self.type = ''
         self.posno =''
-        self.openorderNo = ''
-        self.openapi = ''
-        self.opensource = -1
+        self.openorderNo = ''   
+        self.openclientID = -1
+        self.openapi = ''         
         self.closeorderNo = ''
+        self.closeclientID = -1
         self.closeapi = ''
-        self.closesource = -1
         self.timestamp = ''
-
 
     def deserialize(self, msg):
         v = msg.split('|')
-        self.type =v[3]     
+        self.destination = v[0]
+        self.source = v[1]
+        self.key = v[3]
         self.account = v[4]
-        self.posno = v[5]
-        self.openorderNo = v[6]
-        self.openapi = v[7]
-        self.opensource = int(v[8])
-        self.closeorderNo = v[9]
-        self.closeapi = v[10]
-        self.closesource = int(v[11])        
-        self.full_symbol = v[12]
-        self.average_cost = float(v[13])
-        self.size = int(v[14])
-        self.pre_size = int(v[15])
-        self.freezed_size = int(v[16])
-        self.realized_pnl = float(v[17])
-        self.unrealized_pnl = float(v[18])
-        self.timestamp = v[19]
+        self.api = v[5]
+        self.full_symbol = v[6]
+        self.average_cost = float(v[7])
+        self.size = int(v[8])
+        self.pre_size = int(v[9])
+        self.freezed_size = int(v[10])
+        self.realized_pnl = float(v[11])
+        self.unrealized_pnl = float(v[12])
+        self.type =v[13]     
+        self.posno = v[14]
+        self.openorderNo = v[15]
+        self.openapi = v[16]
+        self.openclientID = int(v[17])
+        self.closeorderNo = v[18]
+        self.closeclientID = int(v[19])        
+        self.closeapi = v[20]
+        self.timestamp = v[21]
 
     def to_position(self):
 
@@ -837,10 +850,10 @@ class PositionEvent(Event):
         pos.posno =self.posno
         pos.openorderNo = self.openorderNo
         pos.openapi = self.openapi
-        pos.opensource = self.opensource
+        pos.opensource = self.openclientID 
         pos.closeorderNo = self.closeorderNo
         pos.closeapi = self.closeapi
-        pos.closesource = self.closesource
+        pos.closesource = self.closeclientID
         if self.size >= 0:
             pos.buy_quantity = self.size
         else:
@@ -885,10 +898,9 @@ class QryAccEvent(Event):
     """
     def __init__(self):
         self.event_type = EventType.QRY_ACCOUNT
-        self.source = 0
-        self.api = ""
+
     def serialize(self):
-        msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_QRY_ACCOUNT.value)
+        msg = self.destination + '|' + self.source + '|' + str(MSG_TYPE.MSG_TYPE_QRY_ACCOUNT.value)
         return msg
 
 class QryPosEvent(Event):
@@ -897,10 +909,9 @@ class QryPosEvent(Event):
     """
     def __init__(self):
         self.event_type = EventType.QRY_POS
-        self.source = 0
-        self.api = ""
+
     def serialize(self):
-        msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_QRY_POS.value)
+        msg = self.destination + '|' + self.source + '|' + str(MSG_TYPE.MSG_TYPE_QRY_POS.value)
         return msg
 
 class SubscribeEvent(Event):
@@ -909,11 +920,10 @@ class SubscribeEvent(Event):
     """
     def __init__(self):
         self.event_type = EventType.SUBSCRIBE
-        self.source = 0
-        self.api = ""
+        self.msg_type = MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA
         self.content = ""
     def serialize(self):
-        msg = self.api + '|' + str(self.source) + '|' + str(MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA.value) + '|' + self.content
+        msg = self.destination + '|' + self.source + '|' + str(self.msg_type.value) + '|' + self.content
         return msg
 
 
@@ -934,9 +944,9 @@ class CtpOrderField(object):
         self.MinVolume = 0
         self.ContingentCondition = ''
         self.StopPrice = 0.0
-        self.ForceCloseReason = ''
-        self.IsAutoSuspend = ''
-        self.UserForceClose = ''
+        self.ForceCloseReason = '0'
+        self.IsAutoSuspend = 0
+        self.UserForceClose = 0
         self.IsSwapOrder = 0
         self.BusinessUnit = ''
         self.CurrencyID = ''
@@ -956,8 +966,8 @@ class CtpOrderField(object):
             + '|' + self.ContingentCondition
             + '|' + str(self.StopPrice)
             + '|' + self.ForceCloseReason
-            + '|' + self.IsAutoSuspend
-            + '|' + self.UserForceClose
+            + '|' + str(self.IsAutoSuspend)
+            + '|' + str(self.UserForceClose)
             + '|' + str(self.IsSwapOrder)
             + '|' + self.BusinessUnit
             + '|' + self.CurrencyID )

@@ -82,7 +82,8 @@ namespace StarQuant {
 		else {
 			LOG_INFO(logger,"Order is filled. ServerOrderId="<<fill.serverOrderID_<<"price = "<<fill.tradePrice_);
 			lock_guard<mutex> g(orderStatus_mtx);
-			orders_[fill.serverOrderID_]->orderStatus_ = OrderStatus::OS_Filled;			
+			orders_[fill.serverOrderID_]->orderStatus_ = OrderStatus::OS_Filled;
+			orders_[fill.serverOrderID_]->updateTime_ = ymdhmsf();			
 			// TODO: check for partial fill
 			PortfolioManager::instance().Adjust(fill);
 		}
@@ -94,6 +95,7 @@ namespace StarQuant {
 		{
 			lock_guard<mutex> g(orderStatus_mtx);
 			orders_[oid]->orderStatus_ = OrderStatus::OS_Canceled;
+			orders_[oid]->updateTime_ = ymdhmsf();
 			cancels_[oid] = true;
 		}
 	}

@@ -368,11 +368,11 @@ namespace StarQuant
 		int frontID_;						// 前置机编号
 		int sessionID_;						// 会话编号，以上三组编号唯一确定订单
 		int orderRef_;						// 订单编号
-//TODO: isLast 处理大数据包
 		CThostFtdcTraderApi* api_;			
 		bool apiinited_;
 		bool inconnectaction_;
 		bool autoconnect_;
+		map<string, std::shared_ptr<Position> > posbuffer_;   //used for calculate position 
 		
 		OrderStatus CtpOrderStatusToOrderStatus(const char status);
 		OrderFlag CtpComboOffsetFlagToOrderFlag(const char flag);

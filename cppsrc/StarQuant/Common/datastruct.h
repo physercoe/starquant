@@ -485,10 +485,13 @@ public:
     string api_;                 // ctp, tap etc
     string account_;             // account
     int clientID_ = 0;           // client id, get from client; 0=mannual
-    long clientOrderID_ = -1;       // clientside id
-    string fullSymbol_;          //unique symbol for underlying commodity: exchange + type + commodityname + commodityno
-	string tag_;                   // reseverd for other use
+    long clientOrderID_ = -1;       // clientside id    
+    string tag_;                   // reseverd for other use
 // server and callback content, for return orderstatus msg 
+    string fullSymbol_;          //unique symbol for underlying commodity: exchange + type + commodityname + commodityno
+	double price_ = 0.0;
+    int quantity_ = 0;
+    OrderFlag flag_ = OrderFlag::OF_OpenPosition;
     long serverOrderID_ = -1;       // orderref, unique sqserver id
     long brokerOrderID_ = -1;       // for statistical use
     string orderNo_;             //unique exchange order id,for ctp = exchangeID_+ orsysid
@@ -617,6 +620,7 @@ public:
     Position(){}
     ~Position(){}
 
+    string key_ = "";
     string account_ = "";
     string api_ = "";
     string fullSymbol_ = "";
@@ -638,9 +642,8 @@ public:
 
 class DLL_EXPORT_IMPORT PosMsg: public MsgHeader{
 public:
-    PosMsg(): MsgHeader(),data_()
+    PosMsg(string des,string src): MsgHeader(des,src,MSG_TYPE_RSP_POS),data_()
     {
-         msgtype_ = MSG_TYPE::MSG_TYPE_RSP_POS;
     }
     ~PosMsg() {}
 
@@ -648,7 +651,7 @@ public:
 
     virtual string serialize();
     // virtual void deserialize(const string& msgin);
-    Position toPos(){return data_;};
+    void set(std::shared_ptr<Position>);
 };
 
 

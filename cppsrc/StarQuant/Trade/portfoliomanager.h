@@ -24,15 +24,16 @@ namespace StarQuant {
 		//atomic<uint64_t> _count = { 0 };
 		uint64_t _count = 0;
 		AccountInfo account_;
-		map<string, AccountInfo> accinfomap_;
-		map<string, Position> positions_;			// fullsymbol --> size
+		map<string, AccountInfo> accinfomap_;     //accname->acc
+		map<string, std::shared_ptr<Position> > positions_;			// poskey ->pos
 		double cash_;
 
 		void reset();
 		void rebuild();
 
-		void Add(const Position& pos);
+		void Add(std::shared_ptr<Position> ppos);
 		double Adjust(const Fill& fill);
+		std::shared_ptr<Position> retrievePosition(const string& key);
 	};
 }
 

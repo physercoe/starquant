@@ -39,28 +39,33 @@ namespace StarQuant {
 		reset();
 	}
 
-	void PortfolioManager::Add(const Position& pos) {
-		auto it = positions_.find(pos.fullSymbol_);
-		if (it == positions_.end()) {
-			positions_.insert(std::pair<string, Position>(pos.fullSymbol_, pos));
-		}
-		else {
-			positions_[pos.fullSymbol_] = pos;
-		}
+	void PortfolioManager::Add(std::shared_ptr<Position> pos) {
+		if (pos)
+			positions_[pos->key_] = pos;
 	}
 
 	double PortfolioManager::Adjust(const Fill& fill) {
-		auto it = positions_.find(fill.fullSymbol_);
-		if (it == positions_.end()) {
-			Position pos;
-			pos.fullSymbol_ = fill.fullSymbol_;
-			pos.size_ = 0;
-			pos.avgPrice_ = 0;
-			positions_.insert(std::pair<string, Position>(fill.fullSymbol_, pos));
+		// auto it = positions_.find(fill.fullSymbol_);
+		// if (it == positions_.end()) {
+		// 	Position pos;
+		// 	pos.fullSymbol_ = fill.fullSymbol_;
+		// 	pos.size_ = 0;
+		// 	pos.avgPrice_ = 0;
+		// 	positions_.insert(std::pair<string, Position>(fill.fullSymbol_, pos));
 
-		}
+		// }
 
 		// return positions_[fill.fullSymbol_].Adjust(fill);TODO: add adjust
 		return 1.0;
 	}
+	
+	std::shared_ptr<Position> PortfolioManager::retrievePosition(const string& key){
+		auto it = positions_.find(key);
+		if (it != positions_.end()) {
+			return it->second;
+		}
+		return nullptr;
+	}
+
+
 }
