@@ -74,14 +74,14 @@ namespace StarQuant {
 
 		map<string,bool> _loadapi;
 
-		string SecurityFullNameToCtpSymbol(const std::string& symbol);
-		string CtpSymbolToSecurityFullName(const std::string& symbol);
+
 
 		/****************************************Securities List *************************************/
 		vector<string> securities;  //full symbol
 		map<string,string> instrument2sec; //instrument id to full symbol map
 		map<string,string> sec2instrument; //symbol to ctp instrument
-
+		string SecurityFullNameToCtpSymbol(const std::string& symbol);
+		string CtpSymbolToSecurityFullName(const std::string& symbol);
 		/****************************************End of Securities List *************************************/
 
 		/**************************************** Database info ******************************************/
@@ -97,7 +97,16 @@ namespace StarQuant {
 		string SERVERSUB_URL = "tcp://localhost:55556";  // pub the requests to engines(which subscribe)
 		string SERVERPULL_URL = "tcp://localhost:55557"; //listen all the requests from clients
 		bool cpuaffinity = false;
+		/******************************************* Message Queue **********/
+		
+
+		/************************auto task*****************************/
 		bool autoconnect = true;
+		bool autoqry = false;
+
+
+
+
 		/*****************************************Risk setting**************/
 		bool riskcheck = false;
 		int sizeperorderlimit = 0;

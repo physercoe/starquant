@@ -28,6 +28,8 @@ namespace StarQuant
 		, apiinited_(false)
 		, inconnectaction_(false)
 		, autoconnect_(false)
+		, autoqry_(false)
+		, timercount_(0)
 	{
 		name_ = string("CTP") + DESTINATION_SEPARATOR + "TD" + DESTINATION_SEPARATOR + acc;
 		init();
@@ -62,6 +64,7 @@ namespace StarQuant
 		}
 		if (messenger_ == nullptr){
 			messenger_ = std::make_unique<CMsgqEMessenger>(name_, CConfig::instance().SERVERSUB_URL);	
+			msleep(100);
 		}
 		string acc = accAddress(name_);	
 		ctpacc_ = CConfig::instance()._accmap[acc];
@@ -77,13 +80,22 @@ namespace StarQuant
 			needauthentication_ = true;
 		}
 		estate_ = DISCONNECTED;
+		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+		messenger_->send(pmsgs);
 		apiinited_ = false;
 		autoconnect_ = CConfig::instance().autoconnect;
+		autoqry_ = CConfig::instance().autoqry;
 		LOG_DEBUG(logger, name_ <<" inited, api version:"<<this->api_->GetApiVersion());
 	}
 	void CtpTDEngine::stop(){
 		int tmp = disconnect();
 		estate_  = EState::STOP;
+		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+		messenger_->send(pmsgs);
 		LOG_DEBUG(logger, name_ <<" stoped");	
 
 	}
@@ -91,104 +103,115 @@ namespace StarQuant
 	void CtpTDEngine::start(){
 		while(estate_ != EState::STOP){
 			auto pmsgin = messenger_->recv(1);
-			if (pmsgin == nullptr || (pmsgin->destination_ != name_  && ! startwith(pmsgin->destination_,DESTINATION_ALL) ) )
-				continue;
-			switch (pmsgin->msgtype_)
-			{
-				case MSG_TYPE_ENGINE_CONNECT:
-					if (connect()){
-						auto pmsgout = make_shared<MsgHeader>(pmsgin->source_, name_,
-							MSG_TYPE_INFO_ENGINE_TDCONNECTED);
-						messenger_->send(pmsgout,1);
-					}
-					break;
-				case MSG_TYPE_ENGINE_DISCONNECT:
-					disconnect();
-					break;
-				case MSG_TYPE_ORDER_CTP:
-					if (pmsgin->destination_ != name_)
+			bool processmsg = ((pmsgin != nullptr) && ( startwith(pmsgin->destination_,DESTINATION_ALL) || (pmsgin->destination_ == name_ )));
+			// if (pmsgin == nullptr || (pmsgin->destination_ != name_  && ! startwith(pmsgin->destination_,DESTINATION_ALL) ) )
+			// 	continue;
+			if (processmsg){
+				switch (pmsgin->msgtype_)
+				{
+					case MSG_TYPE_ENGINE_CONNECT:
+						if (connect()){
+							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
+								MSG_TYPE_INFO_ENGINE_TDCONNECTED, name_ + "logined,ready to request.");
+							messenger_->send(pmsgout,1);
+						}
 						break;
-					if (estate_ == LOGIN_ACK){
-						insertOrder(static_pointer_cast<CtpOrderMsg>(pmsgin));
-					}
-					else{
-						LOG_DEBUG(logger,name_ <<" is not connected,can not insert order!");
-						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							name_+ " is not connected,can not insert order!");
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_CANCEL_ORDER:
-				case MSG_TYPE_ORDER_ACTION:
-				case MSG_TYPE_ORDER_ACTION_CTP:
-					if (pmsgin->destination_ != name_)
-						break;				
-					if (estate_ == LOGIN_ACK){
-						cancelOrder(static_pointer_cast<OrderActionMsg>(pmsgin));
-					}
-					else{
-						LOG_DEBUG(logger,name_ <<" is not connected,can not cancel order!");
-						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							name_ + " is not connected,can not cancel order!");
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_QRY_POS:
-					if (pmsgin->destination_ != name_)
-						break;				
-					if (estate_ == LOGIN_ACK){
-						queryPosition(pmsgin);
-					}
-					else{
-						LOG_DEBUG(logger,name_ <<" is not connected,can not qry pos!");
-						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							name_ + " is not connected,can not qry pos!");
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_QRY_ACCOUNT:
-					if (pmsgin->destination_ != name_)
-						break;				
-					if (estate_ == LOGIN_ACK){
-						queryAccount(pmsgin);
-					}
-					else{
-						LOG_DEBUG(logger,name_ <<" is not connected,can not qry acc!");
-						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							name_ + " is not connected,can not qry acc!");
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_ENGINE_STATUS:
-					{
-						auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ENGINE_STATUS,
-							to_string(estate_));
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_TEST:
-					{						
-						auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
-							MSG_TYPE_TEST,
-							"test");
-						messenger_->send(pmsgout);
-						LOG_DEBUG(logger,name_ <<" return test msg!");
-					}
-					break;
-				case MSG_TYPE_SWITCH_TRADING_DAY:
-					switchday();
-					break;	
-				case MSG_TYPE_ENGINE_RESET:
-					reset();
-					break;											
-				default:
-					break;
+					case MSG_TYPE_ENGINE_DISCONNECT:
+						disconnect();
+						break;
+					case MSG_TYPE_ORDER_CTP:
+						if (pmsgin->destination_ != name_)
+							break;
+						if (estate_ == LOGIN_ACK){
+							insertOrder(static_pointer_cast<CtpOrderMsg>(pmsgin));
+						}
+						else{
+							LOG_DEBUG(logger,name_ <<" is not connected,can not insert order!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								name_+ " is not connected,can not insert order!");
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_CANCEL_ORDER:
+					case MSG_TYPE_ORDER_ACTION:
+					case MSG_TYPE_ORDER_ACTION_CTP:
+						if (pmsgin->destination_ != name_)
+							break;				
+						if (estate_ == LOGIN_ACK){
+							cancelOrder(static_pointer_cast<OrderActionMsg>(pmsgin));
+						}
+						else{
+							LOG_DEBUG(logger,name_ <<" is not connected,can not cancel order!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								name_ + " is not connected,can not cancel order!");
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_QRY_POS:
+						if (pmsgin->destination_ != name_)
+							break;				
+						if (estate_ == LOGIN_ACK){
+							queryPosition(pmsgin);
+						}
+						else{
+							LOG_DEBUG(logger,name_ <<" is not connected,can not qry pos!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								name_ + " is not connected,can not qry pos!");
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_QRY_ACCOUNT:
+						if (pmsgin->destination_ != name_)
+							break;				
+						if (estate_ == LOGIN_ACK){
+							queryAccount(pmsgin);
+						}
+						else{
+							LOG_DEBUG(logger,name_ <<" is not connected,can not qry acc!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								name_ + " is not connected,can not qry acc!");
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_ENGINE_STATUS:
+						{
+							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
+								MSG_TYPE_INFO_ENGINE_STATUS,
+								to_string(estate_));
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_TEST:
+						{						
+							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
+								MSG_TYPE_TEST,
+								"test");
+							messenger_->send(pmsgout);
+							LOG_DEBUG(logger,name_ <<" return test msg!");
+						}
+						break;
+					case MSG_TYPE_SWITCH_TRADING_DAY:
+						switchday();
+						break;	
+					case MSG_TYPE_ENGINE_RESET:
+						reset();
+						break;
+					case MSG_TYPE_TIMER:
+						timertask();
+						break;											
+					default:
+						processbuf();
+						break;
+				}
 			}
+			else{
+				processbuf();
+			}
+
 		}
 	}
 
@@ -211,6 +234,10 @@ namespace StarQuant
 						apiinited_ = true;					
 					}
 					estate_ = CONNECTING;
+					{auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+					messenger_->send(pmsgs);}
 					LOG_INFO(logger,name_ <<" api inited, connect Front!");
 					count++;
 					break;
@@ -243,6 +270,10 @@ namespace StarQuant
 					else{
 						estate_ = AUTHENTICATE_ACK;
 					}
+					{auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+					messenger_->send(pmsgs);}
 					break;
 				case AUTHENTICATING:
 					msleep(100);
@@ -256,12 +287,16 @@ namespace StarQuant
 					error = this->api_->ReqUserLogin(&loginField, reqId_++);
 					// cout<< loginField.BrokerID <<loginField.UserID <<loginField.Password;
 					count++;
-					estate_ = EState::LOGINING;
+					estate_ = EState::LOGINING;					
 					if (error != 0){
 						LOG_ERROR(logger,name_ <<" login error:"<<error);
 						estate_ = EState::AUTHENTICATE_ACK;
 						msleep(1000);
 					}
+					{auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+								MSG_TYPE_INFO_ENGINE_STATUS,
+								to_string(estate_));
+					messenger_->send(pmsgs);}
 					break;
 				case LOGINING:
 					count++;
@@ -306,6 +341,32 @@ namespace StarQuant
 	void CtpTDEngine::switchday(){
 		issettleconfirmed_ = false;
 		LOG_DEBUG(logger,name_ <<" switch day reset settleconfirmed!");
+	}
+
+	void CtpTDEngine::timertask(){
+		timercount_++;
+		// // send status every second 
+		// auto pmsgout = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+		// 	MSG_TYPE_ENGINE_STATUS,
+		// 	to_string(estate_));
+		// messenger_->send(pmsgout);
+
+		//auto qyr pos and acc
+		if (estate_ == LOGIN_ACK && autoqry_ ){
+			if (timercount_ %2 == 0){
+				auto pmsgout = make_shared<MsgHeader>(name_,name_,MSG_TYPE_QRY_ACCOUNT);
+				queryAccount(pmsgout);
+			}
+			else{
+				auto pmsgout = make_shared<MsgHeader>(name_,name_,MSG_TYPE_QRY_POS);
+				queryPosition(pmsgout);
+			}
+		}
+
+	}
+
+	void CtpTDEngine::processbuf(){
+		// reserverd for future use,such as local condition order, algo-trading etc.
 	}
 
 	void CtpTDEngine::insertOrder(shared_ptr<CtpOrderMsg> pmsg){
@@ -428,7 +489,7 @@ namespace StarQuant
 				MSG_TYPE_ERROR_CANCELORDER,
 				to_string(o->clientOrderID_));
 			messenger_->send(pmsgout);
-			LOG_ERROR(logger,"Ctp TD cancle order error "<<i);
+			LOG_ERROR(logger,name_<<" cancle order error "<<i);
 			return;
 		}
 		lock_guard<mutex> g2(orderStatus_mtx);
@@ -476,9 +537,13 @@ namespace StarQuant
 		LOG_INFO(logger,name_ <<" front connected.");
 		estate_ = CONNECT_ACK;
 		reqId_ = 0;
+		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+		messenger_->send(pmsgs);
 		//autologin
 		if (autoconnect_ && !inconnectaction_ ){
-			std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(name_,"0",MSG_TYPE_ENGINE_CONNECT);
+			std::shared_ptr<InfoMsg> pmsg = make_shared<InfoMsg>(name_,name_,MSG_TYPE_ENGINE_CONNECT,name_ + "front connected.");
 			CMsgqRMessenger::Send(pmsg);
 		}
 			
@@ -489,6 +554,10 @@ namespace StarQuant
 		reqId_ ++;
 		// every 1 min login once
 		if (reqId_ % 4000 == 0){
+			auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+			messenger_->send(pmsgs);
 			reqId_ = 1;
 			string sout("Ctp td disconnected, nReason=");
 			sout += to_string(nReason);
@@ -523,6 +592,10 @@ namespace StarQuant
 		}
 		else{
 			estate_ = AUTHENTICATE_ACK;
+			auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+			messenger_->send(pmsgs);
 			LOG_INFO(logger,name_ <<" authenticated.");			
 		}
 	}
@@ -568,6 +641,10 @@ namespace StarQuant
 			}
 			else{
 				estate_ = LOGIN_ACK;
+				auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+				messenger_->send(pmsgs);
 			}
 
 		}
@@ -586,6 +663,10 @@ namespace StarQuant
 		}
 		else{
 			estate_ = LOGIN_ACK;
+			auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+			messenger_->send(pmsgs);
 			issettleconfirmed_ = true;
 			LOG_INFO(logger,name_ <<" Settlement confirmed.ConfirmDate="<<pSettlementInfoConfirm->ConfirmDate<<"ConfirmTime="<<pSettlementInfoConfirm->ConfirmTime);
 		}
@@ -609,6 +690,10 @@ namespace StarQuant
 				sout);
 			messenger_->send(pmsgout);
 			estate_ = CONNECTING;
+			auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+			messenger_->send(pmsgs);
 			LOG_INFO(logger,name_ <<" Logout,BrokerID="<<pUserLogout->BrokerID<<" UserID="<<pUserLogout->UserID);
 		}
 	}
@@ -794,6 +879,36 @@ namespace StarQuant
 		}
 	}
 	///请求查询资金账户响应 
+        // ("BrokerID", c_char * 11),	# 经纪公司代码 
+        // ("InvestorID", c_char * 19),	# 投资者代码 
+        // ("PreMortgage", c_double),	# 上次质押金额 
+        // ("PreCredit", c_double),	# 上次信用额度 
+        // ("PreDeposit", c_double),	# 上次存款额 
+        // ("preBalance", c_double),	# 上次结算准备金 
+        // ("PreMargin", c_double),	# 上次占用的保证金 
+        // ("Deposit", c_double),	# 入金金额 
+        // ("Withdraw", c_double),	# 出金金额 
+        // ("FrozenMargin", c_double),	# 冻结的保证金（报单未成交冻结的保证金） 
+        // ("FrozenCash", c_double),	# 冻结的资金（报单未成交冻结的总资金） 
+        // ("FrozenCommission", c_double),	# 冻结的手续费（报单未成交冻结的手续费） 
+        // ("CurrMargin", c_double),	# 当前保证金总额 
+        // ("CashIn", c_double),	# 资金差额 
+        // ("Commission", c_double),	# 手续费 
+        // ("CloseProfit", c_double),	# 平仓盈亏 
+        // ("PositionProfit", c_double),	# 持仓盈亏 
+        // ("Balance", c_double),	# 结算准备金 
+        // ("Available", c_double),	# 可用资金 
+        // ("WithdrawQuota", c_double),	# 可取资金 
+        // ("Reserve", c_double),	# 基本准备金 
+        // ("TradingDay", c_char * 9),	# 交易日 
+        // ("Credit", c_double),	# 信用额度 
+        // ("Mortgage", c_double),	# 质押金额 
+        // ("ExchangeMargin", c_double),	# 交易所保证金 
+        // ("DeliveryMargin", c_double),	# 投资者交割保证金 
+        // ("ExchangeDeliveryMargin", c_double),	# 交易所交割保证金 
+        // ("ReserveBalance", c_double),	# 保底期货结算准备金 
+        // ("Equity", c_double),	# 当日权益 
+        // ("MarketValue", c_double),	# 账户市值 	
 	void CtpTDEngine::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult){
@@ -843,6 +958,7 @@ namespace StarQuant
 			messenger_->send(pmsgout);
 			LOG_ERROR(logger,name_ <<" Qry Acc error:"<<errormsgutf8);
 		}
+
 	}
 	///请求查询合约响应
 	void CtpTDEngine::OnRspQryInstrument(CThostFtdcInstrumentField *pInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {

@@ -92,7 +92,7 @@ namespace StarQuant {
 		// _msgq = MSGQ::NANOMSG;
 		cpuaffinity = config["cpuaffinity"].as<bool>();
 		autoconnect = config["autoconnect"].as<bool>();
-
+		autoqry = config["autoqry"].as<bool>();
 		_mongodbaddr = config["dbaddr"].as<std::string>();
 		_mongodbname = config["dbname"].as<std::string>();
 

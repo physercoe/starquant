@@ -5,6 +5,16 @@ from enum import Enum
 import pandas as pd
 from .config import retrieve_multiplier_from_full_symbol
 
+class ESTATE(Enum):
+    DISCONNECTED = 0         
+    CONNECTING =1
+    CONNECT_ACK = 2         
+    AUTHENTICATING = 3
+    AUTHENTICATE_ACK = 4      
+    LOGINING = 5
+    LOGIN_ACK = 6             
+    LOGOUTING = 7
+    STOP = 8 
 class MSG_TYPE(Enum):
     MSG_TYPE_TICK_L1 = 1000
     MSG_TYPE_TICK_L5 = 1001
@@ -69,6 +79,9 @@ class MSG_TYPE(Enum):
     MSG_TYPE_ORDER_ACTION  = 2040  #cancel order
     MSG_TYPE_CANCEL_ORDER = 2041
     MSG_TYPE_CANCEL_ALL = 2042
+    MSG_TYPE_ORDER_ACTION_CTP = 2043
+    MSG_TYPE_ORDER_ACTION_TAP = 2044
+    MSG_TYPE_ORDER_ACTION_XTP =2045
     #call back
     MSG_TYPE_RSP_POS       = 2500
     MSG_TYPE_RTN_ORDER     = 2510
@@ -89,6 +102,7 @@ class MSG_TYPE(Enum):
     MSG_TYPE_INFO_ENGINE_TDCONNECTED = 3103
     MSG_TYPE_INFO_ENGINE_TDDISCONNECTED = 3104
     MSG_TYPE_INFO_HEARTBEAT_WARNING =3105
+    MSG_TYPE_INFO_ENGINE_STATUS = 3106
 #	34*:error class msg
     MSG_TYPE_ERROR = 3400
     MSG_TYPE_ERROR_ENGINENOTCONNECTED = 3401
@@ -101,9 +115,10 @@ class MSG_TYPE(Enum):
     MSG_TYPE_ERROR_QRY_CONTRACT = 3408
     MSG_TYPE_ERROR_CONNECT = 3409  #login fail
     MSG_TYPE_ERROR_DISCONNECT = 3410
+    MSG_TYPE_ERROR_NOACCOUNT = 3411
 #  40*: test class msg
     MSG_TYPE_TEST = 4000
-
+    MSG_TYPE_BASE = 9
 class EventType(Enum):
     HEADER = 0
     TICK = 1000
@@ -865,6 +880,24 @@ class PositionEvent(Event):
         return pos
 
 class InfoEvent(Event):
+    """
+    General event: TODO seperate ErrorEvent
+    """
+    def __init__(self):
+        self.event_type = EventType.INFO
+        self.msg_type = MSG_TYPE.MSG_TYPE_INFO
+        self.timestamp = ""
+        self.content = ""
+
+    def deserialize(self, msg):
+        v = msg.split('|')
+        self.destination = v[0]
+        self.source = v[1]
+        self.msg_type = MSG_TYPE(int(v[2]))
+        
+        self.content = "".join(v[3:-1])
+        self.timestamp = v[-1]
+class ErrorEvent(Event):
     """
     General event: TODO seperate ErrorEvent
     """

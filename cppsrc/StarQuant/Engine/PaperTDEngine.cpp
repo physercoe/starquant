@@ -29,18 +29,27 @@ namespace StarQuant
 	}
 
 	void PaperTDEngine::init(){
-		name_ = "PAPER.TD";
+		name_ = "PAPER.TD.";
 		if(logger == nullptr){
 			logger = SQLogger::getLogger("TDEngine.Paper");
 		}
 		if (messenger_ == nullptr){
 			messenger_ = std::make_unique<CMsgqEMessenger>(name_, CConfig::instance().SERVERSUB_URL);	
+			msleep(100);
 		}	
-		estate_ = CONNECTING;
+		estate_ = DISCONNECTED;		
+		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+		messenger_->send(pmsgs);
 		LOG_DEBUG(logger,"Paper TD inited");
 	}
 	void PaperTDEngine::stop(){
 		estate_  = EState::STOP;
+		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+		messenger_->send(pmsgs);
 		LOG_DEBUG(logger,"Paper TD stoped");	
 
 	}
@@ -48,102 +57,128 @@ namespace StarQuant
 	void PaperTDEngine::start(){
 		while(estate_ != EState::STOP){
 			auto pmsgin = messenger_->recv(1);
-			if (pmsgin == nullptr || pmsgin->destination_ != name_)
-				continue;
-			switch (pmsgin->msgtype_)
-			{
-				case MSG_TYPE_ENGINE_CONNECT:
-					if (connect()){
-						auto pmsgout = make_shared<MsgHeader>(pmsgin->source_, name_,
-							MSG_TYPE_INFO_ENGINE_TDCONNECTED);
-						messenger_->send(pmsgout,1);
-					}
-					break;
-				case MSG_TYPE_ENGINE_DISCONNECT:
-					disconnect();
-					break;
-				case MSG_TYPE_ORDER_PAPER:
-					if (estate_ == LOGIN_ACK){
-						auto pmsgin2 = static_pointer_cast<PaperOrderMsg>(pmsgin);
-						insertOrder(pmsgin2);
-					}
-					else{
-						LOG_DEBUG(logger,"PAPER_TD is not connected,can not insert order!");
-						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							"Paper Td is not connected,can not insert order!");
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_CANCEL_ORDER:
-					if (estate_ == LOGIN_ACK){
-						auto pmsgin2 = static_pointer_cast<OrderActionMsg>(pmsgin);
-						cancelOrder(pmsgin2);
-					}
-					else{
-						LOG_DEBUG(logger,"PAPER_TD is not connected,can not cancel order!");
-						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							"Paper Td is not connected,can not cancel order!");
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_QRY_POS:
-					if (estate_ == LOGIN_ACK){
-						queryPosition(pmsgin);
-					}
-					else{
-						LOG_DEBUG(logger,"PAPER_TD is not connected,can not qry pos!");
-						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							"PAPER TD  is not connected,can not qry pos!");
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_QRY_ACCOUNT:
-					if (estate_ == LOGIN_ACK){
-						queryAccount(pmsgin);
-					}
-					else{
-						LOG_DEBUG(logger,"PAPER_TD is not connected,can not qry acc!");
-						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							"paper Td is not connected,can not qry acc!");
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_ENGINE_STATUS:
-					{
-						auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ENGINE_STATUS,
-							to_string(estate_));
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_TEST:
-					{						
-						auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
-							MSG_TYPE_TEST,
-							"test");
-						messenger_->send(pmsgout);
-						LOG_DEBUG(logger,"PAPER_TD return test msg!");
-					}
-					break;
-				default:
-					break;
+			bool processmsg = ((pmsgin != nullptr) && ( startwith(pmsgin->destination_,DESTINATION_ALL) || (pmsgin->destination_ == name_ )));
+			// if (pmsgin == nullptr || !startwith(pmsgin->destination_, name_) )
+			// 	continue;
+			if (processmsg){
+				switch (pmsgin->msgtype_)
+				{
+					case MSG_TYPE_ENGINE_CONNECT:
+						if (connect()){
+							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
+								MSG_TYPE_INFO_ENGINE_TDCONNECTED,"PAPER Connected.");
+							messenger_->send(pmsgout,1);
+							
+						}
+						break;
+					case MSG_TYPE_ENGINE_DISCONNECT:
+						disconnect();
+						break;
+					case MSG_TYPE_ORDER_PAPER:
+						if (estate_ == LOGIN_ACK){
+							auto pmsgin2 = static_pointer_cast<PaperOrderMsg>(pmsgin);
+							insertOrder(pmsgin2);
+						}
+						else{
+							LOG_DEBUG(logger,"PAPER_TD is not connected,can not insert order!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								"Paper Td is not connected,can not insert order!");
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_CANCEL_ORDER:
+						if (estate_ == LOGIN_ACK){
+							auto pmsgin2 = static_pointer_cast<OrderActionMsg>(pmsgin);
+							cancelOrder(pmsgin2);
+						}
+						else{
+							LOG_DEBUG(logger,"PAPER_TD is not connected,can not cancel order!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								"Paper Td is not connected,can not cancel order!");
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_QRY_POS:
+						if (estate_ == LOGIN_ACK){
+							queryPosition(pmsgin);
+						}
+						else{
+							LOG_DEBUG(logger,"PAPER_TD is not connected,can not qry pos!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								"PAPER TD  is not connected,can not qry pos!");
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_QRY_ACCOUNT:
+						if (estate_ == LOGIN_ACK){
+							queryAccount(pmsgin);
+						}
+						else{
+							LOG_DEBUG(logger,"PAPER_TD is not connected,can not qry acc!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								"paper Td is not connected,can not qry acc!");
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_ENGINE_STATUS:
+						{
+							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
+								MSG_TYPE_INFO_ENGINE_STATUS,
+								to_string(estate_));
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_TEST:
+						{						
+							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
+								MSG_TYPE_TEST,
+								"test");
+							messenger_->send(pmsgout);
+							LOG_DEBUG(logger,"PAPER_TD return test msg!");
+						}
+						break;
+					case MSG_TYPE_TIMER:
+						timertask();
+						break;
+					default:
+						processbuf();
+						break;
+				}
 			}
+			else{
+				processbuf();
+			}
+
 		}
 	}
 
+	void PaperTDEngine::processbuf(){
+
+	}
+	void PaperTDEngine::timertask(){
+		
+	}
 	bool PaperTDEngine::connect(){
 		msleep(1000);
 		estate_ = LOGIN_ACK;
+		auto pmsg = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+							MSG_TYPE_INFO_ENGINE_STATUS,
+							to_string(estate_));
+		messenger_->send(pmsg);
 		return true;
 	}
 
 	bool PaperTDEngine::disconnect(){
 		msleep(1000);
 		estate_ = DISCONNECTED;
+		auto pmsg = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+		messenger_->send(pmsg);
 		return true;
 	}
 

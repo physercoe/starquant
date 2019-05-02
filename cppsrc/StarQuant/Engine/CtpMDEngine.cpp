@@ -28,7 +28,8 @@ namespace StarQuant
 		: loginReqId_(0)
 		, apiinited_(false)
 		, inconnectaction_(false)
-		, autoconnect_(false)		
+		, autoconnect_(false)
+		, timercount_(0)		
 	{
 		name_ = "CTP.MD";
 		init();
@@ -62,13 +63,14 @@ namespace StarQuant
 		// 	lock_guard<mutex> g(IEngine::sendlock_);
 		// 	IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
 		// }
-		
+		lastsubs_.clear();
 		if(logger == nullptr){
 			logger = SQLogger::getLogger("MDEngine.CTP");
 		}
 
 		if (messenger_ == nullptr){
 			messenger_ = std::make_unique<CMsgqEMessenger>(name_, CConfig::instance().SERVERSUB_URL);	
+			msleep(100);
 		}
 		for (auto iter = CConfig::instance()._accmap.begin(); iter != CConfig::instance()._accmap.end(); iter++){
 			if (iter->second.apitype == "CTP"){
@@ -80,9 +82,15 @@ namespace StarQuant
 			// 创建API对象
 			this->api_ = CThostFtdcMdApi::CreateFtdcMdApi(path.c_str());
 			this->api_->RegisterSpi(this);
+
 			estate_ = DISCONNECTED;
+			auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+			messenger_->send(pmsgs);
 			apiinited_ = false;
 			autoconnect_ = CConfig::instance().autoconnect;
+
 			LOG_DEBUG(logger,name_ <<" inited, api version:"<<this->api_->GetApiVersion());
 			break;
 			}				
@@ -93,78 +101,91 @@ namespace StarQuant
 	void CtpMDEngine::stop(){
 		int tmp = disconnect();
 		estate_ = EState::STOP; 
+		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+		messenger_->send(pmsgs);
 		LOG_DEBUG(logger,name_ <<"  stoped");	
 	}
 
 	void CtpMDEngine::start(){
 		while(estate_ != EState::STOP){
 			auto pmsgin = messenger_->recv(1);
-			if (pmsgin == nullptr || (pmsgin->destination_ != name_ && ! startwith(pmsgin->destination_,DESTINATION_ALL)) ) 
-				continue;
-			switch (pmsgin->msgtype_)
-			{
-				case MSG_TYPE_ENGINE_CONNECT:
-					if (connect()){
-						auto pmsgout = make_shared<MsgHeader>(pmsgin->source_, name_,
-							MSG_TYPE_INFO_ENGINE_MDCONNECTED);
-						messenger_->send(pmsgout,1);
-					}
-					break;
-				case MSG_TYPE_ENGINE_DISCONNECT:
-					disconnect();
-					break;
-				case MSG_TYPE_SUBSCRIBE_MARKET_DATA:
-					if (estate_ == LOGIN_ACK){
-						auto pmsgin2 = static_pointer_cast<SubscribeMsg>(pmsgin);
-						subscribe(pmsgin2->data_);
-					}
-					else{
-						LOG_DEBUG(logger,name_ <<"  is not connected,can not subscribe!");
-						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							"ctp md is not connected,can not subscribe");
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_UNSUBSCRIBE:
-					if (estate_ == LOGIN_ACK){
-						auto pmsgin2 = static_pointer_cast<UnSubscribeMsg>(pmsgin);
-						unsubscribe(pmsgin2->data_);
-					}
-					else{
-						LOG_DEBUG(logger,name_ <<"  is not connected,can not unsubscribe!");
-						auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-							"ctp md is not connected,can not unsubscribe");
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_ENGINE_STATUS:
-					{
-						auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
-							MSG_TYPE_ENGINE_STATUS,
-							to_string(estate_));
-						messenger_->send(pmsgout);
-					}
-					break;
-				case MSG_TYPE_TEST:
-					{						
-						auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
-							MSG_TYPE_TEST,
-							"test");
-						messenger_->send(pmsgout);
-						LOG_DEBUG(logger,name_ <<" return test msg!");
-					}
-					break;
-				case MSG_TYPE_SWITCH_TRADING_DAY:
-					switchday();
-					break;	
-				case MSG_TYPE_ENGINE_RESET:
-					reset();
-					break;										
-				default:
-					break;
+			bool processmsg = ((pmsgin != nullptr) && ( startwith(pmsgin->destination_,DESTINATION_ALL) || (pmsgin->destination_ == name_ )));
+			// if (pmsgin == nullptr || (pmsgin->destination_ != name_ && ! startwith(pmsgin->destination_,DESTINATION_ALL)) ) 
+			// 	continue;
+			if (processmsg){
+				switch (pmsgin->msgtype_)
+				{
+					case MSG_TYPE_ENGINE_CONNECT:
+						if (connect()){
+							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
+								MSG_TYPE_INFO_ENGINE_MDCONNECTED,"CTP.MD connected.");
+							messenger_->send(pmsgout,1);
+						}
+						break;
+					case MSG_TYPE_ENGINE_DISCONNECT:
+						disconnect();
+						break;
+					case MSG_TYPE_SUBSCRIBE_MARKET_DATA:
+						if (estate_ == LOGIN_ACK){
+							auto pmsgin2 = static_pointer_cast<SubscribeMsg>(pmsgin);
+							subscribe(pmsgin2->data_);
+						}
+						else{
+							LOG_DEBUG(logger,name_ <<"  is not connected,can not subscribe!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								"ctp md is not connected,can not subscribe");
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_UNSUBSCRIBE:
+						if (estate_ == LOGIN_ACK){
+							auto pmsgin2 = static_pointer_cast<UnSubscribeMsg>(pmsgin);
+							unsubscribe(pmsgin2->data_);
+						}
+						else{
+							LOG_DEBUG(logger,name_ <<"  is not connected,can not unsubscribe!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								"ctp md is not connected,can not unsubscribe");
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_ENGINE_STATUS:
+						{
+							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
+								MSG_TYPE_INFO_ENGINE_STATUS,
+								to_string(estate_));
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_TEST:
+						{						
+							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
+								MSG_TYPE_TEST,
+								"test");
+							messenger_->send(pmsgout);
+							LOG_DEBUG(logger,name_ <<" return test msg!");
+						}
+						break;
+					case MSG_TYPE_SWITCH_TRADING_DAY:
+						switchday();
+						break;	
+					case MSG_TYPE_ENGINE_RESET:
+						reset();
+						break;										
+					default:
+						processbuf();
+						break;
+				}
 			}
+			else{
+				processbuf();
+
+			}
+
 		}
 	}
 
@@ -184,7 +205,11 @@ namespace StarQuant
 						this->api_->Init();
 						apiinited_ = true;
 					}
-					estate_ = CONNECTING;			
+					estate_ = CONNECTING;
+					{auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+					messenger_->send(pmsgs);}			
 					count++;
 					LOG_INFO(logger,name_ <<" api inited, connecting to front...");		
 					break;
@@ -206,6 +231,10 @@ namespace StarQuant
 						estate_ = EState::CONNECT_ACK;
 						msleep(1000);
 					}
+					{auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+					messenger_->send(pmsgs);}
 					break;
 				case EState::LOGINING:
 					msleep(500);
@@ -249,32 +278,47 @@ namespace StarQuant
 	void CtpMDEngine::subscribe(const vector<string>& symbol) {
 		int error;
 	    int nCount = symbol.size();
+		if (nCount == 0)
+			return;
 		string sout;
     	char* insts[nCount];
     	for (int i = 0; i < nCount; i++)
 		{
 			string ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
 			insts[i] = (char*)ctpticker.c_str();
-			sout += insts[i] +string("|");	
+			sout += insts[i] +string("|");
+			lastsubs_.push_back(symbol[i]);	
 		}
 		LOG_INFO(logger,name_ <<" subcribe "<<nCount<<"|"<<sout<<".");
 		error = this->api_->SubscribeMarketData(insts, nCount);
 		if (error != 0){
 			LOG_ERROR(logger,name_ <<" subscribe  error "<<error);
-		}		
+		}
+				
 	}
 
 	void CtpMDEngine::unsubscribe(const vector<string>& symbol) {
 
 		int error;
 	    int nCount = symbol.size();
+		if (nCount == 0)
+			return;		
 		string sout;
     	char* insts[nCount];
     	for (int i = 0; i < nCount; i++)
 		{
 			string ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
 			insts[i] = (char*)ctpticker.c_str();
-			sout += insts[i] +string("|");		
+			sout += insts[i] +string("|");
+			for(auto it = lastsubs_.begin();it != lastsubs_.end();){
+				if (*it == symbol[i]){
+					it = lastsubs_.erase(it);
+				}
+				else
+				{
+					++it;
+				}
+			}		
 		}
 		LOG_INFO(logger,name_ <<"  unsubcribe "<<nCount<<"|"<<sout<<".");
 		error = this->api_->UnSubscribeMarketData(insts, nCount);
@@ -283,26 +327,49 @@ namespace StarQuant
 		}		
 	}
 
+	// TODO: bar generate,data process,etc
+	void CtpMDEngine::timertask(){
+		timercount_++;
+		// // send status every second 
+		// auto pmsgout = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+		// 	MSG_TYPE_ENGINE_STATUS,
+		// 	to_string(estate_));
+		// messenger_->send(pmsgout);
+
+	}
+	void CtpMDEngine::processbuf(){
+	// TODO: datamanager do task
+	}
+
 	/////////////////////////////////////////////// end of outgoing functions ///////////////////////////////////////
 
 	////////////////////////////////////////////////////// callback  function ///////////////////////////////////////
 	
 	void CtpMDEngine::OnFrontConnected() {
 		estate_ = CONNECT_ACK;			// not used
+		auto pmsg = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+				MSG_TYPE_INFO_ENGINE_STATUS,
+				to_string(estate_));
+		messenger_->send(pmsg);
 		LOG_INFO(logger,name_ <<"  frontend connected. ");
 		loginReqId_ = 0;
 		//autologin
 		if (autoconnect_ && !inconnectaction_ ){
-			std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(name_,"0",MSG_TYPE_ENGINE_CONNECT);
+			std::shared_ptr<InfoMsg> pmsg = make_shared<InfoMsg>(name_,name_,MSG_TYPE_ENGINE_CONNECT,"CTP.MD Front connected.");
 			CMsgqRMessenger::Send(pmsg);
 		}
+
 	}
 
 	void CtpMDEngine::OnFrontDisconnected(int nReason) {
 		estate_ = CONNECTING;			// automatic connecting
 		loginReqId_++;
-		if (loginReqId_ % 4000 ==0){
-			loginReqId_ = 1;
+		if (loginReqId_ % 4000 == 0){
+			auto pmsg = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+			messenger_->send(pmsg);
+			loginReqId_ = 0;
 			string sout("CTP.MD disconnected, nReason=");
 			sout += to_string(nReason);
 			auto pmsgout = make_shared<InfoMsg>(DESTINATION_ALL, name_,
@@ -311,6 +378,8 @@ namespace StarQuant
 			messenger_->send(pmsgout);			
 			LOG_INFO(logger,name_ <<"  front is  disconnected, nReason="<<nReason);	
 		}
+
+
 		
 	}
 
@@ -330,12 +399,19 @@ namespace StarQuant
 		}
 		else{
 			estate_ = EState::LOGIN_ACK;
+			auto pmsg = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+			messenger_->send(pmsg);	
 			LOG_INFO(logger,name_ <<"  server user logged in,"
 				<<"TradingDay="<<pRspUserLogin->TradingDay
 				<<"LoginTime="<<pRspUserLogin->LoginTime
 				<<"frontID="<<pRspUserLogin->FrontID
 				<<"sessionID="<<pRspUserLogin->SessionID
 			);
+			// auto subscribe last securities
+			if (lastsubs_.size())
+				subscribe(lastsubs_);
 		}
 
 	}
@@ -348,6 +424,10 @@ namespace StarQuant
 		}
 		else {
 			estate_ = EState::CONNECT_ACK;
+			auto pmsg = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+						MSG_TYPE_INFO_ENGINE_STATUS,
+						to_string(estate_));
+			messenger_->send(pmsg);
 			LOG_INFO(logger,name_ <<"  Logout,BrokerID="<<pUserLogout->BrokerID<<" UserID="<<pUserLogout->UserID);
 		}
 	}

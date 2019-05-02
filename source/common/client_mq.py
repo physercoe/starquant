@@ -61,7 +61,7 @@ class ClientMq(object):
                         m = ContractEvent()
                         m.deserialize(msgin)
                         self._ui_event_engine.put(m)
-                    elif msg2type == MSG_TYPE.MSG_TYPE_INFO:
+                    elif v[2].startswith('3') :           #msg2type == MSG_TYPE.MSG_TYPE_INFO:
                         m = InfoEvent()
                         m.deserialize(msgin)
                         self._ui_event_engine.put(m)
@@ -74,6 +74,7 @@ class ClientMq(object):
                 print('outgoing get msg,begin send',msgout,datetime.now())
                 # self._send_sock.send(bytes(msgout,"ascii"), flags=0)
                 self._send_sock.send(msgout, flags=1)
+                print('outgoing end send',msgout,datetime.now())
             except Exception as e:
                 pass
 

@@ -30,6 +30,8 @@ namespace StarQuant
 		void releaseapi();
 		void reset();
 		void switchday(){};	
+		void timertask();
+		void processbuf(); 
 
 		void subscribe(const vector<string>& symbols) ;
 		void unsubscribe(const vector<string>& symbols) ;	
@@ -63,7 +65,9 @@ namespace StarQuant
 		CThostFtdcMdApi* api_;		
 		bool apiinited_;
 		bool inconnectaction_;
-		bool autoconnect_;		
+		bool autoconnect_;
+		vector<string> lastsubs_;
+		int timercount_;		
 	};
 }
 

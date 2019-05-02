@@ -117,7 +117,7 @@ namespace StarQuant {
 		string msgin = msgq_recv_->recmsg(mode);
 		if (msgin.empty())
 			return nullptr;
-		LOG_DEBUG(logger, name_ <<" recv msg:"<<msgin);
+		// LOG_DEBUG(logger, name_ <<" recv msg:"<<msgin);
 		string des;
 		string src;
 		string stype;

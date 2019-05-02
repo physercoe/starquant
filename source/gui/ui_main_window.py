@@ -34,7 +34,7 @@ from .ui_closeposition_window import ClosePositionWindow
 from .ui_account_window import AccountWindow
 from .ui_strategy_window import StrategyWindow
 from .ui_log_window import LogWindow
-from .ui_bt_dataview import BtDataViewWidget
+from .ui_bt_dataview import BtDataViewWidget,BtDataPGChart
 from .ui_bt_resultsoverview import BtResultViewWidget
 from .ui_bt_posview import BtPosViewWidget
 from .ui_bt_txnview import BtTxnViewWidget
@@ -97,7 +97,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._client_mq = ClientMq(self._config_server,self._ui_events_engine, self._outgoing_queue)
 
         # 1. set up gui windows
-        self.setGeometry(50, 50, 600, 400)
+        self.setGeometry(50, 50, 850, 650)
         self.setWindowTitle(lang_dict['Prog_Name'])
         self.setWindowIcon(QtGui.QIcon("source/gui/image/star.png"))       
         self.init_menu()
@@ -112,7 +112,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._ui_events_engine.register_handler(EventType.ACCOUNT, self._account_event_handler)
         self._ui_events_engine.register_handler(EventType.CONTRACT, self._contract_event_handler)
         self._ui_events_engine.register_handler(EventType.HISTORICAL, self._historical_event_handler)
-        self._ui_events_engine.register_handler(EventType.INFO, self.log_window.msg_signal.emit)
+        self._ui_events_engine.register_handler(EventType.INFO, self._info_event_handler)
         # TODO:add info and error handler
 
         self._outgoing_request_events_engine.register_handler(EventType.ORDER, self._outgoing_order_request_handler)
@@ -203,7 +203,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.portfolio_manager.on_contract(contract_event)
 
     def _historical_event_handler(self, historical_event):
-        print(historical_event)
+        pass
+        # print(historical_event)
+
+    def _info_event_handler(self,info_event):
+        if(info_event.msg_type == MSG_TYPE.MSG_TYPE_INFO_ENGINE_STATUS):
+            self.manual_widget.updateapistatusdict(info_event)
+        else:
+            self.log_window.msg_signal.emit(info_event)
 
     def _general_event_handler(self, general_event):
         pass
@@ -217,9 +224,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self._order_manager.on_order(o)
             #self.order_window.
             msg = o.serialize()
-            print('client send msg: ' + msg)
-            text = o.destination + o.source + str(o.clientID)
-            requests.get('https://sc.ftqq.com/SCU49995T54cd0bf4d42dd8448359347830d62bd85cc3f69d085ee.send?text=%s &desp=%s'%(text,msg))
+            print('client send msg: ' + msg,datetime.now())
+            # print('client send msg: ' + msg)
+            # text = o.destination + o.source + str(o.clientID)
+            # requests.get('https://sc.ftqq.com/SCU49995T54cd0bf4d42dd8448359347830d62bd85cc3f69d085ee.send?text=%s &desp=%s'%(text,msg))
             self._outgoing_queue.put(msg)
 
     def _outgoing_account_request_handler(self, a):
@@ -284,9 +292,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         #help menu
         helpMenu = menubar.addMenu('Help')
+        help_webaction = QtWidgets.QAction('Web/Jupyter Notebook', self)
+        help_webaction.triggered.connect(self.openweb)        
+        helpMenu.addAction(help_webaction)
         help_action = QtWidgets.QAction('About', self)
-        help_action.triggered.connect(self.openabout)
+        help_action.triggered.connect(self.openabout)        
         helpMenu.addAction(help_action)
+
 
     def openabout(self):
         try:
@@ -294,7 +306,12 @@ class MainWindow(QtWidgets.QMainWindow):
         except KeyError:
             self._widget_dict['about'] =AboutWidget(self)
             self._widget_dict['about'].show()
-
+    def openweb(self):        
+        try:
+            self._widget_dict['web'].show()
+        except KeyError:
+            self._widget_dict['web'] = WebWindow()
+            self._widget_dict['web'].show()
     def init_status_bar(self):
         self.statusthread = StatusThread()
         self.statusthread.status_update.connect(self.update_status_bar)
@@ -398,7 +415,7 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter3.addWidget(splitter1)
         splitter3.addWidget(splitter2)
-        splitter3.setSizes([800, 400])
+        splitter3.setSizes([800, 300])
 
         hbox.addWidget(splitter3)
         tradewidget.setLayout(hbox)
@@ -418,8 +435,9 @@ class MainWindow(QtWidgets.QMainWindow):
         bt_bottommiddle = QtWidgets.QTabWidget()
         bt_bottommiddle.setFont(self._font)
         bt_datatab1 = BtDataViewWidget()
+        bt_datatab2 = BtDataPGChart()
         bt_bottommiddle.addTab(bt_datatab1, 'Data')
-     
+        bt_bottommiddle.addTab(bt_datatab2, 'PGData')
       
     #   bt  left: setting
         bt_left = BtSettingWindow()
@@ -440,7 +458,7 @@ class MainWindow(QtWidgets.QMainWindow):
         bt_splitter3.addWidget(bt_left)
         bt_splitter3.addWidget(bt_splitter1)
         # bt_splitter3.addWidget(bt_right)
-        bt_splitter3.setSizes([400, 1300])
+        bt_splitter3.setSizes([300, 1200])
 
         bt_hbox.addWidget(bt_splitter3)
         backtestwidget.setLayout(bt_hbox)
@@ -453,7 +471,7 @@ class MainWindow(QtWidgets.QMainWindow):
         manualwidget.qrypos_signal.connect(self._outgoing_position_request_handler)
         manualwidget.manual_req.connect(self._outgoing_queue.put)
         manualwidget.subscribe_signal.connect(self._outgoing_general_request_handler)
-
+        self.manual_widget = manualwidget
         dockmanual = QtWidgets.QDockWidget('Manual Control Center',self)
         dockmanual.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable|QtWidgets.QDockWidget.DockWidgetMovable)
         # dockmanual.setFloating(True)
@@ -461,15 +479,15 @@ class MainWindow(QtWidgets.QMainWindow):
         dockmanual.setWidget(manualwidget)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea,dockmanual)
 
-        webwidget = WebWindow()
-        dockweb = QtWidgets.QDockWidget('Web Browser',self)
-        dockweb.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable|QtWidgets.QDockWidget.DockWidgetMovable)
-        # dockweb.setFloating(True)
-        dockweb.setAllowedAreas(QtCore.Qt.RightDockWidgetArea|QtCore.Qt.LeftDockWidgetArea)
-        dockweb.setWidget(webwidget)
-        self.addDockWidget(QtCore.Qt.RightDockWidgetArea,dockweb)   
-        self.tabifyDockWidget(dockmanual,dockweb)
-        dockmanual.raise_()
+        # webwidget = WebWindow()
+        # dockweb = QtWidgets.QDockWidget('Web Browser',self)
+        # dockweb.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable|QtWidgets.QDockWidget.DockWidgetMovable)
+        # # dockweb.setFloating(True)
+        # dockweb.setAllowedAreas(QtCore.Qt.RightDockWidgetArea|QtCore.Qt.LeftDockWidgetArea)
+        # dockweb.setWidget(webwidget)
+        # self.addDockWidget(QtCore.Qt.RightDockWidgetArea,dockweb)   
+        # self.tabifyDockWidget(dockmanual,dockweb)
+        # dockmanual.raise_()
 
         self.central_widget.addWidget(tradewidget)
         self.central_widget.addWidget(backtestwidget)
@@ -504,7 +522,7 @@ class AboutWidget(QtWidgets.QDialog):
     #----------------------------------------------------------------------
     def initUi(self):
         """"""
-        self.setWindowTitle('Star Quant')
+        self.setWindowTitle('About StarQuant')
 
         text = u"""
             StarQuant

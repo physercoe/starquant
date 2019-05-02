@@ -58,11 +58,14 @@ namespace StarQuant
 		// }
 		if (CMsgqEMessenger::msgq_send_ == nullptr){
 		 	CMsgqEMessenger::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
+			msleep(100);
 		}
 		if (CMsgqRMessenger::msgq_send_ == nullptr){
 		 	CMsgqRMessenger::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERSUB_URL);
+			msleep(100);
 		}				
 		msg_relay_ = std::make_unique<CMsgqRMessenger>(CConfig::instance().SERVERPULL_URL);
+		msleep(100);
 	}
 
 	tradingengine::~tradingengine() {		
@@ -97,6 +100,7 @@ namespace StarQuant
 		signal(SIGPWR, ConsoleControlHandler);
 		time_t timer;
 		struct tm tm_info;
+		
 	//cronjobs:
 	//check gshutdown
 		while (!gShutdown) {
@@ -131,8 +135,12 @@ namespace StarQuant
 				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0",MSG_TYPE_ENGINE_RESET);
 				msg_relay_->send(pmsg);
 			}
+	// send timer msg to all engine		
+			std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0",MSG_TYPE_TIMER);
+			msg_relay_->send(pmsg);
 	//flow count reset
 			RiskManager::instance().resetflow();
+
 
 		}
 		// ctrl-c

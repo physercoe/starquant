@@ -9,13 +9,15 @@ class LogWindow(QtWidgets.QTableWidget):
     def __init__(self, lang_dict, parent=None):
         super(LogWindow, self).__init__(parent)
 
-        self.header = [lang_dict['Time'],
-                       lang_dict['Content']]
+        self.header = ['Source',
+                        'Type',
+                        'Content',
+                       'Time']
 
         self.init_table()
         self._lang_dict = lang_dict
         self.msg_signal.connect(self.update_table)
-
+        self.resizeRowsToContents()
     def init_table(self):
         col = len(self.header)
         self.setColumnCount(col)
@@ -31,7 +33,9 @@ class LogWindow(QtWidgets.QTableWidget):
         Only add row
         '''
         self.insertRow(0)
-        self.setItem(0, 0, QtWidgets.QTableWidgetItem(geneal_event.timestamp))
-        self.setItem(0, 1, QtWidgets.QTableWidgetItem(geneal_event.content))
+        self.setItem(0, 0, QtWidgets.QTableWidgetItem(geneal_event.source + '\n' + 'test'))
+        self.setItem(0, 1, QtWidgets.QTableWidgetItem(str(geneal_event.msg_type.name)))
+        self.setItem(0, 2, QtWidgets.QTableWidgetItem(geneal_event.content))
+        self.setItem(0, 3, QtWidgets.QTableWidgetItem(geneal_event.timestamp ))
 
 

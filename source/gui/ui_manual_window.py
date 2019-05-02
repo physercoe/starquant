@@ -36,6 +36,7 @@ class ManualWindow(QtWidgets.QFrame):
         self._current_time = None
         self._apilist = apilist
         self._acclist = acclist
+        self._apistatusdict = {}
         self._widget_dict = {}
 
         self.manualorderid = 0
@@ -52,6 +53,25 @@ class ManualWindow(QtWidgets.QFrame):
         if msg.startswith('!SQ:'):
             req = msg.split(':')[1]  
             self.manual_req.emit(req)
+
+    def updatestatus(self,index=0):
+        key = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+        apistatus = str(self._apistatusdict[key].name)
+        self.apistatus.setText(apistatus)
+        
+    def updateapistatusdict(self,msg):
+        key = msg.source
+        if key.endswith('.MD'):
+            key = key.replace('.MD','.TD.')
+        self._apistatusdict[key] = ESTATE(int(msg.content))
+        # print(self._apistatusdict[key].name)
+        self.updatestatus()
+        pass
+
+    def refresh(self):
+        msg2 = '*' \
+            + '|' + '0' + '|' + str(MSG_TYPE.MSG_TYPE_ENGINE_STATUS.value)
+        self.manual_req.emit(msg2)
 
     def connect(self):
         msg = self.api_type.currentText() + '.TD.' + self.accounts.currentText() \
@@ -112,7 +132,7 @@ class ManualWindow(QtWidgets.QFrame):
         try:
             o = OrderEvent()
             o.msg_type = MSG_TYPE.MSG_TYPE_ORDER_PAPER
-            o.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+            o.destination = self.api_type.currentText() + '.TD'
             o.source = '0'
 
             o.api = 'StarQuant' #self.api_type.currentText() 
@@ -153,12 +173,29 @@ class ManualWindow(QtWidgets.QFrame):
         self.api_type = QtWidgets.QComboBox()
         self.api_type.addItems([str(element) for element in self._apilist])
         self.accounts = QtWidgets.QComboBox()
-        self.accounts.addItems([str(element) for element in self._acclist])
+        al = [str(element) for element in self._acclist]
+        al.insert(0,'')
+        for api in self._apilist:
+            for acc in al:
+                key1 = str(api) + '.TD.' + acc
+                self._apistatusdict[key1] = ESTATE.STOP
+        self.accounts.addItems(al)
+        self.apistatus = QtWidgets.QLineEdit()
+        self.apistatus.setText('STOP')
+        self.apistatus.setReadOnly(True)
+        self.api_type.currentIndexChanged.connect(self.updatestatus)
+        self.accounts.currentIndexChanged.connect(self.updatestatus)
+        self.btn_refresh = QtWidgets.QPushButton('Refresh')
+        self.btn_refresh.clicked.connect(self.refresh)
+
         manualhboxlayout1 = QtWidgets.QHBoxLayout()
         manualhboxlayout1.addWidget(QtWidgets.QLabel('API'))
         manualhboxlayout1.addWidget(self.api_type)
         manualhboxlayout1.addWidget(QtWidgets.QLabel('Account'))
         manualhboxlayout1.addWidget(self.accounts) 
+        manualhboxlayout1.addWidget(QtWidgets.QLabel('Status'))  
+        manualhboxlayout1.addWidget(self.apistatus)  
+        manualhboxlayout1.addWidget(self.btn_refresh)            
         manuallayout.addRow(manualhboxlayout1)   
  
         self.btn_connect = QtWidgets.QPushButton('Connect')
@@ -201,6 +238,7 @@ class ManualWindow(QtWidgets.QFrame):
         manuallayout.addRow(self.textbrowser)  
 
         self.api_widget = QtWidgets.QStackedWidget() 
+
         ctpapi = CtpApiWindow()
         ctpapi.subscribe_signal.connect(self.subsrcibe)
         ctpapi.qryacc_signal.connect(self.qryacc)
@@ -248,6 +286,16 @@ class CtpApiWindow(QtWidgets.QFrame):
         # ctphboxlayout1.addWidget(self.sec_type) 
         # ctpapilayout.addRow(ctphboxlayout1)       
  
+        self.qry_type = QtWidgets.QComboBox()
+        self.qry_type.addItems(['Account','Position','Security'])
+        self.btn_qry = QtWidgets.QPushButton('QUERY')
+        self.btn_qry.clicked.connect(self.qry)
+        ctphboxlayout0 = QtWidgets.QHBoxLayout()
+        ctphboxlayout0.addWidget(QtWidgets.QLabel('Query Type'))
+        ctphboxlayout0.addWidget(self.qry_type)
+        ctphboxlayout0.addWidget(self.btn_qry) 
+        ctpapilayout.addRow(ctphboxlayout0)   
+
         self.sym = QtWidgets.QLineEdit()
         self.sym.returnPressed.connect(self.subscribe)  # subscribe market data
         self.order_ref = QtWidgets.QLineEdit()
@@ -344,24 +392,24 @@ class CtpApiWindow(QtWidgets.QFrame):
         # ctpapilayout.addRow(self.btn_request)
         self.request_type = QtWidgets.QComboBox()
         self.request_type.addItems(['Order','ParkedOrder','OrderAction','ParkedOrderAction','ExecOrder','ExecOrderAction','ForQuote','Quote','QuoteAction','OptionSelfClose','OptionSelfCloseAction','CombActionInsert'])
+        self.algo_type = QtWidgets.QComboBox()
+        self.algo_type.addItems(['None','TWAP','Iceberg','Sniper'])
+
+        ctphboxlayout2 = QtWidgets.QHBoxLayout()
+        ctphboxlayout2.addWidget(QtWidgets.QLabel('Request Type'))
+        ctphboxlayout2.addWidget(self.request_type)
+        ctphboxlayout2.addWidget(QtWidgets.QLabel('Algo-trading Option'))        
+        ctphboxlayout2.addWidget(self.algo_type)        
+        ctpapilayout.addRow(ctphboxlayout2)  
+
+        self.algoswidgets = QtWidgets.QStackedWidget()
+        ctpapilayout.addRow(self.algoswidgets) 
+
         self.btn_request = QtWidgets.QPushButton('REQUEST')
         self.btn_request.clicked.connect(self.generate_request)     # insert order
-        ctphboxlayout2 = QtWidgets.QHBoxLayout()
-        ctphboxlayout2.addWidget(QtWidgets.QLabel('Request'))
-        ctphboxlayout2.addWidget(self.request_type)
-        ctphboxlayout2.addWidget(self.btn_request)
-        ctpapilayout.addRow(ctphboxlayout2)   
+        ctpapilayout.addRow(self.btn_request)
 
 
-        self.qry_type = QtWidgets.QComboBox()
-        self.qry_type.addItems(['Account','Position','Security'])
-        self.btn_qry = QtWidgets.QPushButton('QUERY')
-        self.btn_qry.clicked.connect(self.qry)
-        ctphboxlayout0 = QtWidgets.QHBoxLayout()
-        ctphboxlayout0.addWidget(QtWidgets.QLabel('Query'))
-        ctphboxlayout0.addWidget(self.qry_type)
-        ctphboxlayout0.addWidget(self.btn_qry) 
-        ctpapilayout.addRow(ctphboxlayout0)    
 
 
         self.setLayout(ctpapilayout)
@@ -377,6 +425,7 @@ class CtpApiWindow(QtWidgets.QFrame):
             return
         
     def generate_request(self):
+        print("ctp request at ", datetime.now())
         if (self.request_type.currentText() =='Order'):
             of = CtpOrderField()
             of.InstrumentID = self.sym.text()

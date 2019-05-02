@@ -37,6 +37,8 @@ namespace StarQuant
 		void switchday();
 		void releaseapi();
 		void reset();
+		void timertask();
+		void processbuf();// reserverd for future use,such as local condition order, algo-trading etc.
 
 		void insertOrder(shared_ptr<CtpOrderMsg> pmsg);
 		void cancelOrder(shared_ptr<OrderActionMsg> pmsg);
@@ -372,7 +374,9 @@ namespace StarQuant
 		bool apiinited_;
 		bool inconnectaction_;
 		bool autoconnect_;
+		bool autoqry_;
 		map<string, std::shared_ptr<Position> > posbuffer_;   //used for calculate position 
+		int timercount_;
 		
 		OrderStatus CtpOrderStatusToOrderStatus(const char status);
 		OrderFlag CtpComboOffsetFlagToOrderFlag(const char flag);

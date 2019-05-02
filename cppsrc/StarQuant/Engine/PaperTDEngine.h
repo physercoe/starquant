@@ -30,6 +30,9 @@ namespace StarQuant
 		virtual void stop();
 		virtual bool connect() ;
 		virtual bool disconnect() ;
+		
+		void processbuf();
+		void timertask();
 
 		void insertOrder(shared_ptr<PaperOrderMsg> pmsg);
 		void cancelOrder(shared_ptr<OrderActionMsg> pmsg);
