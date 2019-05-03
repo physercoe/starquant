@@ -93,7 +93,8 @@ class PositionWindow(QtWidgets.QTableWidget):
             self.setItem(0, 9, QtWidgets.QTableWidgetItem(position_event.api))
             self.setItem(0, 10, QtWidgets.QTableWidgetItem(position_event.timestamp))
             self.setItem(0, 11, QtWidgets.QTableWidgetItem(position_event.type + position_event.posno ))
-
+        
+        self.resizeRowsToContents()
 
     def on_fill(self, fill_evnet):
         pass

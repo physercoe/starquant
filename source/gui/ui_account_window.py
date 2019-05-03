@@ -67,4 +67,4 @@ class AccountWindow(QtWidgets.QTableWidget):
             self.setItem(0, 7, QtWidgets.QTableWidgetItem(str(account_event.open_pnl)))
             self.setItem(0, 8, QtWidgets.QTableWidgetItem(account_event.source))
             self.setItem(0, 9, QtWidgets.QTableWidgetItem(account_event.timestamp))
-
+        self.resizeRowsToContents()

@@ -15,6 +15,81 @@ class ESTATE(Enum):
     LOGIN_ACK = 6             
     LOGOUTING = 7
     STOP = 8 
+
+class SYMBOL_TYPE(Enum):
+    FULL = 0
+    CTP = 1
+
+class OptionType(Enum):
+    """
+    Option type.
+    """
+    CALL = "看涨期权"
+    PUT = "看跌期权"
+
+class Product(Enum):
+    """
+    Product class.
+    """
+    EQUITY = "股票"
+    FUTURES = "期货"
+    OPTION = "期权"
+    INDEX = "指数"
+    FOREX = "外汇"
+    SPOT = "现货"
+    ETF = "ETF"
+    BOND = "债券"
+    WARRANT = "权证"
+    SPREAD = "价差"
+    FUND = "基金"
+class Exchange(Enum):
+    """
+    Exchange.
+    """
+    # Chinese
+    CFFEX = "CFFEX"
+    SHFE = "SHFE"
+    CZCE = "CZCE"
+    DCE = "DCE"
+    INE = "INE"
+    SSE = "SSE"
+    SZSE = "SZSE"
+    SGE = "SGE"
+
+    # Global
+    SMART = "SMART"
+    NYMEX = "NYMEX"
+    GLOBEX = "GLOBEX"
+    IDEALPRO = "IDEALPRO"
+    CME = "CME"
+    ICE = "ICE"
+    SEHK = "SEHK"
+    HKFE = "HKFE"
+
+    # CryptoCurrency
+    BITMEX = "BITMEX"
+    OKEX = "OKEX"
+    HUOBI = "HUOBI"
+    BITFINEX = "BITFINEX"
+
+
+class Currency(Enum):
+    """
+    Currency.
+    """
+    USD = "USD"
+    HKD = "HKD"
+    CNY = "CNY"
+
+class Interval(Enum):
+    """
+    Interval of bar data.
+    """
+    MINUTE = "1m"
+    HOUR = "1h"
+    DAILY = "d"
+    WEEKLY = "w"
+
 class MSG_TYPE(Enum):
     MSG_TYPE_TICK_L1 = 1000
     MSG_TYPE_TICK_L5 = 1001
@@ -412,7 +487,7 @@ class ContractEvent(Event):
 
     def deserialize(self, msg):
         v = msg.split('|')
-        self.local_name = v[3]
+        self.full_symbol = v[3]
         self.mininum_tick = float(v[4])
         self.mulitples = int(v[5])
 
@@ -426,6 +501,7 @@ class BarEvent(Event):
         """
         self.event_type = EventType.BAR
         self.bar_start_time = pd.Timestamp('1970-01-01', tz='UTC')
+        self.latestime = pd.Timestamp('1970-01-01', tz='UTC')
         self.interval = 86400       # 1day in secs = 24hrs * 60min * 60sec
         self.full_symbol = ''
         self.open_price = 0.0
@@ -947,6 +1023,19 @@ class QryPosEvent(Event):
         msg = self.destination + '|' + self.source + '|' + str(MSG_TYPE.MSG_TYPE_QRY_POS.value)
         return msg
 
+class QryContractEvent(Event):
+    """
+    qry security
+    """
+    def __init__(self):
+        self.event_type = EventType.QRY_CONTRACT
+        self.sym_type = SYMBOL_TYPE.FULL
+        self.content = ''
+    def serialize(self):
+        msg = self.destination + '|' + self.source + '|' + str(MSG_TYPE.MSG_TYPE_QRY_CONTRACT.value) \
+            + '|' + str(self.sym_type.value) + '|' + self.content
+        return msg
+
 class SubscribeEvent(Event):
     """
     qry acc
@@ -954,9 +1043,11 @@ class SubscribeEvent(Event):
     def __init__(self):
         self.event_type = EventType.SUBSCRIBE
         self.msg_type = MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA
+        self.sym_type = SYMBOL_TYPE.FULL
         self.content = ""
     def serialize(self):
-        msg = self.destination + '|' + self.source + '|' + str(self.msg_type.value) + '|' + self.content
+        msg = self.destination + '|' + self.source + '|' + str(self.msg_type.value) \
+            + '|' +  str(self.sym_type.value)  + '|' + self.content
         return msg
 
 

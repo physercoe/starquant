@@ -87,9 +87,10 @@ def startstrategy(name):
         ordermanager = OrderManager()
         portfoliomanager = PortfolioManager(config_client['initial_cash'],config_server['tickers'])
         strategy = strategyClass(tradeengine,ordermanager,portfoliomanager)
-        strategy.register_event()
-        tradeengine.id = strategy.id
-        tradeengine.start()
+        strategy.run()
+        # strategy.register_event()
+        # tradeengine.id = strategy.id
+        # tradeengine.start()
 
 def startsid(sid):
     config_server = None
@@ -117,9 +118,10 @@ def startsid(sid):
         ordermanager = OrderManager()
         portfoliomanager = PortfolioManager(config_client['initial_cash'],config_server['tickers'])
         strategy = strategyClass(tradeengine,ordermanager,portfoliomanager)
-        strategy.register_event()
-        tradeengine.id = strategy.id
-        tradeengine.start()        
+        strategy.run()
+        # strategy.register_event()
+        # tradeengine.id = strategy.id
+        # tradeengine.start()        
 
 def backtestsid(sid):
 

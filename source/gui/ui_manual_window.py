@@ -28,6 +28,7 @@ class ManualWindow(QtWidgets.QFrame):
     subscribe_signal = QtCore.pyqtSignal(SubscribeEvent)
     qryacc_signal = QtCore.pyqtSignal(QryAccEvent) 
     qrypos_signal = QtCore.pyqtSignal(QryPosEvent)    
+    qrycontract_signal = QtCore.pyqtSignal(QryContractEvent) 
 
     def __init__(self, apilist, acclist):
         super(ManualWindow, self).__init__()
@@ -156,8 +157,11 @@ class ManualWindow(QtWidgets.QFrame):
         qp.source = '0'
         self.qrypos_signal.emit(qp)   
 
-       
-        
+    def qrycontract(self,qc):
+        qc.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+        qc.source = '0'
+        self.qrycontract_signal.emit(qc)          
+     
 
     def init_wxcmd(self):
         self.wechatmsg = ItchatMsgThread()
@@ -243,6 +247,7 @@ class ManualWindow(QtWidgets.QFrame):
         ctpapi.subscribe_signal.connect(self.subsrcibe)
         ctpapi.qryacc_signal.connect(self.qryacc)
         ctpapi.qrypos_signal.connect(self.qrypos)
+        ctpapi.qrycontract_signal.connect(self.qrycontract)
         ctpapi.orderfield_signal.connect(self.place_order_ctp)
 
         paperapi = PaperApiWindow()
@@ -265,7 +270,7 @@ class CtpApiWindow(QtWidgets.QFrame):
     subscribe_signal = QtCore.pyqtSignal(SubscribeEvent)
     qryacc_signal = QtCore.pyqtSignal(QryAccEvent) 
     qrypos_signal = QtCore.pyqtSignal(QryPosEvent)    
-
+    qrycontract_signal = QtCore.pyqtSignal(QryContractEvent) 
     def __init__(self):
         super(CtpApiWindow, self).__init__()
         self.orderfielddict = {}
@@ -287,12 +292,14 @@ class CtpApiWindow(QtWidgets.QFrame):
         # ctpapilayout.addRow(ctphboxlayout1)       
  
         self.qry_type = QtWidgets.QComboBox()
-        self.qry_type.addItems(['Account','Position','Security'])
+        self.qry_type.addItems(['Account','Position','Contract'])
+        self.qry_content =  QtWidgets.QLineEdit()
         self.btn_qry = QtWidgets.QPushButton('QUERY')
         self.btn_qry.clicked.connect(self.qry)
         ctphboxlayout0 = QtWidgets.QHBoxLayout()
         ctphboxlayout0.addWidget(QtWidgets.QLabel('Query Type'))
         ctphboxlayout0.addWidget(self.qry_type)
+        ctphboxlayout0.addWidget(self.qry_content)
         ctphboxlayout0.addWidget(self.btn_qry) 
         ctpapilayout.addRow(ctphboxlayout0)   
 
@@ -423,7 +430,13 @@ class CtpApiWindow(QtWidgets.QFrame):
             qp = QryPosEvent()
             self.qrypos_signal.emit(qp)
             return
-        
+        if (self.qry_type.currentText() == 'Contract'):
+            qp = QryContractEvent()
+            qp.sym_type = SYMBOL_TYPE.CTP
+            qp.content = self.qry_content.text()
+            self.qrycontract_signal.emit(qp)
+            return
+
     def generate_request(self):
         print("ctp request at ", datetime.now())
         if (self.request_type.currentText() =='Order'):
@@ -453,6 +466,7 @@ class CtpApiWindow(QtWidgets.QFrame):
 
     def subscribe(self):
         ss = SubscribeEvent()
+        ss.sym_type = SYMBOL_TYPE.CTP
         ss.content = str(self.sym.text())
         self.subscribe_signal.emit()
         return

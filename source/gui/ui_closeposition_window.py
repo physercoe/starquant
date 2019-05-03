@@ -45,7 +45,7 @@ class ClosePositionWindow(QtWidgets.QTableWidget):
             self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(position_event.closeapi)))
             self.setItem(0, 6, QtWidgets.QTableWidgetItem(str(position_event.closesource)))
             self.setItem(0, 7, QtWidgets.QTableWidgetItem((position_event.timestamp)))
-
+        self.resizeRowsToContents()
     def on_fill(self, fill_evnet):
         pass
 

@@ -1,5 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+
+import json
+from pathlib import Path
+from typing import Callable
+
+import numpy as np
+import talib
+
+from ..common.datastruct import TickEvent, BarEvent
+
 class DataBoard(object):
     """
     Data tracker that holds current market data info
@@ -82,3 +93,279 @@ class DataBoard(object):
                 "Timestamp for ticker %s is not found" % (symbol)
             )
             return None
+
+
+
+class BarGenerator:
+    """
+    For: 
+    1. generating 1 minute bar data from tick data
+    2. generateing x minute bar data from 1 minute data
+    """
+
+    def __init__(
+        self, on_bar: Callable, xmin: int = 0, on_xmin_bar: Callable = None
+    ):
+        """Constructor"""
+        self.bar = None
+        self.on_bar = on_bar
+
+        self.xmin = xmin
+        self.xmin_bar = None
+        self.on_xmin_bar = on_xmin_bar
+
+        self.last_tick = None
+
+    def update_tick(self, tick: TickEvent):
+        """
+        Update new tick data into generator.
+        """
+        new_minute = False
+
+        if not self.bar:
+            new_minute = True
+        elif self.bar.latestime.minute != tick.timestamp.minute:
+            self.bar.latestime = self.bar.latestime.replace(
+                second=0, microsecond=0
+            )
+            self.on_bar(self.bar)
+
+            new_minute = True
+
+        if new_minute:
+            newbar = BarEvent()
+            newbar.full_symbol = tick.full_symbol
+            newbar.bar_start_time = tick.timestamp
+            newbar.latestime = tick.timestamp
+            newbar.open_price = tick.price
+            newbar.high_price = tick.price
+            newbar.low_price = tick.price
+            newbar.close_price = tick.price
+            newbar.adj_close_price = tick.price
+            newbar.interval = 60 
+            self.bar = newbar
+  
+        else:
+            self.bar.high_price = max(self.bar.high_price, tick.price)
+            self.bar.low_price = min(self.bar.low_price, tick.price)            
+            self.bar.close_price = tick.price
+            self.bar.adj_close_price = tick.price
+            self.bar.latestime = tick.timestamp
+
+        if self.last_tick:
+            volume_change = tick.size - self.last_tick.size
+            self.bar.volume += max(volume_change, 0)
+
+        self.last_tick = tick
+
+    def update_bar(self, bar: BarEvent):
+        """
+        Update 1 minute bar into generator
+        """
+        if not self.xmin_bar:
+            newxminbar = BarEvent()
+            newxminbar.full_symbol = bar.full_symbol
+            newxminbar.bar_start_time = bar.latestime
+            newxminbar.latestime = bar.latestime
+            newxminbar.open_price = bar.open_price
+            newxminbar.high_price = bar.high_price
+            newxminbar.low_price = bar.low_price
+
+        else:
+            self.xmin_bar.high_price = max(
+                self.xmin_bar.high_price, bar.high_price)
+            self.xmin_bar.low_price = min(
+                self.xmin_bar.low_price, bar.low_price)
+
+        self.xmin_bar.close_price = bar.close_price
+        self.xmin_bar.volume += int(bar.volume)
+
+        if not (bar.latestime.minute + 1) % self.xmin:
+            self.xmin_bar.latestime = self.xmin_bar.latestime.replace(
+                second=0, microsecond=0
+            )
+            self.on_xmin_bar(self.xmin_bar)
+
+            self.xmin_bar = None
+
+    def generate(self):
+        """
+        Generate the bar data and call callback immediately.
+        """
+        self.on_bar(self.bar)
+        self.bar = None
+
+
+class ArrayManager(object):
+    """
+    For:
+    1. time series container of bar data
+    2. calculating technical indicator value
+    """
+
+    def __init__(self, size=100):
+        """Constructor"""
+        self.count = 0
+        self.size = size
+        self.inited = False
+
+        self.open_array = np.zeros(size)
+        self.high_array = np.zeros(size)
+        self.low_array = np.zeros(size)
+        self.close_array = np.zeros(size)
+        self.volume_array = np.zeros(size)
+
+    def update_bar(self, bar):
+        """
+        Update new bar data into array manager.
+        """
+        self.count += 1
+        if not self.inited and self.count >= self.size:
+            self.inited = True
+
+        self.open_array[:-1] = self.open_array[1:]
+        self.high_array[:-1] = self.high_array[1:]
+        self.low_array[:-1] = self.low_array[1:]
+        self.close_array[:-1] = self.close_array[1:]
+        self.volume_array[:-1] = self.volume_array[1:]
+
+        self.open_array[-1] = bar.open_price
+        self.high_array[-1] = bar.high_price
+        self.low_array[-1] = bar.low_price
+        self.close_array[-1] = bar.close_price
+        self.volume_array[-1] = bar.volume
+
+    @property
+    def open(self):
+        """
+        Get open price time series.
+        """
+        return self.open_array
+
+    @property
+    def high(self):
+        """
+        Get high price time series.
+        """
+        return self.high_array
+
+    @property
+    def low(self):
+        """
+        Get low price time series.
+        """
+        return self.low_array
+
+    @property
+    def close(self):
+        """
+        Get close price time series.
+        """
+        return self.close_array
+
+    @property
+    def volume(self):
+        """
+        Get trading volume time series.
+        """
+        return self.volume_array
+
+    def sma(self, n, array=False):
+        """
+        Simple moving average.
+        """
+        result = talib.SMA(self.close, n)
+        if array:
+            return result
+        return result[-1]
+
+    def std(self, n, array=False):
+        """
+        Standard deviation
+        """
+        result = talib.STDDEV(self.close, n)
+        if array:
+            return result
+        return result[-1]
+
+    def cci(self, n, array=False):
+        """
+        Commodity Channel Index (CCI).
+        """
+        result = talib.CCI(self.high, self.low, self.close, n)
+        if array:
+            return result
+        return result[-1]
+
+    def atr(self, n, array=False):
+        """
+        Average True Range (ATR).
+        """
+        result = talib.ATR(self.high, self.low, self.close, n)
+        if array:
+            return result
+        return result[-1]
+
+    def rsi(self, n, array=False):
+        """
+        Relative Strenght Index (RSI).
+        """
+        result = talib.RSI(self.close, n)
+        if array:
+            return result
+        return result[-1]
+
+    def macd(self, fast_period, slow_period, signal_period, array=False):
+        """
+        MACD.
+        """
+        macd, signal, hist = talib.MACD(
+            self.close, fast_period, slow_period, signal_period
+        )
+        if array:
+            return macd, signal, hist
+        return macd[-1], signal[-1], hist[-1]
+
+    def adx(self, n, array=False):
+        """
+        ADX.
+        """
+        result = talib.ADX(self.high, self.low, self.close, n)
+        if array:
+            return result
+        return result[-1]
+
+    def boll(self, n, dev, array=False):
+        """
+        Bollinger Channel.
+        """
+        mid = self.sma(n, array)
+        std = self.std(n, array)
+
+        up = mid + std * dev
+        down = mid - std * dev
+
+        return up, down
+
+    def keltner(self, n, dev, array=False):
+        """
+        Keltner Channel.
+        """
+        mid = self.sma(n, array)
+        atr = self.atr(n, array)
+
+        up = mid + atr * dev
+        down = mid - atr * dev
+
+        return up, down
+
+    def donchian(self, n, array=False):
+        """
+        Donchian Channel.
+        """
+        up = talib.MAX(self.high, n)
+        down = talib.MIN(self.low, n)
+
+        if array:
+            return up, down
+        return up[-1], down[-1]

@@ -41,6 +41,7 @@ from .ui_bt_txnview import BtTxnViewWidget
 from .ui_manual_window import ManualWindow 
 from .ui_bt_setting import BtSettingWindow
 from .ui_web_window import WebWindow
+from .ui_dataview import MarketDataView
 
 from ..common import datastruct
 
@@ -118,6 +119,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._outgoing_request_events_engine.register_handler(EventType.ORDER, self._outgoing_order_request_handler)
         self._outgoing_request_events_engine.register_handler(EventType.QRY_ACCOUNT, self._outgoing_account_request_handler)
         self._outgoing_request_events_engine.register_handler(EventType.QRY_POS, self._outgoing_position_request_handler)
+        self._outgoing_request_events_engine.register_handler(EventType.QRY_CONTRACT, self._outgoing_contract_request_handler)        
         self._outgoing_request_events_engine.register_handler(EventType.SUBSCRIBE, self._outgoing_general_request_handler)
         self._outgoing_request_events_engine.register_handler(EventType.GENERAL_REQ, self._outgoing_general_request_handler)
         self._flowrate_timer.timeout.connect(self.risk_manager.reset)   #timer event to reset riskmanager flow rate count
@@ -153,14 +155,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self._client_mq.stop()
 
     def _tick_event_handler(self, tick_event):
-        
+        self.dataviewindow.tick_signal.emit(tick_event)
         self._current_time = tick_event.timestamp
-
         self._data_board.on_tick(tick_event)       # update databoard
         self._order_manager.on_tick(tick_event)     # check standing stop orders
         # print('tick arrive timestamp:',datetime.now())                       # test latency
         self._strategy_manager.on_tick(tick_event)  # feed strategies
         self.market_window.tick_signal.emit(tick_event)         # display
+        
 
     def _order_status_event_handler(self, order_status_event):  # including cancel
         # this is moved to ui_thread for consistency
@@ -201,6 +203,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _contract_event_handler(self, contract_event):
         self.portfolio_manager.on_contract(contract_event)
+        msg = "Contract {} tickprice = {} multiples = {}".format(contract_event.full_symbol,contract_event.mininum_tick,contract_event.multiples) 
+        self.manual_widget.logoutput.append(msg)
 
     def _historical_event_handler(self, historical_event):
         pass
@@ -214,7 +218,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _general_event_handler(self, general_event):
         pass
-
+#----------------------------------------outgoing event ------------------------------------
     def _outgoing_order_request_handler(self, o):
         """
          process o, check against risk manager and compliance manager
@@ -241,15 +245,21 @@ class MainWindow(QtWidgets.QMainWindow):
             msg = p.serialize()
             print('client send msg: ' + msg)
             self._outgoing_queue.put(msg)
+
+    def _outgoing_contract_request_handler(self, c):
+        if (self.risk_manager.passquery()):
+            msg = c.serialize()
+            print('client send msg: ' + msg)
+            self._outgoing_queue.put(msg)
+
     def _outgoing_general_request_handler(self,gr):
         msg = gr.serialize()
         print('client send msg: ' + msg)
         self._outgoing_queue.put(msg)
     
-
-
     def _outgoing_general_msg_request_handler(self, g):
         self.log_window.update_table(g)           # append to log window
+        
     #################################################################################################
     # ------------------------------ Event Handler Ends --------------------------------------------#
     #################################################################################################
@@ -400,22 +410,23 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # --------------------------------------------------------------------------------------#
 
-        reserveredwidget = QtWidgets.QWidget()
+        self.dataviewindow = MarketDataView()
+        self.market_window.symbol_signal.connect(self.dataviewindow.symbol_signal.emit)
 
         splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         splitter1.addWidget(topleft)
         splitter1.addWidget(bottomleft)
-        splitter1.setSizes([600,500])
+        splitter1.setSizes([500,500])
 
         splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        splitter2.addWidget(reserveredwidget)
+        splitter2.addWidget(self.dataviewindow)
         splitter2.addWidget(bottomright)
         splitter2.setSizes([400, 400])
 
         splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter3.addWidget(splitter1)
         splitter3.addWidget(splitter2)
-        splitter3.setSizes([800, 300])
+        splitter3.setSizes([600, 600])
 
         hbox.addWidget(splitter3)
         tradewidget.setLayout(hbox)
@@ -469,6 +480,7 @@ class MainWindow(QtWidgets.QMainWindow):
         manualwidget.order_signal.connect(self._outgoing_order_request_handler)
         manualwidget.qryacc_signal.connect(self._outgoing_account_request_handler)
         manualwidget.qrypos_signal.connect(self._outgoing_position_request_handler)
+        manualwidget.qrycontract_signal.connect(self._outgoing_contract_request_handler)
         manualwidget.manual_req.connect(self._outgoing_queue.put)
         manualwidget.subscribe_signal.connect(self._outgoing_general_request_handler)
         self.manual_widget = manualwidget

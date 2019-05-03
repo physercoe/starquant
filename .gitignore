@@ -57,6 +57,7 @@ extra_dump.py
 .DS_Store
 # user defined 
 *.ipynb
+/test/
 *.vscode/
 *.pyc
 *.yaml

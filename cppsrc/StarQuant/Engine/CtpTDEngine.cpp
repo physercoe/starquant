@@ -177,6 +177,20 @@ namespace StarQuant
 							messenger_->send(pmsgout);
 						}
 						break;
+					case MSG_TYPE_QRY_CONTRACT:
+						if (pmsgin->destination_ != name_)
+							break;				
+						if (estate_ == LOGIN_ACK){
+							queryContract(static_pointer_cast<QryContractMsg>(pmsgin));
+						}
+						else{
+							LOG_DEBUG(logger,name_ <<" is not connected,can not qry contract!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								name_ + " is not connected,can not qry contract!");
+							messenger_->send(pmsgout);
+						}
+						break;				
 					case MSG_TYPE_ENGINE_STATUS:
 						{
 							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
@@ -369,6 +383,7 @@ namespace StarQuant
 		// reserverd for future use,such as local condition order, algo-trading etc.
 	}
 
+
 	void CtpTDEngine::insertOrder(shared_ptr<CtpOrderMsg> pmsg){
 		strcpy(pmsg->data_.orderField_.OrderRef, to_string(orderRef_++).c_str());
 		strcpy(pmsg->data_.orderField_.InvestorID, ctpacc_.userid.c_str());
@@ -529,6 +544,23 @@ namespace StarQuant
 				"Ctp td qry pos error");
 			messenger_->send(pmsgout);
 			LOG_ERROR(logger,name_ <<" qry pos error "<<error);
+		}
+	}
+
+
+	void CtpTDEngine::queryContract(shared_ptr<QryContractMsg> pmsg){
+		CThostFtdcQryInstrumentField req = {0};
+		string ctpsym = pmsg->data_;
+		if (pmsg->symtype_ == ST_Full) 
+			ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(pmsg->data_);
+		strcpy(req.InstrumentID, ctpsym.c_str());
+		int error = this->api_->ReqQryInstrument(&req,reqId_++);
+		if (error != 0){
+			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+				MSG_TYPE_ERROR_QRY_CONTRACT,
+				"Ctp td qry contract error");
+			messenger_->send(pmsgout);
+			LOG_ERROR(logger,name_ <<" qry pos contract "<<error);
 		}
 	}	
 	////////////////////////////////////////////////////// begin callback/incoming function ///////////////////////////////////////
@@ -983,14 +1015,15 @@ namespace StarQuant
 			auto pmsg = make_shared<SecurityMsg>();
 			pmsg->destination_ = DESTINATION_ALL;
 			pmsg->source_ = name_;
-			pmsg->data_.symbol_ = pInstrument->InstrumentName;
+			pmsg->data_.symbol_ = pInstrument->InstrumentID;			
 			pmsg->data_.exchange_ = pInstrument->ExchangeID;
 			pmsg->data_.securityType_ = "F";
 			pmsg->data_.multiplier_ = pInstrument->VolumeMultiple;
 			//pmsg->data_.localName = pInstrument->InstrumentName;
 			pmsg->data_.ticksize_ = pInstrument->PriceTick;			
 			messenger_->send(pmsg);
-			string symbol = boost::to_upper_copy(string(pInstrument->InstrumentName));
+			// string symbol = boost::to_upper_copy(string(pInstrument->InstrumentName));
+			string symbol = pInstrument->InstrumentID;
 			auto it = DataManager::instance().securityDetails_.find(symbol);
 			if (it == DataManager::instance().securityDetails_.end()) {
 				DataManager::instance().securityDetails_[symbol] = pmsg->data_;

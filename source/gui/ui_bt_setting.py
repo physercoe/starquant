@@ -134,6 +134,8 @@ class BtSettingWindow(QtWidgets.QFrame):
         self.btn_showmd.clicked.connect(self.update_analysis)
         bt_setting_layout.addRow(self.btn_showmd)
 
+        bt_setting_layout.addRow(QtWidgets.QLabel('Optimazation'))
+
 
         self.setLayout(bt_setting_layout)
 

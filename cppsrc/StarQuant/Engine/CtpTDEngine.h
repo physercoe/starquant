@@ -44,7 +44,7 @@ namespace StarQuant
 		void cancelOrder(shared_ptr<OrderActionMsg> pmsg);
 		void queryAccount(shared_ptr<MsgHeader> pmsg);
 		void queryPosition(shared_ptr<MsgHeader> pmsg);
-
+		void queryContract(shared_ptr<QryContractMsg> pmsg);
 
 	public:
 		virtual void OnFrontConnected();

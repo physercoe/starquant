@@ -66,5 +66,5 @@ class FillWindow(QtWidgets.QTableWidget):
                 self.setItem(0, 12, QtWidgets.QTableWidgetItem(str(fill_event.client_order_id)))
             except:
                 print('unable to find order that matches this fill')
-
+        self.resizeRowsToContents()
 

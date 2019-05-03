@@ -74,7 +74,7 @@ class OrderWindow(QtWidgets.QTableWidget):
                 self.setItem(0, 11, QtWidgets.QTableWidgetItem(str(order_status_event.client_order_id)))
                 self.setItem(0, 12, QtWidgets.QTableWidgetItem(str(order_status_event.server_order_id)))
                 self.setItem(0, 13, QtWidgets.QTableWidgetItem(order_status_event.orderNo))
-
+        self.resizeRowsToContents()
     def update_order_status(self, client_order_id, order_status):
         row = self._orderids.index(client_order_id)
         self.item(row, 6).setText(order_status.name)

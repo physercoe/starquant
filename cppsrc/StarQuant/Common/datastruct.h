@@ -47,7 +47,10 @@ enum CurrencyType {
     NZD,
     SEK
 };
-
+enum SymbolType {
+    ST_Full = 0,
+    ST_Ctp = 1
+};
 const std::string CurrencyTypeString[] = {
     "USD",
     "AUD",
@@ -391,7 +394,7 @@ class DLL_EXPORT_IMPORT SecurityMsg: public MsgHeader{
 public:
     SecurityMsg() 	:MsgHeader(),data_()
     {
-        msgtype_ = MSG_TYPE::MSG_TYPE_RSP_COMMODITY;
+        msgtype_ = MSG_TYPE::MSG_TYPE_RSP_CONTRACT;
     }
     ~SecurityMsg() {}
 
@@ -697,7 +700,7 @@ public:
         msgtype_ = MSG_TYPE::MSG_TYPE_SUBSCRIBE_MARKET_DATA;
     }
     ~SubscribeMsg() {}
-
+    SymbolType symtype_;
     vector<string> data_;
 
     // virtual string serialize();
@@ -714,11 +717,32 @@ public:
     }
     ~UnSubscribeMsg() {}
 
+    SymbolType symtype_;
     vector<string> data_;
 
     // virtual string serialize();
     virtual void deserialize(const string& msgin);
 };
+
+
+class DLL_EXPORT_IMPORT QryContractMsg: public MsgHeader{
+public:
+    QryContractMsg(string des,string src) :MsgHeader(des,src,MSG_TYPE_QRY_CONTRACT),data_()
+    {
+    }
+    QryContractMsg():MsgHeader(),data_(){
+        msgtype_ = MSG_TYPE::MSG_TYPE_QRY_CONTRACT;
+    }
+    ~QryContractMsg() {}
+
+    SymbolType symtype_;
+    string data_;
+
+    // virtual string serialize();
+    virtual void deserialize(const string& msgin);
+};
+
+
 
 class DLL_EXPORT_IMPORT ErrorMsg: public MsgHeader{
 public:

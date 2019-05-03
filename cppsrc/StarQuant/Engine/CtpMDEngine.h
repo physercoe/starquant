@@ -33,8 +33,8 @@ namespace StarQuant
 		void timertask();
 		void processbuf(); 
 
-		void subscribe(const vector<string>& symbols) ;
-		void unsubscribe(const vector<string>& symbols) ;	
+		void subscribe(const vector<string>& symbols,SymbolType st = ST_Ctp) ;
+		void unsubscribe(const vector<string>& symbols,SymbolType st = ST_Ctp) ;	
 
 
 	public:

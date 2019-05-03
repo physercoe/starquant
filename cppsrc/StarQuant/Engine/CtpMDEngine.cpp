@@ -130,7 +130,7 @@ namespace StarQuant
 					case MSG_TYPE_SUBSCRIBE_MARKET_DATA:
 						if (estate_ == LOGIN_ACK){
 							auto pmsgin2 = static_pointer_cast<SubscribeMsg>(pmsgin);
-							subscribe(pmsgin2->data_);
+							subscribe(pmsgin2->data_,pmsgin2->symtype_);
 						}
 						else{
 							LOG_DEBUG(logger,name_ <<"  is not connected,can not subscribe!");
@@ -143,7 +143,7 @@ namespace StarQuant
 					case MSG_TYPE_UNSUBSCRIBE:
 						if (estate_ == LOGIN_ACK){
 							auto pmsgin2 = static_pointer_cast<UnSubscribeMsg>(pmsgin);
-							unsubscribe(pmsgin2->data_);
+							unsubscribe(pmsgin2->data_,pmsgin2->symtype_);
 						}
 						else{
 							LOG_DEBUG(logger,name_ <<"  is not connected,can not unsubscribe!");
@@ -275,7 +275,7 @@ namespace StarQuant
 		}
 	}
 
-	void CtpMDEngine::subscribe(const vector<string>& symbol) {
+	void CtpMDEngine::subscribe(const vector<string>& symbol,SymbolType st) {
 		int error;
 	    int nCount = symbol.size();
 		if (nCount == 0)
@@ -284,10 +284,12 @@ namespace StarQuant
     	char* insts[nCount];
     	for (int i = 0; i < nCount; i++)
 		{
-			string ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
+			string ctpticker = symbol[i];
+			if (st == ST_Full )
+				string ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
 			insts[i] = (char*)ctpticker.c_str();
 			sout += insts[i] +string("|");
-			lastsubs_.push_back(symbol[i]);	
+			lastsubs_.push_back(ctpticker);	
 		}
 		LOG_INFO(logger,name_ <<" subcribe "<<nCount<<"|"<<sout<<".");
 		error = this->api_->SubscribeMarketData(insts, nCount);
@@ -297,7 +299,7 @@ namespace StarQuant
 				
 	}
 
-	void CtpMDEngine::unsubscribe(const vector<string>& symbol) {
+	void CtpMDEngine::unsubscribe(const vector<string>& symbol,SymbolType st) {
 
 		int error;
 	    int nCount = symbol.size();
@@ -307,11 +309,13 @@ namespace StarQuant
     	char* insts[nCount];
     	for (int i = 0; i < nCount; i++)
 		{
-			string ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
+			string ctpticker = symbol[i];
+			if (st == ST_Full)
+				ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
 			insts[i] = (char*)ctpticker.c_str();
 			sout += insts[i] +string("|");
 			for(auto it = lastsubs_.begin();it != lastsubs_.end();){
-				if (*it == symbol[i]){
+				if (*it == ctpticker){
 					it = lastsubs_.erase(it);
 				}
 				else

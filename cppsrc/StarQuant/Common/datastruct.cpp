@@ -415,25 +415,41 @@ void PosMsg::set(std::shared_ptr<Position> pp){
 
 void OrderActionMsg::deserialize(const string& msgin){
     vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    destination_ = v[0];
+    source_ = v[1];
     data_.clientID_ = stoi(v[3]);
     data_.clientOrderID_ = stol(v[4]);
     data_.serverOrderID_ = stol(v[5]);
 }
 
 void SubscribeMsg::deserialize(const string& msgin){
-    vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);    
-    for (int i = 3; i < v.size(); i++)
+    vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    destination_ = v[0];
+    source_ = v[1];  
+    symtype_ = SymbolType(stoi(v[3]));  
+    for (int i = 4; i < v.size(); i++)
         data_.push_back(v[i]);
 
 }
 
 void UnSubscribeMsg::deserialize(const string& msgin){
-    vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);    
-    for (int i = 3; i < v.size(); i++)
+    vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR); 
+    destination_ = v[0];
+    source_ = v[1];
+    symtype_ = SymbolType(stoi(v[3]));     
+    for (int i = 4; i < v.size(); i++)
         data_.push_back(v[i]);
 
 }
 
+void QryContractMsg::deserialize(const string& msgin){
+    vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    destination_ = v[0];
+    source_ = v[1];     
+    symtype_ = SymbolType(stoi(v[3]));     
+    data_ = v[4];
+
+}
 
 
 string ErrorMsg::serialize(){
