@@ -6,244 +6,365 @@ import pandas as pd
 from dataclasses import dataclass
 from datetime import datetime
 from logging import INFO
+from typing import Any, Callable
 
+from .constant import *
+from .utility import generate_full_symbol,extract_full_symbol,generate_vt_symbol
 
 def retrieve_multiplier_from_full_symbol(symbol = ""):
     return 1.0
 
-class ESTATE(Enum):
-    DISCONNECTED = 0         
-    CONNECTING =1
-    CONNECT_ACK = 2         
-    AUTHENTICATING = 3
-    AUTHENTICATE_ACK = 4      
-    LOGINING = 5
-    LOGIN_ACK = 6             
-    LOGOUTING = 7
-    STOP = 8 
+# ################### Begin base class definitions##################
+class Event(object):
+    """
+    Base Event class for event-driven system
+    """
+    def __init__(self,
+        type:EventType = EventType.HEADER,
+        data:Any = None,
+        des:str = '',
+        src:str = '',
+        ):
 
-class SYMBOL_TYPE(Enum):
-    FULL = 0
-    CTP = 1
+        self.event_type = type
+        self.data = data
+        self.destination = des
+        self.source = src
 
-class MSG_TYPE(Enum):
-    MSG_TYPE_TICK_L1 = 1000
-    MSG_TYPE_TICK_L5 = 1001
-    MSG_TYPE_TICK_L10 = 1002
-    MSG_TYPE_TICK_L20 = 1003
-    MSG_TYPE_BAR_1MIN = 1011
-    MSG_TYPE_BAR_5MIN = 1012
-    MSG_TYPE_BAR_15MIN = 1013
-    MSG_TYPE_BAR_1HOUR = 1014
-    MSG_TYPE_BAR_1DAY = 1015
-    MSG_TYPE_BAR_1WEEK = 1016
-    MSG_TYPE_BAR_1MON = 1017	
-    MSG_TYPE_Trade =1060
-    MSG_TYPE_Bid = 1061
-    MSG_TYPE_Ask = 1062
-    MSG_TYPE_Full = 1063
-    MSG_TYPE_BidPrice = 1064
-    MSG_TYPE_BidSize = 1065
-    MSG_TYPE_AskPrice = 1066
-    MSG_TYPE_AskSize = 1067
-    MSG_TYPE_TradePrice = 1068
-    MSG_TYPE_TradeSize = 1069
-    MSG_TYPE_OpenPrice = 1070
-    MSG_TYPE_HighPrice = 1071
-    MSG_TYPE_LowPrice = 1072
-    MSG_TYPE_ClosePrice = 1073
-    MSG_TYPE_Volume = 1074
-    MSG_TYPE_OpenInterest = 1075
-    MSG_TYPE_Hist =1076
-# 	11* sys control
-    MSG_TYPE_ENGINE_STATUS = 1101
-    MSG_TYPE_ENGINE_START = 1111
-    MSG_TYPE_ENGINE_STOP = 1112
-    MSG_TYPE_ENGINE_RESET = 1113
-    MSG_TYPE_ENGINE_CONNECT = 1120
-    MSG_TYPE_ENGINE_DISCONNECT = 1121
-    MSG_TYPE_SWITCH_TRADING_DAY = 1141
-#  12* strategy
-    MSG_TYPE_STRATEGY_START = 1210
-    MSG_TYPE_STRATEGY_END = 1211
-#  13*  tast
-    MSG_TYPE_TIMER = 1301 
-    MSG_TYPE_TASK_START = 1310
-    MSG_TYPE_TASK_STOP = 1311
-#  20* engine action
-    # request
-    MSG_TYPE_SUBSCRIBE_MARKET_DATA = 2001
-    MSG_TYPE_SUBSCRIBE_L2_MD = 2002
-    MSG_TYPE_SUBSCRIBE_INDEX = 2003
-    MSG_TYPE_SUBSCRIBE_ORDER_TRADE = 2004
-    MSG_TYPE_UNSUBSCRIBE = 2011
-    MSG_TYPE_QRY_COMMODITY = 2021	
-    MSG_TYPE_QRY_CONTRACT   = 2022
-    MSG_TYPE_QRY_POS       = 2023
-    MSG_TYPE_QRY_ACCOUNT   = 2024
-    MSG_TYPE_ORDER         = 2030  #insert order
-    MSG_TYPE_ORDER_PAPER = 2031
-    MSG_TYPE_ORDER_CTP = 2032
-    MSG_TYPE_ORDER_CTP_PARKED = 2033
-    MSG_TYPE_ORDER_TAP = 2034
-    MSG_TYPE_ORDER_XTP = 2035
-    MSG_TYPE_ORDER_ACTION  = 2040  #cancel order
-    MSG_TYPE_CANCEL_ORDER = 2041
-    MSG_TYPE_CANCEL_ALL = 2042
-    MSG_TYPE_ORDER_ACTION_CTP = 2043
-    MSG_TYPE_ORDER_ACTION_TAP = 2044
-    MSG_TYPE_ORDER_ACTION_XTP =2045
-    #call back
-    MSG_TYPE_RSP_POS       = 2500
-    MSG_TYPE_RTN_ORDER     = 2510
-    MSG_TYPE_RTN_ORDER_CTP     = 2511 
-    MSG_TYPE_RTN_ORDER_TAP     = 2512
-    MSG_TYPE_RTN_ORDER_XTP     = 2513
-    MSG_TYPE_RTN_TRADE     = 2520
-    MSG_TYPE_RTN_TRADE_CTP     = 2521
-    MSG_TYPE_RTN_TRADE_TAP     = 2522
-    MSG_TYPE_RTN_TRADE_XTP     = 2523
-    MSG_TYPE_RSP_ACCOUNT   = 2530
-    MSG_TYPE_RSP_CONTRACT   = 2540
-    MSG_TYPE_RSP_COMMODITY   = 2541
-#	31*: info class msg mainly about sys
-    MSG_TYPE_INFO   = 3100
-    MSG_TYPE_INFO_ENGINE_MDCONNECTED = 3101
-    MSG_TYPE_INFO_ENGINE_MDDISCONNECTED = 3102
-    MSG_TYPE_INFO_ENGINE_TDCONNECTED = 3103
-    MSG_TYPE_INFO_ENGINE_TDDISCONNECTED = 3104
-    MSG_TYPE_INFO_HEARTBEAT_WARNING =3105
-    MSG_TYPE_INFO_ENGINE_STATUS = 3106
-#	34*:error class msg
-    MSG_TYPE_ERROR = 3400
-    MSG_TYPE_ERROR_ENGINENOTCONNECTED = 3401
-    MSG_TYPE_ERROR_SUBSCRIBE = 3402
-    MSG_TYPE_ERROR_INSERTORDER = 3403
-    MSG_TYPE_ERROR_CANCELORDER = 3404
-    MSG_TYPE_ERROR_ORGANORDER = 3405 #order is not tracted by order manager
-    MSG_TYPE_ERROR_QRY_ACC = 3406
-    MSG_TYPE_ERROR_QRY_POS = 3407
-    MSG_TYPE_ERROR_QRY_CONTRACT = 3408
-    MSG_TYPE_ERROR_CONNECT = 3409  #login fail
-    MSG_TYPE_ERROR_DISCONNECT = 3410
-    MSG_TYPE_ERROR_NOACCOUNT = 3411
-#  40*: test class msg
-    MSG_TYPE_TEST = 4000
-    MSG_TYPE_BASE = 9
-class EventType(Enum):
-    HEADER = 0
-    TICK = 1000
-    BAR = 1011
-    HISTORICAL = 1076
-    GENERAL_REQ = 1100
-    ENGINE_CONNECT = 1120
-    ENGINE_DISCONNECT = 1121
-    TIMER = 1301
-    SUBSCRIBE = 2001
-    UNSUBSCIRBE = 2011
-    QRY_CONTRACT = 2022
-    QRY_POS = 2023
-    QRY_ACCOUNT = 2024
-    ORDER = 2031
-    CANCEL = 2033
-    ORDERSTATUS = 2052
-    FILL = 2053
-    ACCOUNT = 2054
-    POSITION = 2051
-    CONTRACT = 2055
-    INFO = 3100
-    ERROR = 3400
+    @property
+    def typename(self):
+        return self.event_type.name
 
-class OrderFlag(Enum):
-    OPEN = 0              # in use
-    CLOSE = 1
-    CLOSE_TODAY = 2          # in use
-    CLOSE_YESTERDAY = 3
-    FORCECLOSE =4
-    FORCEOFF = 5
-    LOCALFORCECLOSE = 6        # in use
+    def serialize(self):
+        msg = self.destination + '|' + self.source + '|' + str(self.event_type.value)
+        if self.data:
+            msg = msg + '|' + self.data.serialize()
 
-class OrderType(Enum):
-    MKT = 0
-    MKTC = 1    #market on close
-    LMT = 2     #limit
-    LMTC = 3
-    PTM = 4        # peggedtomarket
-    STP = 5       
-    STPLMT = 6
-    TRAIING_STOP = 7
-    REL = 8           #relative
-    VWAP = 9        # volumeweightedaverageprice
-    TSL = 10            #trailingstoplimit
-    VLT = 11           #volatility
-    NONE = 12
-    EMPTY = 13
-    DEFAULT = 14
-    SCALE = 15        
-    MKTT =16           # market if touched
-    LMTT =17           # limit if touched
-    OPTE = 18         # used in tap opt exec
-    OPTA = 19        # opt abandon
-    REQQ = 20        #  request quot
-    RSPQ = 21       # response quot
-    SWAP = 22        # swap
-    FAK = 23
-    FOK = 24
+    def deserialize(self,msg:str):
+        v = msg.split('|',3)
+        try:
+            self.destination = v[0]
+            self.source = v[1]
+            self.type = EventType(int(v[2]))
+            if self.data:
+                self.data.deserialize(v[3])
+        except:
+            pass
 
-class OrderStatus(Enum):
-    UNKNOWN = 0
-    NEWBORN = 1              # in use
-    PENDING_SUBMIT = 2
-    SUBMITTED = 3           # in use
-    ACKNOWLEDGED = 4
-    QUEUED = 5        # in use
-    PARTIALLY_FILLED = 6
-    FILLED = 7              # in use
-    PENDING_CANCEL = 8
-    PENDING_MODIFY = 9
-    CANCELED = 10
-    LEFTDELETE =11
-    SUSPENDED =12
-    API_PENDING = 13
-    API_CANCELLED = 14
-    FAIL = 15
-    DELETED = 16
-    EFFECT = 17
-    APPLY = 18
-    ERROR = 19
-    TRIG = 20
-    EXCTRIG = 21
+@dataclass
+class BaseData:
+    """
+    Any data object needs a gateway_name as source 
+    and should inherit base data.
+    """
 
-class TickType(Enum):
-    # same as msg_type
-    Tick_L1 = 1000
-    Tick_L5 = 1001
-    Tick_L10 =1002
-    Tick_L20 = 1003
-    Bar_1min = 1011
-    Bar_5min = 1012
-    Bar_15min = 1013
-    Bar_1h = 1014
-    Bar_1d = 1015
-    Bar_1w = 1016
-    Bar_1m = 1017
-    Trade = 1060		
-    Bid = 1061
-    Ask = 1062
-    Full = 1063
-    BidPrice = 1064
-    BidSize = 1065
-    AskPrice = 1066
-    AskSize = 1067
-    Price = 1068
-    TradeSize = 1069
-    OpenPrice = 1070
-    HighPrice = 1071
-    LowPrice = 1072
-    ClosePrice = 1073
-    Volume = 1074
-    OpenInterest = 1075
-    Bar = 1076
+    gateway_name: str
+    def serialize(self):
+        pass
+    def deserialize(self):
+        pass
+
+@dataclass
+class TickData(BaseData):
+    """
+    Tick data contains information about:
+        * last trade in market
+        * orderbook snapshot
+        * intraday market statistics.
+    """
+
+    symbol: str = ""
+    exchange: Exchange = Exchange.SHFE
+    datetime: datetime = datetime(2019,1,1)
+
+    name: str = ""
+    volume: float = 0
+    last_price: float = 0
+    last_volume: float = 0
+    limit_up: float = 0
+    limit_down: float = 0
+    
+    depth :int = 0
+
+    open_price: float = 0
+    high_price: float = 0
+    low_price: float = 0
+    pre_close: float = 0
+
+    bid_price_1: float = 0
+    bid_price_2: float = 0
+    bid_price_3: float = 0
+    bid_price_4: float = 0
+    bid_price_5: float = 0
+
+    ask_price_1: float = 0
+    ask_price_2: float = 0
+    ask_price_3: float = 0
+    ask_price_4: float = 0
+    ask_price_5: float = 0
+
+    bid_volume_1: float = 0
+    bid_volume_2: float = 0
+    bid_volume_3: float = 0
+    bid_volume_4: float = 0
+    bid_volume_5: float = 0
+
+    ask_volume_1: float = 0
+    ask_volume_2: float = 0
+    ask_volume_3: float = 0
+    ask_volume_4: float = 0
+    ask_volume_5: float = 0
+
+    open_interest:float = 0
+
+
+    def __post_init__(self):
+        """"""
+        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+        self.timestamp = Timestamp(self.datetime)
+        self.full_symbol = generate_full_symbol(self.exchange,self.symbol)
+    
+    
+    def deserialize(self):
+        try:
+            v = msg.split('|')
+            self.full_symbol = v[0]  
+            self.timestamp = pd.to_datetime(v[1])
+            self.datetime = self.timestamp.to_pydatetime()
+            self.symbol, self.exchange = extract_full_symbol(self.full_symbol)
+            self.vt_symbol = generate_vt_symbol(self.symbol,self.exchange)
+            self.last_price = float(v[2])
+            self.volume = int(v[3])
+
+            if (len(v) < 17):
+                self.depth = 1
+                self.bid_price_1 = float(v[4])
+                self.bid_volume_1 = int(v[5])
+                self.ask_price_1 = float(v[6])
+                self.ask_volume_1 = int(v[7])
+                self.open_interest = int(v[8])
+                self.open_price = float(v[9])
+                self.high_price = float(v[10])
+                self.low_price = float(v[11])
+                self.pre_close = float(v[12])
+                self.limit_up = float(v[13])
+                self.limit_down = float(v[14])                
+            else:
+                self.depth = 5
+                self.bid_price_1 = float(v[4])
+                self.bid_volume_1 = int(v[5])
+                self.ask_price_1 = float(v[6])
+                self.ask_volume_1 = int(v[7])
+                self.bid_price_2 = float(v[8])
+                self.bid_volume_2 = int(v[9])
+                self.ask_price_2 = float(v[10])
+                self.ask_volume_2 = int(v[11])
+                self.bid_price_3 = float(v[12])
+                self.bid_volume_3 = int(v[13])
+                self.ask_price_3 = float(v[14])
+                self.ask_volume_3 = int(v[15])
+                self.bid_price_4 = float(v[16])
+                self.bid_volume_4 = int(v[17])
+                self.ask_price_4 = float(v[18])
+                self.ask_volume_4 = int(v[19])
+                self.bid_price_5 = float(v[20])
+                self.bid_volume_5 = int(v[21])
+                self.ask_price_5 = float(v[22])
+                self.ask_volume_5 = int(v[23])
+                self.open_interest = int(v[24])
+                self.open_price = float(v[25])
+                self.high_price = float(v[26])
+                self.low_price = float(v[27])
+                self.pre_close = float(v[28])
+                self.limit_up = float(v[29])
+                self.limit_down = float(v[30])
+        except:
+            pass
+
+
+@dataclass
+class BarData(BaseData):
+    """
+    Candlestick bar data of a certain trading period.
+    """
+
+    symbol: str
+    exchange: Exchange
+    datetime: datetime
+
+    interval: Interval = None
+    volume: float = 0
+    open_price: float = 0
+    high_price: float = 0
+    low_price: float = 0
+    close_price: float = 0
+    adj_close_price :float = 0.0
+
+    def __post_init__(self):
+        """"""
+        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+        self.full_symbol = generate_full_symbol(self.exchange,self.symbol)
+        self.bar_start_time = pd.Timestamp(self.datetime)
+    
+
+
+ACTIVE_STATUSES = [
+    OrderStatus.NEWBORN,
+    OrderStatus.PENDING_SUBMIT,
+    OrderStatus.SUBMITTED,
+    OrderStatus.QUEUED,
+    OrderStatus.PENDING_CANCEL
+]
+
+@dataclass
+class OrderData(BaseData):
+    """
+    Order data contains information for tracking lastest status 
+    of a specific order.
+    """
+
+    symbol: str
+    exchange: Exchange
+    orderid: str
+
+    type: OrderType = OrderType.LMT
+    direction: Direction = ""
+    offset: Offset = Offset.NONE
+    price: float = 0
+    volume: float = 0
+    traded: float = 0
+    status: OrderStatus = OrderStatus.NEWBORN
+    time: str = ""
+
+    def __post_init__(self):
+        """"""
+        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+        self.vt_orderid = f"{self.gateway_name}.{self.orderid}"
+
+    def is_active(self):
+        """
+        Check if the order is active.
+        """
+        if self.status in ACTIVE_STATUSES:
+            return True
+        else:
+            return False
+
+    def create_cancel_request(self):
+        """
+        Create cancel request object from order.
+        """
+        req = CancelRequest(
+            orderid=self.orderid, symbol=self.symbol, exchange=self.exchange
+        )
+        return req
+
+
+@dataclass
+class TradeData(BaseData):
+    """
+    Trade data contains information of a fill of an order. One order
+    can have several trade fills.
+    """
+
+    symbol: str
+    exchange: Exchange
+    orderid: str
+    tradeid: str
+    direction: Direction = ""
+
+    offset: Offset = Offset.NONE
+    price: float = 0
+    volume: float = 0
+    time: str = ""
+
+    def __post_init__(self):
+        """"""
+        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+        self.vt_orderid = f"{self.gateway_name}.{self.orderid}"
+        self.vt_tradeid = f"{self.gateway_name}.{self.tradeid}"
+
+
+@dataclass
+class PositionData(BaseData):
+    """
+    Positon data is used for tracking each individual position holding.
+    """
+
+    symbol: str
+    exchange: Exchange
+    direction: Direction
+
+    volume: float = 0
+    frozen: float = 0
+    price: float = 0
+    pnl: float = 0
+    yd_volume: float = 0
+
+    def __post_init__(self):
+        """"""
+        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+        self.vt_positionid = f"{self.vt_symbol}.{self.direction}"
+
+
+@dataclass
+class AccountData(BaseData):
+    """
+    Account data contains information about balance, frozen and
+    available.
+    """
+
+    accountid: str
+
+    balance: float = 0
+    frozen: float = 0
+
+    def __post_init__(self):
+        """"""
+        self.available = self.balance - self.frozen
+        self.vt_accountid = f"{self.gateway_name}.{self.accountid}"
+
+
+@dataclass
+class LogData(BaseData):
+    """
+    Log data is used for recording log messages on GUI or in log files.
+    """
+
+    msg: str
+    level: int = INFO
+
+    def __post_init__(self):
+        """"""
+        self.time = datetime.now()
+
+
+@dataclass
+class ContractData(BaseData):
+    """
+    Contract data contains basic information about each contract traded.
+    """
+
+    symbol: str
+    exchange: Exchange
+    name: str
+    product: Product
+    size: int
+    pricetick: float
+
+    min_volume: float = 1           # minimum trading volume of the contract
+    stop_supported: bool = False    # whether server supports stop order
+    net_position: bool = False      # whether gateway uses net position volume
+
+    option_strike: float = 0
+    option_underlying: str = ""     # vt_symbol of underlying contract
+    option_type: OptionType = None
+    option_expiry: datetime = None
+
+    def __post_init__(self):
+        """"""
+        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+
 
 class Position(object):
     def __init__(self, full_symbol, average_price=0, size=0, realized_pnl=0):
@@ -368,17 +489,7 @@ class Position(object):
         self.realized_pnl =(1-ratio) * self.realized_pnl
         return tmp
 
-class Event(object):
-    """
-    Base Event class for event-driven system
-    """
-    def __init__(self):
-        self.destination = ''
-        self.source = ''
-        self.event_type = EventType.HEADER
-    @property
-    def typename(self):
-        return self.event_type.name
+
 
 class AccountEvent(Event):
     """
@@ -1060,347 +1171,6 @@ class PaperOrderField(object):
 
 
 # ############################# vnpy 's data #########################
-
-class Direction(Enum):
-    """
-    Direction of order/trade/position.
-    """
-    LONG = "多"
-    SHORT = "空"
-    NET = "净"
-
-
-class Offset(Enum):
-    """
-    Offset of order/trade.
-    """
-    NONE = ""
-    OPEN = "开"
-    CLOSE = "平"
-    CLOSETODAY = "平今"
-    CLOSEYESTERDAY = "平昨"
-
-class OptionType(Enum):
-    """
-    Option type.
-    """
-    CALL = "看涨期权"
-    PUT = "看跌期权"
-
-class Product(Enum):
-    """
-    Product class.
-    """
-    EQUITY = "股票"
-    FUTURES = "期货"
-    OPTION = "期权"
-    INDEX = "指数"
-    FOREX = "外汇"
-    SPOT = "现货"
-    ETF = "ETF"
-    BOND = "债券"
-    WARRANT = "权证"
-    SPREAD = "价差"
-    FUND = "基金"
-class Exchange(Enum):
-    """
-    Exchange.
-    """
-    # Chinese
-    CFFEX = "CFFEX"
-    SHFE = "SHFE"
-    CZCE = "CZCE"
-    DCE = "DCE"
-    INE = "INE"
-    SSE = "SSE"
-    SZSE = "SZSE"
-    SGE = "SGE"
-
-    # Global
-    SMART = "SMART"
-    NYMEX = "NYMEX"
-    GLOBEX = "GLOBEX"
-    IDEALPRO = "IDEALPRO"
-    CME = "CME"
-    ICE = "ICE"
-    SEHK = "SEHK"
-    HKFE = "HKFE"
-
-    # CryptoCurrency
-    BITMEX = "BITMEX"
-    OKEX = "OKEX"
-    HUOBI = "HUOBI"
-    BITFINEX = "BITFINEX"
-
-
-class Currency(Enum):
-    """
-    Currency.
-    """
-    USD = "USD"
-    HKD = "HKD"
-    CNY = "CNY"
-
-class Interval(Enum):
-    """
-    Interval of bar data.
-    """
-    MINUTE = "1m"
-    HOUR = "1h"
-    DAILY = "d"
-    WEEKLY = "w"
-class EngineType(Enum):
-    LIVE = "实盘"
-    BACKTESTING = "回测"
-
-
-class BacktestingMode(Enum):
-    BAR = 1
-    TICK = 2
-
-
-@dataclass
-class BaseData:
-    """
-    Any data object needs a gateway_name as source 
-    and should inherit base data.
-    """
-
-    gateway_name: str
-
-
-@dataclass
-class TickData(BaseData):
-    """
-    Tick data contains information about:
-        * last trade in market
-        * orderbook snapshot
-        * intraday market statistics.
-    """
-
-    symbol: str
-    exchange: Exchange
-    datetime: datetime
-
-    name: str = ""
-    volume: float = 0
-    last_price: float = 0
-    last_volume: float = 0
-    limit_up: float = 0
-    limit_down: float = 0
-
-    open_price: float = 0
-    high_price: float = 0
-    low_price: float = 0
-    pre_close: float = 0
-
-    bid_price_1: float = 0
-    bid_price_2: float = 0
-    bid_price_3: float = 0
-    bid_price_4: float = 0
-    bid_price_5: float = 0
-
-    ask_price_1: float = 0
-    ask_price_2: float = 0
-    ask_price_3: float = 0
-    ask_price_4: float = 0
-    ask_price_5: float = 0
-
-    bid_volume_1: float = 0
-    bid_volume_2: float = 0
-    bid_volume_3: float = 0
-    bid_volume_4: float = 0
-    bid_volume_5: float = 0
-
-    ask_volume_1: float = 0
-    ask_volume_2: float = 0
-    ask_volume_3: float = 0
-    ask_volume_4: float = 0
-    ask_volume_5: float = 0
-
-    def __post_init__(self):
-        """"""
-        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
-
-
-@dataclass
-class BarData(BaseData):
-    """
-    Candlestick bar data of a certain trading period.
-    """
-
-    symbol: str
-    exchange: Exchange
-    datetime: datetime
-
-    interval: Interval = None
-    volume: float = 0
-    open_price: float = 0
-    high_price: float = 0
-    low_price: float = 0
-    close_price: float = 0
-
-    def __post_init__(self):
-        """"""
-        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
-
-ACTIVE_STATUSES = [
-    OrderStatus.NEWBORN,
-    OrderStatus.PENDING_SUBMIT,
-    OrderStatus.SUBMITTED,
-    OrderStatus.QUEUED,
-    OrderStatus.PENDING_CANCEL
-]
-
-@dataclass
-class OrderData(BaseData):
-    """
-    Order data contains information for tracking lastest status 
-    of a specific order.
-    """
-
-    symbol: str
-    exchange: Exchange
-    orderid: str
-
-    type: OrderType = OrderType.LMT
-    direction: Direction = ""
-    offset: Offset = Offset.NONE
-    price: float = 0
-    volume: float = 0
-    traded: float = 0
-    status: OrderStatus = OrderStatus.NEWBORN
-    time: str = ""
-
-    def __post_init__(self):
-        """"""
-        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
-        self.vt_orderid = f"{self.gateway_name}.{self.orderid}"
-
-    def is_active(self):
-        """
-        Check if the order is active.
-        """
-        if self.status in ACTIVE_STATUSES:
-            return True
-        else:
-            return False
-
-    def create_cancel_request(self):
-        """
-        Create cancel request object from order.
-        """
-        req = CancelRequest(
-            orderid=self.orderid, symbol=self.symbol, exchange=self.exchange
-        )
-        return req
-
-
-@dataclass
-class TradeData(BaseData):
-    """
-    Trade data contains information of a fill of an order. One order
-    can have several trade fills.
-    """
-
-    symbol: str
-    exchange: Exchange
-    orderid: str
-    tradeid: str
-    direction: Direction = ""
-
-    offset: Offset = Offset.NONE
-    price: float = 0
-    volume: float = 0
-    time: str = ""
-
-    def __post_init__(self):
-        """"""
-        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
-        self.vt_orderid = f"{self.gateway_name}.{self.orderid}"
-        self.vt_tradeid = f"{self.gateway_name}.{self.tradeid}"
-
-
-@dataclass
-class PositionData(BaseData):
-    """
-    Positon data is used for tracking each individual position holding.
-    """
-
-    symbol: str
-    exchange: Exchange
-    direction: Direction
-
-    volume: float = 0
-    frozen: float = 0
-    price: float = 0
-    pnl: float = 0
-    yd_volume: float = 0
-
-    def __post_init__(self):
-        """"""
-        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
-        self.vt_positionid = f"{self.vt_symbol}.{self.direction}"
-
-
-@dataclass
-class AccountData(BaseData):
-    """
-    Account data contains information about balance, frozen and
-    available.
-    """
-
-    accountid: str
-
-    balance: float = 0
-    frozen: float = 0
-
-    def __post_init__(self):
-        """"""
-        self.available = self.balance - self.frozen
-        self.vt_accountid = f"{self.gateway_name}.{self.accountid}"
-
-
-@dataclass
-class LogData(BaseData):
-    """
-    Log data is used for recording log messages on GUI or in log files.
-    """
-
-    msg: str
-    level: int = INFO
-
-    def __post_init__(self):
-        """"""
-        self.time = datetime.now()
-
-
-@dataclass
-class ContractData(BaseData):
-    """
-    Contract data contains basic information about each contract traded.
-    """
-
-    symbol: str
-    exchange: Exchange
-    name: str
-    product: Product
-    size: int
-    pricetick: float
-
-    min_volume: float = 1           # minimum trading volume of the contract
-    stop_supported: bool = False    # whether server supports stop order
-    net_position: bool = False      # whether gateway uses net position volume
-
-    option_strike: float = 0
-    option_underlying: str = ""     # vt_symbol of underlying contract
-    option_type: OptionType = None
-    option_expiry: datetime = None
-
-    def __post_init__(self):
-        """"""
-        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
-
 
 @dataclass
 class SubscribeRequest:

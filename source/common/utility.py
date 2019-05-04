@@ -6,10 +6,29 @@ import json
 from pathlib import Path
 from typing import Callable
 
-import numpy as np
-import talib
+from .constant import Exchange
 
-from .datastruct import Exchange
+def extract_full_symbol(full_symbol: str):
+    """
+    :return: (symbol, exchange)
+    """
+    tmp =  full_symbol.split(' ')
+    symbol = tmp[2] + tmp[3]
+    exchange_str = tmp[0]
+    return symbol, Exchange(exchange_str)
+
+# from ctp symbol to full symbol
+def generate_full_symbol(exchange: Exchange, symbol: str, type:str = 'F'):
+    for count, word in enumerate(symbol):
+        if word.isdigit():
+            break
+    product = symbol[:count]
+    year = symbol[count]
+    month = symbol[count + 1:]
+
+    fullsym = exchange.value + ' ' + type + ' ' + product.upper() + ' ' + year + month 
+    return fullsym
+
 
 
 def extract_vt_symbol(vt_symbol: str):
@@ -24,6 +43,11 @@ def generate_vt_symbol(symbol: str, exchange: Exchange):
     return f'{symbol}.{exchange.value}'
 
 
+
+
+
+
+
 def _get_trader_dir(temp_name: str):
     """
     Get path where trader is running in.
@@ -31,7 +55,7 @@ def _get_trader_dir(temp_name: str):
     cwd = Path.cwd()
     temp_path = cwd.joinpath(temp_name)
 
-    # If .vntrader folder exists in current working directory,
+    # If .StarQuant folder exists in current working directory,
     # then use it as trader running path.
     if temp_path.exists():
         return cwd, temp_path
@@ -40,14 +64,14 @@ def _get_trader_dir(temp_name: str):
     home_path = Path.home()
     temp_path = home_path.joinpath(temp_name)
 
-    # Create .vntrader folder under home path if not exist.
+    # Create .StarQuant folder under home path if not exist.
     if not temp_path.exists():
         temp_path.mkdir()
 
     return home_path, temp_path
 
 
-TRADER_DIR, TEMP_DIR = _get_trader_dir(".vntrader")
+TRADER_DIR, TEMP_DIR = _get_trader_dir(".StarQuant")
 
 
 def get_file_path(filename: str):
