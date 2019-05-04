@@ -6,7 +6,7 @@ from typing import Any, Callable
 
 from ..common.datastruct import *
 from ..common.sqglobal import dotdict
-
+from ..common.utility import virtual
 
 class StrategyBase(metaclass=ABCMeta):
     """
@@ -141,15 +141,17 @@ class StrategyBase(metaclass=ABCMeta):
 
     @virtual 
     def on_init(self, params_dict=None):
-        self.inited = True
+        # self.inited = True
 
-        # set params
-        if params_dict is not None:
-            for key, value in params_dict.items():
-                try:
-                    self.__setattr__(key, value)
-                except:
-                    pass
+        # # set params
+        # if params_dict is not None:
+        #     for key, value in params_dict.items():
+        #         try:
+        #             self.__setattr__(key, value)
+        #         except:
+        #             pass
+        pass
+        
     @virtual 
     def on_start(self):
         self.active = True
@@ -379,8 +381,8 @@ class StrategyBase(metaclass=ABCMeta):
         """
         Return whether the cta_engine is backtesting or live trading.
         """
-        # return self.cta_engine.get_engine_type()
-        pass
+        return self._events_engine.engine_type
+        
 
     def load_bar(
         self,
@@ -394,13 +396,13 @@ class StrategyBase(metaclass=ABCMeta):
         if not callback:
             callback = self.on_bar
         pass
-        # self.cta_engine.load_bar(self.vt_symbol, days, interval, callback)
+        self._events_engine.load_bar(self.symbol, days, interval, callback)
 
     def load_tick(self, days: int):
         """
         Load historical tick data for initializing strategy.
         """
-        # self.cta_engine.load_tick(self.vt_symbol, days, self.on_tick)
+        self._events_engine.load_tick(self.symbol, days, self.on_tick)
         pass
 
 
@@ -432,8 +434,6 @@ class StrategyBase(metaclass=ABCMeta):
 
 
 
-TickData = TickEvent
-BarData = BarEvent
 
 class CtaSignal(ABC):
     """"""
@@ -586,10 +586,3 @@ class Strategies(StrategyBase):
             strategy.on_tick(event)
 
 
-def virtual(func: "callable"):
-    """
-    mark a function as "virtual", which means that this function can be override.
-    any base class should use this or @abstractmethod to decorate all functions
-    that can be (re)implemented by subclasses.
-    """
-    return func
