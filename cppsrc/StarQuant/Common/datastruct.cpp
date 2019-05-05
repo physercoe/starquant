@@ -63,8 +63,16 @@ string SecurityMsg::serialize(){
         + SERIALIZATION_SEPARATOR + source_
         + SERIALIZATION_SEPARATOR + to_string(msgtype_)
         + SERIALIZATION_SEPARATOR +	data_.symbol_
+        + SERIALIZATION_SEPARATOR +	data_.exchange_
+        + SERIALIZATION_SEPARATOR +	data_.localName_
+        + SERIALIZATION_SEPARATOR +	data_.securityType_
+        + SERIALIZATION_SEPARATOR + to_string(data_.multiplier_)
         + SERIALIZATION_SEPARATOR + to_string(data_.ticksize_)
-        + SERIALIZATION_SEPARATOR + to_string(data_.multiplier_);
+        + SERIALIZATION_SEPARATOR + data_.underlyingSymbol_
+        + SERIALIZATION_SEPARATOR + data_.optionType_
+        + SERIALIZATION_SEPARATOR + to_string(data_.strikePrice_)
+        + SERIALIZATION_SEPARATOR + data_.expiryDate_ ;
+        
     return s;
 }
 
@@ -81,6 +89,8 @@ string AccMsg::serialize(){
         + SERIALIZATION_SEPARATOR + to_string(data_.fullMaintainanceMargin_)
         + SERIALIZATION_SEPARATOR + to_string(data_.realizedPnL_)
         + SERIALIZATION_SEPARATOR + to_string(data_.unrealizedPnL_)
+        + SERIALIZATION_SEPARATOR + to_string(data_.balance_)
+        + SERIALIZATION_SEPARATOR + to_string(data_.frozen_)
         + SERIALIZATION_SEPARATOR + ymdhmsf();
     return s;
 }
@@ -92,6 +102,7 @@ string FillMsg::serialize(){
         + SERIALIZATION_SEPARATOR +	std::to_string(data_.serverOrderID_)
         + SERIALIZATION_SEPARATOR + std::to_string(data_.clientOrderID_)
         + SERIALIZATION_SEPARATOR + std::to_string(data_.clientID_)
+        + SERIALIZATION_SEPARATOR + data_.localNo_
         + SERIALIZATION_SEPARATOR + data_.orderNo_
         + SERIALIZATION_SEPARATOR + data_.tradeNo_
         + SERIALIZATION_SEPARATOR + data_.tradeTime_
@@ -142,6 +153,7 @@ std::shared_ptr<Order> OrderMsg::toPOrder(){
     o->fullSymbol_ = data_.fullSymbol_; 
     o->price_ = data_.price_;
     o->quantity_ = data_.quantity_;
+    o->tradedvol_ = data_.tradedvol_;
     o->flag_ = data_.flag_;   
     o->serverOrderID_ = data_.serverOrderID_;
     o->brokerOrderID_ = data_.brokerOrderID_;
@@ -182,6 +194,7 @@ std::shared_ptr<Order> PaperOrderMsg::toPOrder(){
     o->fullSymbol_ = data_.fullSymbol_;
     o->price_ = data_.price_;
     o->quantity_ = data_.quantity_;
+    o->tradedvol_ = data_.tradedvol_;
     o->flag_ = data_.flag_;       
     o->serverOrderID_ = data_.serverOrderID_;
     o->brokerOrderID_ = data_.brokerOrderID_;
@@ -244,6 +257,7 @@ std::shared_ptr<Order> CtpOrderMsg::toPOrder(){
     o->fullSymbol_ = data_.fullSymbol_;
     o->price_ = data_.price_;
     o->quantity_ = data_.quantity_;
+    o->tradedvol_ = data_.tradedvol_;
     o->flag_ = data_.flag_;          
     o->serverOrderID_ = data_.serverOrderID_;
     o->brokerOrderID_ = data_.brokerOrderID_;
@@ -301,6 +315,7 @@ std::shared_ptr<Order> CtpParkedOrderMsg::toPOrder(){
     o->fullSymbol_ = data_.fullSymbol_;
     o->price_ = data_.price_;
     o->quantity_ = data_.quantity_;
+    o->tradedvol_ = data_.tradedvol_;
     o->flag_ = data_.flag_;          
     o->serverOrderID_ = data_.serverOrderID_;
     o->brokerOrderID_ = data_.brokerOrderID_;
@@ -326,6 +341,7 @@ void OrderStatusMsg::set(std::shared_ptr<Order> po){
     data_.fullSymbol_ = po->fullSymbol_;
     data_.price_ = po->price_;
     data_.quantity_ = po->quantity_;
+    data_.tradedvol_ = po->tradedvol_;
     data_.flag_ = po->flag_;       
     data_.serverOrderID_ = po->serverOrderID_;
     data_.brokerOrderID_ = po->brokerOrderID_;
@@ -350,6 +366,7 @@ string OrderStatusMsg::serialize(){
         + SERIALIZATION_SEPARATOR + data_.fullSymbol_
         + SERIALIZATION_SEPARATOR + std::to_string(data_.price_)
         + SERIALIZATION_SEPARATOR + std::to_string(data_.quantity_)
+        + SERIALIZATION_SEPARATOR + std::to_string(data_.tradedvol_)
         + SERIALIZATION_SEPARATOR + std::to_string(data_.flag_)                             
         + SERIALIZATION_SEPARATOR + std::to_string(data_.serverOrderID_)
         + SERIALIZATION_SEPARATOR + std::to_string(data_.brokerOrderID_)
@@ -376,15 +393,7 @@ string PosMsg::serialize(){
         + SERIALIZATION_SEPARATOR + std::to_string(data_.preSize_)
         + SERIALIZATION_SEPARATOR + std::to_string(data_.freezedSize_)
         + SERIALIZATION_SEPARATOR + std::to_string(data_.closedpl_)
-        + SERIALIZATION_SEPARATOR + std::to_string(data_.openpl_)
-        + SERIALIZATION_SEPARATOR + data_.type_        
-        + SERIALIZATION_SEPARATOR + data_.posNo_
-        + SERIALIZATION_SEPARATOR + data_.openOrderNo_
-        + SERIALIZATION_SEPARATOR + std::to_string(data_.openClientID_)
-        + SERIALIZATION_SEPARATOR + data_.openapi_
-        + SERIALIZATION_SEPARATOR + data_.closeOrderNo_	
-        + SERIALIZATION_SEPARATOR + std::to_string(data_.closeClientID_)
-        + SERIALIZATION_SEPARATOR + data_.closeapi_             
+        + SERIALIZATION_SEPARATOR + std::to_string(data_.openpl_) 
         + SERIALIZATION_SEPARATOR + ymdhmsf();
     return str;
 }

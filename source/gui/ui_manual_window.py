@@ -118,7 +118,7 @@ class ManualWindow(QtWidgets.QFrame):
             o.msg_type = MSG_TYPE.MSG_TYPE_ORDER_CTP
             o.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
             o.source = '0'
-            o.api = 'StarQuant' #self.api_type.currentText() 
+            o.api = o.destination #self.api_type.currentText() 
             o.account = self.accounts.currentText()
             o.clientID = 0
             o.client_order_id = self.manualorderid
@@ -136,7 +136,7 @@ class ManualWindow(QtWidgets.QFrame):
             o.destination = self.api_type.currentText() + '.TD'
             o.source = '0'
 
-            o.api = 'StarQuant' #self.api_type.currentText() 
+            o.api = o.destination #self.api_type.currentText() 
             o.account = self.accounts.currentText()
             o.clientID = 0
             o.client_order_id = self.manualorderid

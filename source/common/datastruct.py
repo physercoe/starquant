@@ -38,16 +38,49 @@ class Event(object):
     def serialize(self):
         msg = self.destination + '|' + self.source + '|' + str(self.event_type.value)
         if self.data:
-            msg = msg + '|' + self.data.serialize()
+            try:
+                msg = msg + '|' + self.data.serialize()
+            except:
+                pass
+        return msg
 
     def deserialize(self,msg:str):
         v = msg.split('|',3)
         try:
             self.destination = v[0]
             self.source = v[1]
-            self.type = EventType(int(v[2]))
-            if self.data:
+            msg2type = MSG_TYPE(int(v[2]))
+            if msg2type == MSG_TYPE.MSG_TYPE_TICK:
+                self.event_type = EventType.TICK
+                self.data = TickData(gateway_name = self.source)
                 self.data.deserialize(v[3])
+            elif msg2type == MSG_TYPE.MSG_TYPE_RTN_ORDER:
+                self.event_type = EventType.ORDERSTATUS
+                self.data = OrderData(gateway_name = self.source)
+                self.data.deserialize(v[3])
+            elif msg2type == MSG_TYPE.MSG_TYPE_RTN_TRADE:
+                self.event_type = EventType.FILL
+                self.data = TradeData(gateway_name = self.source)
+                self.data.deserialize(v[3])
+            elif msg2type == MSG_TYPE.MSG_TYPE_RSP_POS:
+                self.event_type = EventType.POSITION
+                self.data = PositionData(gateway_name = self.source)
+                self.data.deserialize(v[3])
+            elif msg2type == MSG_TYPE.MSG_TYPE_BAR:
+                self.event_type = EventType.BAR
+                self.data = BarData(gateway_name = self.source)
+                self.data.deserialize(v[3])
+            elif msg2type == MSG_TYPE.MSG_TYPE_RSP_ACCOUNT:
+                self.event_type = EventType.ACCOUNT
+                self.data = AccountData(gateway_name = self.source)
+                self.data.deserialize(v[3])
+            elif msg2type == MSG_TYPE.MSG_TYPE_RSP_CONTRACT:
+                self.event_type = EventType.CONTRACT
+                self.data = ContractData(gateway_name = self.source)
+                self.data.deserialize(v[3])
+            elif v[2].startswith('3') :           #msg2type == MSG_TYPE.MSG_TYPE_INFO:
+                self.event_type = EventType.INFO
+                self.data = LogData(gateway_name = self.source, msg = v[3], msg_type = msg2type)
         except:
             pass
 
@@ -61,7 +94,7 @@ class BaseData:
     gateway_name: str
     def serialize(self):
         pass
-    def deserialize(self):
+    def deserialize(self,msg):
         pass
 
 @dataclass
@@ -84,8 +117,6 @@ class TickData(BaseData):
     limit_up: float = 0
     limit_down: float = 0
     
-    depth :int = 0
-
     open_price: float = 0
     high_price: float = 0
     low_price: float = 0
@@ -115,6 +146,8 @@ class TickData(BaseData):
     ask_volume_4: float = 0
     ask_volume_5: float = 0
 
+# StarQuant unique field
+    depth :int = 0  
     open_interest:float = 0
 
 
@@ -125,7 +158,7 @@ class TickData(BaseData):
         self.full_symbol = generate_full_symbol(self.exchange,self.symbol)
     
     
-    def deserialize(self):
+    def deserialize(self,msg:str):
         try:
             v = msg.split('|')
             self.full_symbol = v[0]  
@@ -208,13 +241,6 @@ class BarData(BaseData):
     
 
 
-ACTIVE_STATUSES = [
-    OrderStatus.NEWBORN,
-    OrderStatus.PENDING_SUBMIT,
-    OrderStatus.SUBMITTED,
-    OrderStatus.QUEUED,
-    OrderStatus.PENDING_CANCEL
-]
 
 @dataclass
 class OrderData(BaseData):
@@ -223,9 +249,9 @@ class OrderData(BaseData):
     of a specific order.
     """
 
-    symbol: str
-    exchange: Exchange
-    orderid: str
+    symbol: str =""
+    exchange: Exchange = Exchange.SHFE
+    orderid: str = ""
 
     type: OrderType = OrderType.LMT
     direction: Direction = ""
@@ -233,8 +259,25 @@ class OrderData(BaseData):
     price: float = 0
     volume: float = 0
     traded: float = 0
-    status: OrderStatus = OrderStatus.NEWBORN
+    status: Status = Status.SUBMITTING
     time: str = ""
+
+# StarQuant unique field
+    api : str = ""
+    account : str = ""
+    clientID : int = -1
+    client_order_id : int  = -1
+    tag : str = ""
+    
+    full_symbol :str = ""
+    flag : OrderFlag = OrderFlag.OPEN
+    server_order_id : int = -1
+    broker_order_id : int = -1
+    orderNo : str = ""
+    localNo : str = ""
+    create_time : str = ""
+    update_time : str = ""
+    orders_status: OrderStatus = OrderStatus.SUBMITTED
 
     def __post_init__(self):
         """"""
@@ -258,7 +301,36 @@ class OrderData(BaseData):
             orderid=self.orderid, symbol=self.symbol, exchange=self.exchange
         )
         return req
+    def deserialize(self,msg:str):
+        v = msg.split('|')
+        try:
+            self.api = v[0]
+            self.account = v[1]
+            self.clientID = int(v[2])
+            self.client_order_id = int(v[3])
+            self.tag = v[4]             
 
+            self.full_symbol =  v[5]
+            self.symbol,self.exchange = extract_full_symbol(self.full_symbol)
+            self.vt_symbol = generate_vt_symbol(self.symbol,self.exchange)
+            self.price = float(v[6])
+            self.volume = int(v[7])
+            self.traded = int(v[8])
+            self.flag = OrderFlag(int(v[9]))
+            self.offset = ORDERFALG_2VT[self.flag]
+            self.server_order_id = int(v[10])
+            self.broker_order_id = int(v[11])
+            self.orderNo = v[12]        
+            self.localNo = v[13]
+            self.orderid = self.localNo 
+            self.vt_orderid = f"{self.gateway_name}.{self.orderid}"      
+            self.create_time = v[14]
+            self.update_time = v[15]
+            self.time = self.update_time
+            self.order_status = OrderStatus(int(v[16]))
+            self.status = ORDERSTATUS_2VT[self.order_status]
+        except:
+            pass
 
 @dataclass
 class TradeData(BaseData):
@@ -267,10 +339,10 @@ class TradeData(BaseData):
     can have several trade fills.
     """
 
-    symbol: str
-    exchange: Exchange
-    orderid: str
-    tradeid: str
+    symbol: str = ""
+    exchange: Exchange = Exchange.SHFE
+    orderid: str = ""
+    tradeid: str = ""
     direction: Direction = ""
 
     offset: Offset = Offset.NONE
@@ -278,12 +350,53 @@ class TradeData(BaseData):
     volume: float = 0
     time: str = ""
 
+# StarQuant field
+    server_order_id : int  = -1
+    client_order_id : int  = -1
+    clientID : int = -1
+    localNo : str = ""
+    orderNo : str  = ""
+    full_symbol : str = ""
+    fill_flag : OrderFlag = OrderFlag.OPEN
+    commission : float = 0.0
+    account : str  = ""
+    api :str  = ""
+
     def __post_init__(self):
         """"""
         self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
         self.vt_orderid = f"{self.gateway_name}.{self.orderid}"
         self.vt_tradeid = f"{self.gateway_name}.{self.tradeid}"
+    
+    def deserialize(self,msg:str):
+        v = msg.split('|')
+        try:
+            self.server_order_id = int(v[0])
+            self.client_order_id = int(v[1])
+            self.clientID = int(v[2])
+            self.localNo = v[3]
+            self.orderid = self.localNo
+            self.vt_orderid = f"{self.gateway_name}.{self.orderid}"
+            self.orderNo = v[4]
+            self.tradeid = v[5]
+            self.vt_tradeid = f"{self.gateway_name}.{self.tradeid}"        
+            self.time = v[6]
+            self.full_symbol = v[7]
+            self.symbol,self.exchange = extract_full_symbol(self.full_symbol)
+            self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+            
+            self.price = float(v[8])
+            quantity = int(v[9])
+            self.volume = abs(quantity)
+            self.direction = Direction.LONG if quantity > 0 else Direction.SHORT
+            self.fill_flag = OrderFlag(int(v[10]))
+            self.offset = ORDERFALG_2VT[self.fill_flag]
 
+            self.commission = float(v[11])
+            self.account = v[12]
+            self.api = v[13]    
+        except:
+            pass    
 
 @dataclass
 class PositionData(BaseData):
@@ -291,21 +404,49 @@ class PositionData(BaseData):
     Positon data is used for tracking each individual position holding.
     """
 
-    symbol: str
-    exchange: Exchange
-    direction: Direction
+    symbol: str = ""
+    exchange: Exchange = Exchange.SHFE
+    direction: Direction = Direction.LONG
 
     volume: float = 0
     frozen: float = 0
     price: float = 0
     pnl: float = 0
     yd_volume: float = 0
+# StarQuant field
+    key : str = ""
+    account : str = ""
+    api : str = ""
+    full_symbol : str = ""
+    realized_pnl : float = 0
+    timestamp : str = ""
 
     def __post_init__(self):
         """"""
         self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
         self.vt_positionid = f"{self.vt_symbol}.{self.direction}"
 
+    def deserialize(self,msg:str):
+        v = msg.split('|')
+        try:
+            self.key = v[0]
+            self.account = v[1]
+            self.api = v[2]
+            self.full_symbol = v[3]
+            self.symbol,self.exchange = extract_full_symbol(self.full_symbol)
+            self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+            self.price = float(v[4])
+            tq = int(v[5]) + int(v[6])
+            self.direction = Direction.LONG if tq >0 else Direction.SHORT
+            self.vt_positionid = f"{self.vt_symbol}.{self.direction}"
+            self.volume = abs(int(v[5]))
+            self.yd_volume = abs(int(v[6]))
+            self.freezed_size = abs(int(v[7]))
+            self.realized_pnl = float(v[8])
+            self.pnl = float(v[9])
+            self.timestamp = v[10]
+        except:
+            pass
 
 @dataclass
 class AccountData(BaseData):
@@ -314,15 +455,42 @@ class AccountData(BaseData):
     available.
     """
 
-    accountid: str
+    accountid: str = ""
 
     balance: float = 0
     frozen: float = 0
+# StarQuant field
+    
+    yd_balance : float = 0
+    netliquid : float = 0
+    commission : float = 0
+    margin : float = 0
+    closed_pnl : float = 0
+    open_pnl : float = 0
+    timestamp : str = ""
 
     def __post_init__(self):
         """"""
         self.available = self.balance - self.frozen
         self.vt_accountid = f"{self.gateway_name}.{self.accountid}"
+
+    def deserialize(self,msg:str):
+        v = msg.split('|')
+        try:
+            self.accountid = v[0]
+            self.vt_accountid = f"{self.gateway_name}.{self.accountid}"
+            self.yd_balance = float(v[1])
+            self.netliquid = float(v[2])
+            self.available = float(v[3])
+            self.commission = float(v[4])
+            self.margin = float(v[5])
+            self.closed_pnl = float(v[6])
+            self.open_pnl = float(v[7])
+            self.balance = float(v[8])
+            self.frozen = float(v[9])        
+            self.timestamp = v[10]
+        except:
+            pass
 
 
 @dataclass
@@ -331,12 +499,13 @@ class LogData(BaseData):
     Log data is used for recording log messages on GUI or in log files.
     """
 
-    msg: str
+    msg: str = ""
     level: int = INFO
-
+# StarQuant field 
+    msg_type : MSG_TYPE = MSG_TYPE.MSG_TYPE_INFO
     def __post_init__(self):
         """"""
-        self.time = datetime.now()
+        self.time = datetime.now()    
 
 
 @dataclass
@@ -345,12 +514,12 @@ class ContractData(BaseData):
     Contract data contains basic information about each contract traded.
     """
 
-    symbol: str
-    exchange: Exchange
-    name: str
-    product: Product
-    size: int
-    pricetick: float
+    symbol: str = ""
+    exchange: Exchange = Exchange.SHFE
+    name: str = ""
+    product: Product = Product.FUTURES
+    size: int = 1
+    pricetick: float = 0
 
     min_volume: float = 1           # minimum trading volume of the contract
     stop_supported: bool = False    # whether server supports stop order
@@ -361,10 +530,37 @@ class ContractData(BaseData):
     option_type: OptionType = None
     option_expiry: datetime = None
 
+    # StarQuant field
+    full_symbol : str = ""
+
+
     def __post_init__(self):
         """"""
         self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
 
+    def deserialize(self,msg:str):
+        v = msg.split('|')
+        try:
+            self.symbol = v[0]
+            self.exchange = EXCHANGE_CTP2VT[v[1]]
+            self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+            self.name = v[2]
+            self.product = PRODUCT_CTP2VT.get(v[3],None)
+            st = PRODUCT_VT2SQ[self.product]
+            self.full_symbol = generate_full_symbol(self.exchange,self.symbol,st)
+            self.size = int(v[4])
+            self.pricetick = float(v[5])
+            if  self.product == Product.OPTION:
+                self.option_underlying = v[6]
+                self.option_type = OPTIONTYPE_CTP2VT.get(v[7], None)
+                self.option_strike = float(v[8])
+                self.option_expiry = datetime.strptime(v[9],"%Y%m%d")
+        except:
+            pass
+
+# product = PRODUCT_CTP2VT.get(data["ProductClass"], None)
+# if product:
+# OPTIONTYPE_CTP2VT.get(data["OptionsType"], None),
 
 class Position(object):
     def __init__(self, full_symbol, average_price=0, size=0, realized_pnl=0):
@@ -518,7 +714,7 @@ class AccountEvent(Event):
         self.commission = float(v[7])
         self.margin = float(v[8])
         self.closed_pnl = float(v[9])
-        self.open_pnl = float(v[10])
+        self.open_pnl = float(v[10])        
         self.timestamp = v[11]
         
 class ContractEvent(Event):
@@ -971,15 +1167,16 @@ class PositionEvent(Event):
         self.freezed_size = int(v[10])
         self.realized_pnl = float(v[11])
         self.unrealized_pnl = float(v[12])
-        self.type =v[13]     
-        self.posno = v[14]
-        self.openorderNo = v[15]
-        self.openapi = v[16]
-        self.openclientID = int(v[17])
-        self.closeorderNo = v[18]
-        self.closeclientID = int(v[19])        
-        self.closeapi = v[20]
-        self.timestamp = v[21]
+        self.timestamp = v[13]
+        # self.type =v[13]     
+        # self.posno = v[14]
+        # self.openorderNo = v[15]
+        # self.openapi = v[16]
+        # self.openclientID = int(v[17])
+        # self.closeorderNo = v[18]
+        # self.closeclientID = int(v[19])        
+        # self.closeapi = v[20]
+        # self.timestamp = v[21]
 
     def to_position(self):
 

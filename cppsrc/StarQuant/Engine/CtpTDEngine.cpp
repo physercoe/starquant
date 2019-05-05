@@ -828,28 +828,28 @@ namespace StarQuant
 				pos->key_ = key;
 				pos->account_ = ctpacc_.userid;
 				pos->fullSymbol_ = fullsym;
-				pos->api_ = "StarQuant";
+				pos->api_ = name_;
 				posbuffer_[key] = pos;
 			}else
 			{
 				pos = posbuffer_[key];
 			}
-			
+			int dirsign =  pInvestorPosition->PosiDirection == THOST_FTDC_PD_Long ? 1 : -1;
 			if (exchid == "SHFE"){
 				if ((pInvestorPosition->YdPosition != 0 ) && (pInvestorPosition->TodayPosition == 0))
-					pos->preSize_ = pInvestorPosition->Position;
+					pos->preSize_ = dirsign * pInvestorPosition->Position;
 			}else{
-				pos->preSize_ = pInvestorPosition->Position - pInvestorPosition->TodayPosition;
+				pos->preSize_ = dirsign *(pInvestorPosition->Position - pInvestorPosition->TodayPosition);
 			}
-			double cost = pos->avgPrice_ * pos->size_;
-			pos->size_ += (pInvestorPosition->PosiDirection == THOST_FTDC_PD_Long ? 1 : -1) * pInvestorPosition->Position;
+			double cost = pos->avgPrice_ * abs(pos->size_);
+			pos->size_ += dirsign * pInvestorPosition->Position;
 			pos->openpl_ += pInvestorPosition->PositionProfit;
 			if (pos->size_ != 0){
 				cost += pInvestorPosition->PositionCost;
-				pos->avgPrice_ = cost /pos->size_;
+				pos->avgPrice_ = cost /abs(pos->size_);
 			}
 			if (pos->size_ > 0){
-				pos->freezedSize_ += pInvestorPosition->ShortFrozen;
+				pos->freezedSize_ -= pInvestorPosition->ShortFrozen;
 			}
 			else{
 				pos->freezedSize_ += pInvestorPosition->LongFrozen;
@@ -948,7 +948,7 @@ namespace StarQuant
 				LOG_INFO(logger,name_ <<" qry acc return nullptr");
 				return;
 			}
-			double balance = pTradingAccount->PreBalance - pTradingAccount->PreCredit - pTradingAccount->PreMortgage
+			double netLiquidation = pTradingAccount->PreBalance - pTradingAccount->PreCredit - pTradingAccount->PreMortgage
 				+ pTradingAccount->Mortgage - pTradingAccount->Withdraw + pTradingAccount->Deposit
 				+ pTradingAccount->CloseProfit + pTradingAccount->PositionProfit + pTradingAccount->CashIn - pTradingAccount->Commission;
 			auto pmsg = make_shared<AccMsg>();
@@ -956,12 +956,14 @@ namespace StarQuant
 			pmsg->source_ = name_;
 			pmsg->data_.accountID_ = pTradingAccount->AccountID;
 			pmsg->data_.previousDayEquityWithLoanValue_ = pTradingAccount->PreBalance;
-			pmsg->data_.netLiquidation_ = balance;
+			pmsg->data_.netLiquidation_ = netLiquidation;
 			pmsg->data_.availableFunds_ = pTradingAccount->Available;
 			pmsg->data_.commission_ = pTradingAccount->Commission;
 			pmsg->data_.fullMaintainanceMargin_ = pTradingAccount->CurrMargin;
 			pmsg->data_.realizedPnL_ = pTradingAccount->CloseProfit;
 			pmsg->data_.unrealizedPnL_ = pTradingAccount->PositionProfit;
+			pmsg->data_.frozen_ = pTradingAccount->FrozenMargin + pTradingAccount->FrozenCash + pTradingAccount->FrozenCommission;
+			pmsg->data_.balance_ = pTradingAccount->Balance;
 			messenger_->send(pmsg);
 			PortfolioManager::instance().accinfomap_[ctpacc_.userid] = pmsg->data_;
 			LOG_INFO(logger,name_ <<" OnRspQryTradingAccount:"
@@ -1017,12 +1019,20 @@ namespace StarQuant
 			pmsg->source_ = name_;
 			pmsg->data_.symbol_ = pInstrument->InstrumentID;			
 			pmsg->data_.exchange_ = pInstrument->ExchangeID;
-			pmsg->data_.securityType_ = "F";
+			pmsg->data_.securityType_ = pInstrument->ProductClass ;
 			pmsg->data_.multiplier_ = pInstrument->VolumeMultiple;
-			//pmsg->data_.localName = pInstrument->InstrumentName;
+			pmsg->data_.localName_ = pInstrument->InstrumentName;
 			pmsg->data_.ticksize_ = pInstrument->PriceTick;			
+			if (pInstrument->ProductClass == THOST_FTDC_PC_Options ){
+				pmsg->data_.underlyingSymbol_ = pInstrument->UnderlyingInstrID ;
+				pmsg->data_.optionType_ = pInstrument->OptionsType;
+				pmsg->data_.strikePrice_ = pInstrument->StrikePrice;
+				pmsg->data_.expiryDate_ = pInstrument-> ExpireDate;
+			}
+			
 			messenger_->send(pmsg);
 			// string symbol = boost::to_upper_copy(string(pInstrument->InstrumentName));
+			
 			string symbol = pInstrument->InstrumentID;
 			auto it = DataManager::instance().securityDetails_.find(symbol);
 			if (it == DataManager::instance().securityDetails_.end()) {
@@ -1075,6 +1085,7 @@ namespace StarQuant
 			o->price_ = pOrder->LimitPrice;
 			int dir_ = pOrder->Direction != THOST_FTDC_D_Sell ? 1:-1 ;
 			o->quantity_ = dir_ * pOrder->VolumeTotalOriginal ;
+			o->tradedvol_ = dir_ * pOrder->VolumeTraded ;
 			o->flag_ = CtpComboOffsetFlagToOrderFlag(pOrder->CombOffsetFlag[0]);
 			o->tag_ = string("") 
 				+ "h" + pOrder->CombHedgeFlag
@@ -1155,6 +1166,7 @@ namespace StarQuant
 			pmsg->data_.serverOrderID_ = o2->serverOrderID_;
 			pmsg->data_.clientOrderID_ = o2->clientOrderID_;
 			pmsg->data_.brokerOrderID_ = o2->brokerOrderID_;
+			pmsg->data_.localNo_ = o2->localNo_;
 			pmsg->data_.account_ = o2->account_;
 			pmsg->data_.clientID_ = o2->clientID_;
 			pmsg->data_.api_ = o2->api_;
@@ -1169,6 +1181,7 @@ namespace StarQuant
 			pmsg->data_.serverOrderID_ = o->serverOrderID_;
 			pmsg->data_.clientOrderID_ = o->clientOrderID_;
 			pmsg->data_.brokerOrderID_ = o->brokerOrderID_;
+			pmsg->data_.localNo_ = localno;
 			pmsg->data_.account_ = o->account_;
 			pmsg->data_.clientID_ = o->clientID_;
 			pmsg->data_.api_ = o->api_;

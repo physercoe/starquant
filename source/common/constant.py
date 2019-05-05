@@ -21,10 +21,12 @@ class SYMBOL_TYPE(Enum):
     CTP = 1
 
 class MSG_TYPE(Enum):
-    MSG_TYPE_TICK_L1 = 1000
-    MSG_TYPE_TICK_L5 = 1001
-    MSG_TYPE_TICK_L10 = 1002
-    MSG_TYPE_TICK_L20 = 1003
+    MSG_TYPE_TICK = 1000
+    MSG_TYPE_TICK_L1 = 1001
+    MSG_TYPE_TICK_L5 = 1002
+    MSG_TYPE_TICK_L10 = 1003
+    MSG_TYPE_TICK_L20 = 1004
+    MSG_TYPE_BAR = 1010
     MSG_TYPE_BAR_1MIN = 1011
     MSG_TYPE_BAR_5MIN = 1012
     MSG_TYPE_BAR_15MIN = 1013
@@ -260,6 +262,14 @@ class Offset(Enum):
     CLOSETODAY = "平今"
     CLOSEYESTERDAY = "平昨"
 
+ORDERFALG_2VT = {
+    OrderFlag.OPEN:Offset.OPEN, 
+    OrderFlag.CLOSE:Offset.CLOSE,
+    OrderFlag.CLOSE_TODAY:Offset.CLOSETODAY,
+    OrderFlag.CLOSE_YESTERDAY:Offset.CLOSEYESTERDAY,
+}
+OFFSET_VT2ORDERFLAG = {v: k for k, v in ORDERFALG_2VT.items()}
+
 class OptionType(Enum):
     """
     Option type.
@@ -267,6 +277,34 @@ class OptionType(Enum):
     CALL = "看涨期权"
     PUT = "看跌期权"
 
+OPTIONTYPE_CTP2VT = {
+    '1': OptionType.CALL,
+    '2': OptionType.PUT
+}
+
+class Status(Enum):
+    """
+    Order status.
+    """
+    SUBMITTING = "提交中"
+    NOTTRADED = "未成交"
+    PARTTRADED = "部分成交"
+    ALLTRADED = "全部成交"
+    CANCELLED = "已撤销"
+    REJECTED = "拒单"
+    UNKNOWN = "未知"
+
+ORDERSTATUS_2VT = {
+    OrderStatus.SUBMITTED: Status.SUBMITTING,
+    OrderStatus.NEWBORN: Status.SUBMITTING,
+    OrderStatus.UNKNOWN: Status.UNKNOWN,
+    OrderStatus.ACKNOWLEDGED: Status.NOTTRADED,
+    OrderStatus.PARTIALLY_FILLED: Status.PARTTRADED,
+    OrderStatus.FILLED: Status.ALLTRADED,
+    OrderStatus.CANCELED: Status.CANCELLED
+}
+
+ACTIVE_STATUSES = set([Status.SUBMITTING, Status.NOTTRADED, Status.PARTTRADED])
 class Product(Enum):
     """
     Product class.
@@ -281,7 +319,30 @@ class Product(Enum):
     BOND = "债券"
     WARRANT = "权证"
     SPREAD = "价差"
-    FUND = "基金"
+    FUND = "基金"    
+
+
+PRODUCT_CTP2VT = {
+    '1': Product.FUTURES,
+    '2': Product.OPTION,
+    '3': Product.SPREAD
+}
+
+PRODUCT_VT2SQ = {
+    Product.EQUITY : "T",
+    Product.FUTURES : "F",
+    Product.OPTION : "O",
+    Product.INDEX : "Z",
+    Product.FOREX : "X",
+    Product.SPOT : "P",
+    Product.ETF : "e",
+    Product.BOND : "B",
+    Product.WARRANT : "W",
+    Product.SPREAD : "S",
+    Product.FUND : "J"
+}
+
+
 class Exchange(Enum):
     """
     Exchange.
@@ -313,6 +374,13 @@ class Exchange(Enum):
     BITFINEX = "BITFINEX"
 
 
+EXCHANGE_CTP2VT = {
+    "CFFEX": Exchange.CFFEX,
+    "SHFE": Exchange.SHFE,
+    "CZCE": Exchange.CZCE,
+    "DCE": Exchange.DCE,
+    "INE": Exchange.INE
+}
 class Currency(Enum):
     """
     Currency.

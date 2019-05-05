@@ -163,10 +163,12 @@ enum class MSGQ_PROTOCOL : uint8_t {
 enum MSG_TYPE : int32_t {
 //  10* datatype same as ticktype 
     // furtures
-    MSG_TYPE_TICK_L1 = 1000,
-    MSG_TYPE_TICK_L5 = 1001,
-    MSG_TYPE_TICK_L10 = 1002,
-    MSG_TYPE_TICK_L20 = 1003,
+    MSG_TYPE_TICK = 1000,
+    MSG_TYPE_TICK_L1 = 1001,
+    MSG_TYPE_TICK_L5 = 1002,
+    MSG_TYPE_TICK_L10 = 1003,
+    MSG_TYPE_TICK_L20 = 1004,
+    MSG_TYPE_BAR = 1010,    
     MSG_TYPE_BAR_1MIN = 1011,
     MSG_TYPE_BAR_5MIN = 1012,
     MSG_TYPE_BAR_15MIN = 1013,
@@ -374,7 +376,7 @@ class DLL_EXPORT_IMPORT Security{
     
     string fullSymbol_;
     string symbol_;
-    string securityType_;
+    char securityType_;
     string exchange_;
     string contractNo_;
     int multiplier_ = 0;
@@ -385,9 +387,13 @@ class DLL_EXPORT_IMPORT Security{
 
     // Options
     string underlyingSymbol_;
-    double strike = 0.0;
-    string right_;		// "C" or "P" or ""
+    char optionType_ ;
+    double strikePrice_ = 0.0;
+    char strikeMode_ ;
+    char strikeType_ ;
+    char applyType_;
     string expiryDate_;
+		
 };
 
 class DLL_EXPORT_IMPORT SecurityMsg: public MsgHeader{
@@ -422,6 +428,9 @@ public:
     double cashBalance_ = 0.0;
     double realizedPnL_ = 0.0;
     double unrealizedPnL_ = 0.0;
+    double frozen_ = 0.0;
+    double balance_ = 0.0;
+    
 };
 
 class DLL_EXPORT_IMPORT AccMsg: public MsgHeader{
@@ -450,6 +459,7 @@ public:
     long tradeId_ = -1;              //local id
     int clientID_ = 0;             // sid, get from client; 0=mannual
     string orderNo_;            //exchange id
+    string localNo_;
     string tradeNo_;            //exchange id  
     string tradeTime_;
     string fullSymbol_;
@@ -494,7 +504,8 @@ public:
 // server and callback content, for return orderstatus msg 
     string fullSymbol_;          //unique symbol for underlying commodity: exchange + type + commodityname + commodityno
 	double price_ = 0.0;
-    int quantity_ = 0;
+    int quantity_ = 0;           //total original
+    int tradedvol_ = 0;
     OrderFlag flag_ = OrderFlag::OF_OpenPosition;
     long serverOrderID_ = -1;       // orderref, unique sqserver id
     long brokerOrderID_ = -1;       // for statistical use
