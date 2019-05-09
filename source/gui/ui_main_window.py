@@ -107,7 +107,7 @@ class MainWindow(QtWidgets.QMainWindow):
  
         ## 9. wire up event handlers
         self._ui_events_engine.register_handler(EventType.TICK, self._tick_event_handler)
-        self._ui_events_engine.register_handler(EventType.ORDERSTATUS, self.order_window.order_status_signal.emit)
+        self._ui_events_engine.register_handler(EventType.ORDERSTATUS, self._order_status_event_handler)
         self._ui_events_engine.register_handler(EventType.FILL, self._fill_event_handler)
         self._ui_events_engine.register_handler(EventType.POSITION, self._position_event_handler)
         self._ui_events_engine.register_handler(EventType.ACCOUNT, self._account_event_handler)
@@ -122,6 +122,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._outgoing_request_events_engine.register_handler(EventType.QRY_CONTRACT, self._outgoing_contract_request_handler)        
         self._outgoing_request_events_engine.register_handler(EventType.SUBSCRIBE, self._outgoing_general_request_handler)
         self._outgoing_request_events_engine.register_handler(EventType.GENERAL_REQ, self._outgoing_general_request_handler)
+        
         self._flowrate_timer.timeout.connect(self.risk_manager.reset)   #timer event to reset riskmanager flow rate count
         ## 10. start
         self._ui_events_engine.start()
@@ -156,54 +157,53 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _tick_event_handler(self, tick_event):
         self.dataviewindow.tick_signal.emit(tick_event)
-        self._current_time = tick_event.timestamp
+        self._current_time = tick_event.data.timestamp
         self._data_board.on_tick(tick_event)       # update databoard
         self._order_manager.on_tick(tick_event)     # check standing stop orders
-        # print('tick arrive timestamp:',datetime.now())                       # test latency
         self._strategy_manager.on_tick(tick_event)  # feed strategies
         self.market_window.tick_signal.emit(tick_event)         # display
         
 
     def _order_status_event_handler(self, order_status_event):  # including cancel
-        # this is moved to ui_thread for consistency
-        pass
+        self.order_window.order_status_signal.emit(order_status_event)
+
 
     def _fill_event_handler(self, fill_event):
-        self.portfolio_manager.on_fill_live(fill_event)
+        # self.portfolio_manager.on_fill_live(fill_event)
         # update portfolio manager for pnl
-        self._order_manager.on_fill(fill_event)  # update order manager with fill
-        #print('fill orderman')
-        self._strategy_manager.on_fill(fill_event)  # feed fill to strategy
+        #self._order_manager.on_fill(fill_event)  # update order manager with fill
+
+        #self._strategy_manager.on_fill(fill_event)  # feed fill to strategy
         #print('fill str')
         self.fill_window.fill_signal.emit(fill_event)     # display
         #print('begin update',fill_event.client_order_id,self._order_manager.retrieve_order(fill_event.client_order_id).order_status)
-        #self.order_window.update_order_status(fill_event.client_order_id,OrderStatus.FILLED )
         #print('fill update')
         #利用fill事件重新更新pos开仓来源，因为有时候回调函数先返回的是pos，然后是fill信息
-        self._strategy_manager.update_position()
-        self.strategy_window.fill_signal.emit(fill_event)
+        #self._strategy_manager.update_position()
+        #self.strategy_window.fill_signal.emit(fill_event)
 
     def _position_event_handler(self, position_event):
-        self.portfolio_manager.on_position_live(position_event)       # position received
-        # print("pm on n")
+        #self.portfolio_manager.on_position_live(position_event)       # position received
+
         self.position_window.position_signal.emit(position_event)     # display
-        # print("pw on n")
+
         self.closeposition_window.position_signal.emit(position_event)
-        # print("cpw on n")
-        self._strategy_manager.update_position()
-        self._strategy_manager.on_position(position_event)
-        #print("sm on n")
-        self.strategy_window.position_signal.emit(position_event)
-        #print("sw on n")
+
+        #self._strategy_manager.update_position()
+        #self._strategy_manager.on_position(position_event)
+
+        #self.strategy_window.position_signal.emit(position_event)
+
 
     def _account_event_handler(self, account_event):
-        self.portfolio_manager.on_account(account_event)  # fund info add 
+        #self.portfolio_manager.on_account(account_event)  # fund info add 
         self.account_window.account_signal.emit(account_event)
         pass
 
     def _contract_event_handler(self, contract_event):
-        self.portfolio_manager.on_contract(contract_event)
-        msg = "Contract {} tickprice = {} multiples = {}".format(contract_event.full_symbol,contract_event.mininum_tick,contract_event.multiples) 
+        contract = contract_event.data
+        self.portfolio_manager.on_contract(contract)
+        msg = "Contract {} tickprice = {} multiples = {}".format(contract.full_symbol,contract.pricetick,contract.size) 
         self.manual_widget.logoutput.append(msg)
 
     def _historical_event_handler(self, historical_event):

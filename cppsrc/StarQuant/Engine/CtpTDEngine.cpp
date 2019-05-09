@@ -814,7 +814,7 @@ namespace StarQuant
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
 		if (!bResult){
 			if(pInvestorPosition == nullptr){
-				LOG_INFO(logger,name_ <<" onRspQrypos return nullptr.");
+				LOG_DEBUG(logger,name_ <<" onRspQrypos return nullptr.");
 				return;
 			}			
 			string fullsym = CConfig::instance().CtpSymbolToSecurityFullName(pInvestorPosition->InstrumentID);
@@ -1021,7 +1021,7 @@ namespace StarQuant
 			pmsg->data_.exchange_ = pInstrument->ExchangeID;
 			pmsg->data_.securityType_ = pInstrument->ProductClass ;
 			pmsg->data_.multiplier_ = pInstrument->VolumeMultiple;
-			pmsg->data_.localName_ = pInstrument->InstrumentName;
+			pmsg->data_.localName_ = GBKToUTF8(pInstrument->InstrumentName);
 			pmsg->data_.ticksize_ = pInstrument->PriceTick;			
 			if (pInstrument->ProductClass == THOST_FTDC_PC_Options ){
 				pmsg->data_.underlyingSymbol_ = pInstrument->UnderlyingInstrID ;
@@ -1040,7 +1040,7 @@ namespace StarQuant
 			}			
 			LOG_INFO(logger,name_ <<" OnRspQryInstrument:"
 				<<" InstrumentID="<<pInstrument->InstrumentID
-				<<" InstrumentName="<<pInstrument->InstrumentName
+				<<" InstrumentName="<<GBKToUTF8(pInstrument->InstrumentName)
 				<<" ExchangeID="<<pInstrument->ExchangeID
 				<<" ExchangeInstID="<<pInstrument->ExchangeInstID
 				<<" PriceTick="<<pInstrument->PriceTick

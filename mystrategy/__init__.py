@@ -11,7 +11,6 @@ import importlib
 sys.path.append("..") 
 
 from source.strategy.strategy_base import StrategyBase
-from source.common.datastruct import OrderEvent,OrderType
 from source.trade.order_manager import OrderManager
 from source.trade.portfolio_manager import PortfolioManager
 from source.engine.trade_engine import TradeEngine

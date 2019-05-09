@@ -24,19 +24,21 @@ class Event(object):
         data:Any = None,
         des:str = '',
         src:str = '',
+        msgtype:MSG_TYPE = MSG_TYPE.MSG_TYPE_BASE
         ):
 
-        self.event_type = type
+        self.event_type = type        
         self.data = data
         self.destination = des
         self.source = src
+        self.msg_type = msgtype
 
     @property
     def typename(self):
         return self.event_type.name
 
     def serialize(self):
-        msg = self.destination + '|' + self.source + '|' + str(self.event_type.value)
+        msg = self.destination + '|' + self.source + '|' + str(self.msg_type.value)
         if self.data:
             try:
                 msg = msg + '|' + self.data.serialize()
@@ -44,13 +46,13 @@ class Event(object):
                 pass
         return msg
 
-    def deserialize(self,msg:str):
+    def deserialize(self,msg:str):        
         v = msg.split('|',3)
         try:
             self.destination = v[0]
             self.source = v[1]
             msg2type = MSG_TYPE(int(v[2]))
-            if msg2type == MSG_TYPE.MSG_TYPE_TICK:
+            if msg2type in [MSG_TYPE.MSG_TYPE_TICK,MSG_TYPE.MSG_TYPE_TICK_L1,MSG_TYPE.MSG_TYPE_TICK_L5]:
                 self.event_type = EventType.TICK
                 self.data = TickData(gateway_name = self.source)
                 self.data.deserialize(v[3])
@@ -80,7 +82,9 @@ class Event(object):
                 self.data.deserialize(v[3])
             elif v[2].startswith('3') :           #msg2type == MSG_TYPE.MSG_TYPE_INFO:
                 self.event_type = EventType.INFO
-                self.data = LogData(gateway_name = self.source, msg = v[3], msg_type = msg2type)
+                self.msg_type = msg2type
+                self.data = LogData(gateway_name = self.source)
+                self.data.deserialize(v[3])
         except:
             pass
 
@@ -91,7 +95,7 @@ class BaseData:
     and should inherit base data.
     """
 
-    gateway_name: str
+    gateway_name: str = ''
     def serialize(self):
         pass
     def deserialize(self,msg):
@@ -153,10 +157,11 @@ class TickData(BaseData):
 
     def __post_init__(self):
         """"""
+
         self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
-        self.timestamp = Timestamp(self.datetime)
+        self.timestamp = Timestamp(self.datetime) 
         self.full_symbol = generate_full_symbol(self.exchange,self.symbol)
-    
+
     
     def deserialize(self,msg:str):
         try:
@@ -221,9 +226,9 @@ class BarData(BaseData):
     Candlestick bar data of a certain trading period.
     """
 
-    symbol: str
-    exchange: Exchange
-    datetime: datetime
+    symbol: str = ''
+    exchange: Exchange = Exchange.SHFE
+    datetime: datetime = datetime(2019,1,1)
 
     interval: Interval = None
     volume: float = 0
@@ -278,6 +283,7 @@ class OrderData(BaseData):
     create_time : str = ""
     update_time : str = ""
     orders_status: OrderStatus = OrderStatus.SUBMITTED
+    orderfield :Any = None
 
     def __post_init__(self):
         """"""
@@ -298,7 +304,7 @@ class OrderData(BaseData):
         Create cancel request object from order.
         """
         req = CancelRequest(
-            orderid=self.orderid, symbol=self.symbol, exchange=self.exchange
+            clientID=self.clientID, client_order_id =self.client_order_id, server_order_id=self.server_order_id
         )
         return req
     def deserialize(self,msg:str):
@@ -331,6 +337,81 @@ class OrderData(BaseData):
             self.status = ORDERSTATUS_2VT[self.order_status]
         except:
             pass
+
+    def serialize(self):
+        msg = str( self.api 
+            + '|' + self.account 
+            + '|' + str(self.clientID)
+            + '|' + str(self.client_order_id)
+            + '|' + self.tag)
+        if (self.orderfield):
+            msg = msg + '|' + self.orderfield.serialize()
+        return msg   
+
+class CtpOrderField(object):
+    def __init__(self):
+        self.fullsymbol = ''
+        self.InstrumentID = ''
+        self.OrderPriceType = ''
+        self.Direction = ''
+        self.CombOffsetFlag = ''
+        self.CombHedgeFlag = ''
+        self.LimitPrice = 0.0
+        self.VolumeTotalOriginal = 0
+        self.TimeCondition = ''
+        self.GTDDate = ''
+        self.VolumeCondition = ''
+        self.MinVolume = 0
+        self.ContingentCondition = ''
+        self.StopPrice = 0.0
+        self.ForceCloseReason = '0'
+        self.IsAutoSuspend = 0
+        self.UserForceClose = 0
+        self.IsSwapOrder = 0
+        self.BusinessUnit = ''
+        self.CurrencyID = ''
+
+    def serialize(self):
+        msg = str( self.InstrumentID  
+            + '|' + self.OrderPriceType 
+            + '|' + self.Direction
+            + '|' + self.CombOffsetFlag
+            + '|' + self.CombHedgeFlag
+            + '|' + str(self.LimitPrice)
+            + '|' + str(self.VolumeTotalOriginal)
+            + '|' + self.TimeCondition
+            + '|' + self.GTDDate
+            + '|' + self.VolumeCondition
+            + '|' + str(self.MinVolume)
+            + '|' + self.ContingentCondition
+            + '|' + str(self.StopPrice)
+            + '|' + self.ForceCloseReason
+            + '|' + str(self.IsAutoSuspend)
+            + '|' + str(self.UserForceClose)
+            + '|' + str(self.IsSwapOrder)
+            + '|' + self.BusinessUnit
+            + '|' + self.CurrencyID )
+        return msg 
+            
+class PaperOrderField(object):
+    def __init__(self):  
+        self.order_type = OrderType.MKT
+        self.full_symbol = ''
+        self.order_flag = OrderFlag.OPEN
+        self.limit_price = 0.0
+        self.stop_price = 0.0
+        self.order_size = 0
+
+    def serialize(self):
+        msg = str( str(self.order_type.value)  
+            + '|' + self.full_symbol
+            + '|' + str(self.order_flag.value)
+            + '|' + str(self.order_size)
+            + '|' + str(self.limit_price)
+            + '|' + str(self.stop_price) )
+        return msg 
+
+
 
 @dataclass
 class TradeData(BaseData):
@@ -499,15 +580,21 @@ class LogData(BaseData):
     Log data is used for recording log messages on GUI or in log files.
     """
 
-    msg: str = ""
+    msg: str = ''
     level: int = INFO
 # StarQuant field 
-    msg_type : MSG_TYPE = MSG_TYPE.MSG_TYPE_INFO
+    timestamp :str = ''
     def __post_init__(self):
         """"""
         self.time = datetime.now()    
 
-
+    def deserialize(self, msg:str):
+        v = msg.split('|')
+        try:
+            self.msg = v[0]
+            self.timestamp = v[1]
+        except:
+            pass
 @dataclass
 class ContractData(BaseData):
     """
@@ -561,6 +648,13 @@ class ContractData(BaseData):
 # product = PRODUCT_CTP2VT.get(data["ProductClass"], None)
 # if product:
 # OPTIONTYPE_CTP2VT.get(data["OptionsType"], None),
+
+
+
+
+
+
+
 
 class Position(object):
     def __init__(self, full_symbol, average_price=0, size=0, realized_pnl=0):
@@ -1267,168 +1361,127 @@ class QryPosEvent(Event):
         msg = self.destination + '|' + self.source + '|' + str(MSG_TYPE.MSG_TYPE_QRY_POS.value)
         return msg
 
-class QryContractEvent(Event):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@dataclass
+class QryContractRequest:
     """
     qry security
     """
-    def __init__(self):
-        self.event_type = EventType.QRY_CONTRACT
-        self.sym_type = SYMBOL_TYPE.FULL
-        self.content = ''
+    sym_type : SYMBOL_TYPE = SYMBOL_TYPE.FULL
+    content : str = ''
+
     def serialize(self):
-        msg = self.destination + '|' + self.source + '|' + str(MSG_TYPE.MSG_TYPE_QRY_CONTRACT.value) \
-            + '|' + str(self.sym_type.value) + '|' + self.content
+        msg = str(self.sym_type.value) + '|' + self.content
         return msg
-
-class SubscribeEvent(Event):
-    """
-    qry acc
-    """
-    def __init__(self):
-        self.event_type = EventType.SUBSCRIBE
-        self.msg_type = MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA
-        self.sym_type = SYMBOL_TYPE.FULL
-        self.content = ""
-    def serialize(self):
-        msg = self.destination + '|' + self.source + '|' + str(self.msg_type.value) \
-            + '|' +  str(self.sym_type.value)  + '|' + self.content
-        return msg
-
-
-
-class CtpOrderField(object):
-    def __init__(self):
-        self.fullsymbol = ''
-        self.InstrumentID = ''
-        self.OrderPriceType = ''
-        self.Direction = ''
-        self.CombOffsetFlag = ''
-        self.CombHedgeFlag = ''
-        self.LimitPrice = 0.0
-        self.VolumeTotalOriginal = 0
-        self.TimeCondition = ''
-        self.GTDDate = ''
-        self.VolumeCondition = ''
-        self.MinVolume = 0
-        self.ContingentCondition = ''
-        self.StopPrice = 0.0
-        self.ForceCloseReason = '0'
-        self.IsAutoSuspend = 0
-        self.UserForceClose = 0
-        self.IsSwapOrder = 0
-        self.BusinessUnit = ''
-        self.CurrencyID = ''
-
-    def serialize(self):
-        msg = str( self.InstrumentID  
-            + '|' + self.OrderPriceType 
-            + '|' + self.Direction
-            + '|' + self.CombOffsetFlag
-            + '|' + self.CombHedgeFlag
-            + '|' + str(self.LimitPrice)
-            + '|' + str(self.VolumeTotalOriginal)
-            + '|' + self.TimeCondition
-            + '|' + self.GTDDate
-            + '|' + self.VolumeCondition
-            + '|' + str(self.MinVolume)
-            + '|' + self.ContingentCondition
-            + '|' + str(self.StopPrice)
-            + '|' + self.ForceCloseReason
-            + '|' + str(self.IsAutoSuspend)
-            + '|' + str(self.UserForceClose)
-            + '|' + str(self.IsSwapOrder)
-            + '|' + self.BusinessUnit
-            + '|' + self.CurrencyID )
-        return msg 
-            
-class PaperOrderField(object):
-    def __init__(self):  
-        self.order_type = OrderType.MKT
-        self.full_symbol = ''
-        self.order_flag = OrderFlag.OPEN
-        self.limit_price = 0.0
-        self.stop_price = 0.0
-        self.order_size = 0
-
-    def serialize(self):
-        msg = str( str(self.order_type.value)  
-            + '|' + self.full_symbol
-            + '|' + str(self.order_flag.value)
-            + '|' + str(self.order_size)
-            + '|' + str(self.limit_price)
-            + '|' + str(self.stop_price) )
-        return msg 
-
-
-
-
-
-
-
-
-
-# ############################# vnpy 's data #########################
-
 @dataclass
 class SubscribeRequest:
     """
-    Request sending to specific gateway for subscribing tick data update.
+    subscribe
     """
+    sym_type : SYMBOL_TYPE = SYMBOL_TYPE.FULL
+    content : str = ''    
 
-    symbol: str
-    exchange: Exchange
-
-    def __post_init__(self):
-        """"""
-        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
-
-
-@dataclass
-class OrderRequest:
-    """
-    Request sending to specific gateway for creating a new order.
-    """
-
-    symbol: str
-    exchange: Exchange
-    direction: Direction
-    type: OrderType
-    volume: float
-    price: float = 0
-    offset: Offset = Offset.NONE
-
-    def __post_init__(self):
-        """"""
-        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
-
-    def create_order_data(self, orderid: str, gateway_name: str):
-        """
-        Create order data from request.
-        """
-        order = OrderData(
-            symbol=self.symbol,
-            exchange=self.exchange,
-            orderid=orderid,
-            type=self.type,
-            direction=self.direction,
-            offset=self.offset,
-            price=self.price,
-            volume=self.volume,
-            gateway_name=gateway_name,
-        )
-        return order
-
+    def serialize(self):
+        msg = str(self.sym_type.value) + '|' + self.content
+        return msg
 
 @dataclass
 class CancelRequest:
     """
     Request sending to specific gateway for canceling an existing order.
     """
+    clientID : int = 0
+    client_order_id : int = 0
+    server_order_id : int = 0
 
-    orderid: str
-    symbol: str
-    exchange: Exchange
+    def serialize(self):
+        msg = str(self.clientID) + '|' + str(self.client_order_id) + '|' + str(self.server_order_id)
+        return msg        
 
-    def __post_init__(self):
-        """"""
-        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+
+OrderRequest = OrderData
+
+# ############################# vnpy 's data #########################
+
+# @dataclass
+# class SubscribeRequest:
+#     """
+#     Request sending to specific gateway for subscribing tick data update.
+#     """
+
+#     symbol: str
+#     exchange: Exchange
+
+#     def __post_init__(self):
+#         """"""
+#         self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+
+
+# @dataclass
+# class OrderRequest:
+#     """
+#     Request sending to specific gateway for creating a new order.
+#     """
+#     symbol: str
+#     exchange: Exchange
+#     direction: Direction
+##     type: OrderType
+#     volume: float
+#     price: float = 0
+#     offset: Offset = Offset.NONE
+
+#     def __post_init__(self):
+#         """"""
+#         self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+
+#     def create_order_data(self, orderid: str, gateway_name: str):
+#         """
+#         Create order data from request.
+#         """
+#         order = OrderData(
+#             symbol=self.symbol,
+#             exchange=self.exchange,
+#             orderid=orderid,
+#             type=self.type,
+#             direction=self.direction,
+#             offset=self.offset,
+#             price=self.price,
+#             volume=self.volume,
+#             gateway_name=gateway_name,
+#         )
+#         return order
+
+
+# @dataclass
+# class CancelRequest:
+#     """
+#     Request sending to specific gateway for canceling an existing order.
+#     """
+
+#     orderid: str
+#     symbol: str
+#     exchange: Exchange
+
+#     def __post_init__(self):
+#         """"""
+#         self.vt_symbol = f"{self.symbol}.{self.exchange.value}"

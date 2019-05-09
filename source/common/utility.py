@@ -19,12 +19,16 @@ def extract_full_symbol(full_symbol: str):
 
 # from ctp symbol to full symbol
 def generate_full_symbol(exchange: Exchange, symbol: str, type:str = 'F'):
-    for count, word in enumerate(symbol):
-        if word.isdigit():
-            break
-    product = symbol[:count]
-    year = symbol[count]
-    month = symbol[count + 1:]
+    product = ''
+    year = ''
+    month = ''
+    if symbol:
+        for count, word in enumerate(symbol):
+            if word.isdigit():
+                break
+        product = symbol[:count]
+        year = symbol[count]
+        month = symbol[count + 1:]
 
     fullsym = exchange.value + ' ' + type + ' ' + product.upper() + ' ' + year + month 
     return fullsym

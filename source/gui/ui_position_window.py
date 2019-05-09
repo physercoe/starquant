@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
-from ..common.datastruct import PositionEvent,FillEvent
+from ..common.datastruct import Event,PositionData
 
 
 class PositionWindow(QtWidgets.QTableWidget):
-    position_signal = QtCore.pyqtSignal(type(PositionEvent()))
+    position_signal = QtCore.pyqtSignal(Event)
 
     def __init__(self, lang_dict, parent=None):
         super(PositionWindow, self).__init__(parent)
@@ -20,8 +20,7 @@ class PositionWindow(QtWidgets.QTableWidget):
                        'Open_PnL',
                        'Closed_PnL',
                        'API',
-                       'Time',
-                       'Tag']
+                       'Time']
 
         self.init_table()
         self._symbols = []
@@ -40,59 +39,39 @@ class PositionWindow(QtWidgets.QTableWidget):
         self.setSortingEnabled(False)
 
     def update_table(self,position_event):
-        # side = 'b' if position_event.size > 0 else 's'
-        # posfullsym = position_event.full_symbol + ' ' +side
-        if (not position_event.key) or ( position_event .type == 'c'):
-            return
-        if position_event.key in self._poskey:
-            if(position_event.type  == 'a' ):
-                row = self._poskey.index(position_event.key)
-                if (position_event.size == 0):
-                    self.removeRow(row)
-                else:
-                    self.setItem(0, 3, QtWidgets.QTableWidgetItem(str(position_event.average_cost)))
-                    self.setItem(0, 4, QtWidgets.QTableWidgetItem(str(abs(position_event.size))))
-                    self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(position_event.pre_size)))
-                    self.setItem(0, 6, QtWidgets.QTableWidgetItem(str(position_event.freezed_size)))
-                    self.setItem(0, 7, QtWidgets.QTableWidgetItem(str(position_event.unrealized_pnl)))
-                    self.setItem(0, 8, QtWidgets.QTableWidgetItem(str(position_event.realized_pnl)))
-                    self.setItem(0, 9, QtWidgets.QTableWidgetItem(position_event.api))
-                    self.setItem(0, 10, QtWidgets.QTableWidgetItem(position_event.timestamp))
-                    self.setItem(0, 11, QtWidgets.QTableWidgetItem(position_event.type + position_event.posno ))
-            elif(position_event.type == 'n'):
-                row = self._poskey.index(position_event.key)
-                if (position_event.size == 0):
-                    self.removeRow(row)
-                else:
-                    self.setItem(0, 3, QtWidgets.QTableWidgetItem(str(position_event.average_cost)))
-                    self.setItem(0, 4, QtWidgets.QTableWidgetItem(str(abs(position_event.size))))
-                    self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(position_event.pre_size)))
-                    self.setItem(0, 6, QtWidgets.QTableWidgetItem(str(position_event.freezed_size)))
-                    self.setItem(0, 7, QtWidgets.QTableWidgetItem(str(position_event.unrealized_pnl)))
-                    self.setItem(0, 8, QtWidgets.QTableWidgetItem(str(position_event.realized_pnl)))
-                    self.setItem(0, 9, QtWidgets.QTableWidgetItem(position_event.api))
-                    self.setItem(0, 10, QtWidgets.QTableWidgetItem(position_event.timestamp))
-                    self.setItem(0, 11, QtWidgets.QTableWidgetItem(position_event.type + position_event.posno ))
-            elif(position_event.type == 'u'):
-                row = self._poskey.index(position_event.key)
-                self.setItem(row, 7, QtWidgets.QTableWidgetItem(str(position_event.unrealized_pnl)))
-                self.setItem(row, 10, QtWidgets.QTableWidgetItem(position_event.timestamp))
+        # side = 'b' if position.volume > 0 else 's'
 
+        position = position_event.data
+        if (not position.key) :
+            return
+        if position.key in self._poskey:
+            row = self._poskey.index(position.key)
+            if (position.volume == 0) and (position.yd_volume == 0):
+                self.removeRow(row)
+            else:
+                self.setItem(0, 3, QtWidgets.QTableWidgetItem(str(position.price)))
+                self.setItem(0, 4, QtWidgets.QTableWidgetItem(str(abs(position.volume))))
+                self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(position.yd_volume)))
+                self.setItem(0, 6, QtWidgets.QTableWidgetItem(str(position.frozen)))
+                self.setItem(0, 7, QtWidgets.QTableWidgetItem(str(position.pnl)))
+                self.setItem(0, 8, QtWidgets.QTableWidgetItem(str(position.realized_pnl)))
+                self.setItem(0, 9, QtWidgets.QTableWidgetItem(position.api))
+                self.setItem(0, 10, QtWidgets.QTableWidgetItem(position.timestamp))
         else:
-            self._poskey.insert(0, position_event.key)
+            self._poskey.insert(0, position.key)
             self.insertRow(0)
-            self.setItem(0, 0, QtWidgets.QTableWidgetItem(position_event.account))
-            self.setItem(0, 1, QtWidgets.QTableWidgetItem(position_event.full_symbol))
-            self.setItem(0, 2, QtWidgets.QTableWidgetItem(str(self._lang_dict['Long'] if position_event.size > 0 else self._lang_dict['Short'])))
-            self.setItem(0, 3, QtWidgets.QTableWidgetItem(str(position_event.average_cost)))
-            self.setItem(0, 4, QtWidgets.QTableWidgetItem(str(abs(position_event.size))))
-            self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(position_event.pre_size)))
-            self.setItem(0, 6, QtWidgets.QTableWidgetItem(str(position_event.freezed_size)))
-            self.setItem(0, 7, QtWidgets.QTableWidgetItem(str(position_event.unrealized_pnl)))
-            self.setItem(0, 8, QtWidgets.QTableWidgetItem(str(position_event.realized_pnl)))
-            self.setItem(0, 9, QtWidgets.QTableWidgetItem(position_event.api))
-            self.setItem(0, 10, QtWidgets.QTableWidgetItem(position_event.timestamp))
-            self.setItem(0, 11, QtWidgets.QTableWidgetItem(position_event.type + position_event.posno ))
+            self.setItem(0, 0, QtWidgets.QTableWidgetItem(position.account))
+            self.setItem(0, 1, QtWidgets.QTableWidgetItem(position.full_symbol))
+            self.setItem(0, 2, QtWidgets.QTableWidgetItem(str(self._lang_dict['Long'] if position.volume > 0 else self._lang_dict['Short'])))
+            self.setItem(0, 3, QtWidgets.QTableWidgetItem(str(position.price)))
+            self.setItem(0, 4, QtWidgets.QTableWidgetItem(str(abs(position.volume))))
+            self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(position.yd_volume)))
+            self.setItem(0, 6, QtWidgets.QTableWidgetItem(str(position.frozen)))
+            self.setItem(0, 7, QtWidgets.QTableWidgetItem(str(position.pnl)))
+            self.setItem(0, 8, QtWidgets.QTableWidgetItem(str(position.realized_pnl)))
+            self.setItem(0, 9, QtWidgets.QTableWidgetItem(position.api))
+            self.setItem(0, 10, QtWidgets.QTableWidgetItem(position.timestamp))
+
         
         self.resizeRowsToContents()
 

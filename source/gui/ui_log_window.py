@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
-from ..common.datastruct import InfoEvent
+from ..common.datastruct import Event
 
 class LogWindow(QtWidgets.QTableWidget):
-    msg_signal = QtCore.pyqtSignal(type(InfoEvent()))
+    msg_signal = QtCore.pyqtSignal(Event)
 
     def __init__(self, lang_dict, parent=None):
         super(LogWindow, self).__init__(parent)
 
         self.header = ['Source',
-                        'Type',
-                        'Content',
+                       'Content',
                        'Time']
 
         self.init_table()
@@ -32,10 +31,10 @@ class LogWindow(QtWidgets.QTableWidget):
         '''
         Only add row
         '''
-        self.insertRow(0)
-        self.setItem(0, 0, QtWidgets.QTableWidgetItem(geneal_event.source ))
-        self.setItem(0, 1, QtWidgets.QTableWidgetItem(str(geneal_event.msg_type.name)))
-        self.setItem(0, 2, QtWidgets.QTableWidgetItem(geneal_event.content))
-        self.setItem(0, 3, QtWidgets.QTableWidgetItem(geneal_event.timestamp ))
-        self.resizeRowsToContents()
+        if(geneal_event.data.msg):
+            self.insertRow(0)
+            self.setItem(0, 0, QtWidgets.QTableWidgetItem(geneal_event.source))
+            self.setItem(0, 1, QtWidgets.QTableWidgetItem(geneal_event.data.msg))
+            self.setItem(0, 2, QtWidgets.QTableWidgetItem(geneal_event.data.timestamp))
+            self.resizeRowsToContents()
 

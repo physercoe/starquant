@@ -72,7 +72,7 @@ string SecurityMsg::serialize(){
         + SERIALIZATION_SEPARATOR + data_.optionType_
         + SERIALIZATION_SEPARATOR + to_string(data_.strikePrice_)
         + SERIALIZATION_SEPARATOR + data_.expiryDate_ ;
-        
+       
     return s;
 }
 

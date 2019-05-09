@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
 import time
-from ..common.datastruct import TickEvent, TickType
+from ..common.datastruct import Event, TickData
 class MarketWindow(QtWidgets.QTableWidget):
-    tick_signal = QtCore.pyqtSignal(type(TickEvent()))
+    tick_signal = QtCore.pyqtSignal(Event)
     symbol_signal = QtCore.pyqtSignal(str)
 
     def __init__(self, symbols, lang_dict, parent=None):
@@ -66,47 +66,43 @@ class MarketWindow(QtWidgets.QTableWidget):
         symbol = self.item(row, 0).text()
         self.symbol_signal.emit(symbol)
 
-    def update_table(self,tickevent):
-        if tickevent.full_symbol in self._symbols:
-            row = self._symbols.index(tickevent.full_symbol)
-            timestr = tickevent.timestamp.strftime("%Y-%m-%d %H:%M:%S.%f")
-            if (tickevent.price > 0.0):
+    def update_table(self,tickevent:Event):
+        tick = tickevent.data
+        if tick.full_symbol in self._symbols:
+            row = self._symbols.index(tick.full_symbol)
+            timestr = tick.timestamp.strftime("%Y-%m-%d %H:%M:%S.%f")
+            if (tick.last_price > 0.0):
                 try:
-                #timestr = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tickevent.timestamp))
+                #timestr = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tick.timestamp))
                     self.item(row, 8).setText(timestr)
-                    if (tickevent.tick_type == TickType.Trade):
-                        self.item(row, 1).setText(str(tickevent.price))
-                        self.item(row, 2).setText(str(tickevent.size))
-                    elif (tickevent.tick_type == TickType.Tick_L1 or tickevent.tick_type == TickType.Tick_L5):
-                        self.item(row, 1).setText(str(tickevent.price))
-                        self.item(row, 2).setText(str(tickevent.size))
-                        self.item(row, 3).setText(str(tickevent.open_interest))
-                        self.item(row, 4).setText(str(tickevent.pre_close))
-                        self.item(row, 5).setText(str(tickevent.open))
-                        self.item(row, 6).setText(str(tickevent.high))
-                        self.item(row, 7).setText(str(tickevent.low))
-                        self.item(row, 9).setText(str(tickevent.source))
+                    self.item(row, 1).setText(str(tick.last_price))
+                    self.item(row, 2).setText(str(tick.volume))
+                    self.item(row, 3).setText(str(tick.open_interest))
+                    self.item(row, 4).setText(str(tick.pre_close))
+                    self.item(row, 5).setText(str(tick.open_price))
+                    self.item(row, 6).setText(str(tick.high_price))
+                    self.item(row, 7).setText(str(tick.low_price))
+                    self.item(row, 9).setText(str(tick.gateway_name))
                 except:
                     pass
         else:
-            self._symbols.insert(0,tickevent.full_symbol)
+            self._symbols.insert(0,tick.full_symbol)
             self.insertRow(0)
-            self.setItem(0, 0, QtWidgets.QTableWidgetItem(tickevent.full_symbol))
+            self.setItem(0, 0, QtWidgets.QTableWidgetItem(tick.full_symbol))
             for j in range(1,len(self.header)):
                 self.setItem(0, j, QtWidgets.QTableWidgetItem(''))      
-            if(tickevent.tick_type == TickType.Tick_L1 or tickevent.tick_type == TickType.Tick_L5):
-                try:
-                    self.item(0, 1).setText(str(tickevent.price))
-                    self.item(0, 2).setText(str(tickevent.size))
-                    self.item(0, 3).setText(str(tickevent.open_interest))
-                    self.item(0, 4).setText(str(tickevent.pre_close))
-                    self.item(0, 5).setText(str(tickevent.open))
-                    self.item(0, 6).setText(str(tickevent.high))
-                    self.item(0, 7).setText(str(tickevent.low))
-                    self.item(0, 8).setText(timestr)
-                    self.item(0, 9).setText(str(tickevent.source))
-                except:
-                    pass
+            try:
+                self.item(0, 1).setText(str(tick.last_price))
+                self.item(0, 2).setText(str(tick.volume))
+                self.item(0, 3).setText(str(tick.open_interest))
+                self.item(0, 4).setText(str(tick.pre_close))
+                self.item(0, 5).setText(str(tick.open_price))
+                self.item(0, 6).setText(str(tick.high_price))
+                self.item(0, 7).setText(str(tick.low_price))
+                self.item(0, 8).setText(timestr)
+                self.item(0, 9).setText(str(tick.gateway_name))
+            except:
+                pass
         self.resizeRowsToContents()
 
 

@@ -9,7 +9,7 @@ from typing import Callable
 import numpy as np
 import talib
 
-from ..common.datastruct import TickEvent, BarEvent
+from ..common.datastruct import Event,TickData, BarData
 
 class DataBoard(object):
     """
@@ -20,13 +20,15 @@ class DataBoard(object):
         self._symbol_tick_dict = {}
         self._symbol_bar_dict = {}
 
-    def on_tick(self, tick):
+    def on_tick(self, tick_event):
+        tick = tick_event.data
         if tick.full_symbol not in self._symbol_tick_dict:
             self._symbol_tick_dict[tick.full_symbol]  = None
 
         self._symbol_tick_dict[tick.full_symbol] = tick
 
     def on_bar(self, bar):
+        
         if bar.full_symbol not in self._symbol_bar_dict:
             self._symbol_bar_dict[bar.full_symbol]  = None
 
@@ -116,7 +118,7 @@ class BarGenerator:
 
         self.last_tick = None
 
-    def update_tick(self, tick: TickEvent):
+    def update_tick(self, tick: TickData):
         """
         Update new tick data into generator.
         """
@@ -124,8 +126,8 @@ class BarGenerator:
 
         if not self.bar:
             new_minute = True
-        elif self.bar.latestime.minute != tick.timestamp.minute:
-            self.bar.latestime = self.bar.latestime.replace(
+        elif self.bar.datetime.minute != tick.datetime.minute:
+            self.bar.datetime = self.bar.datetime.replace(
                 second=0, microsecond=0
             )
             self.on_bar(self.bar)
@@ -133,44 +135,42 @@ class BarGenerator:
             new_minute = True
 
         if new_minute:
-            newbar = BarEvent()
-            newbar.full_symbol = tick.full_symbol
-            newbar.bar_start_time = tick.timestamp
-            newbar.latestime = tick.timestamp
-            newbar.open_price = tick.price
-            newbar.high_price = tick.price
-            newbar.low_price = tick.price
-            newbar.close_price = tick.price
-            newbar.adj_close_price = tick.price
-            newbar.interval = 60 
-            self.bar = newbar
-  
+            self.bar = BarData(
+                symbol=tick.symbol,
+                exchange=tick.exchange,
+                datetime=tick.datetime,
+                gateway_name=tick.gateway_name,
+                open_price=tick.last_price,
+                high_price=tick.last_price,
+                low_price=tick.last_price,
+                close_price=tick.last_price,
+            )
         else:
-            self.bar.high_price = max(self.bar.high_price, tick.price)
-            self.bar.low_price = min(self.bar.low_price, tick.price)            
-            self.bar.close_price = tick.price
-            self.bar.adj_close_price = tick.price
-            self.bar.latestime = tick.timestamp
+            self.bar.high_price = max(self.bar.high_price, tick.last_price)
+            self.bar.low_price = min(self.bar.low_price, tick.last_price)
+            self.bar.close_price = tick.last_price
+            self.bar.datetime = tick.datetime
 
         if self.last_tick:
-            volume_change = tick.size - self.last_tick.size
+            volume_change = tick.volume - self.last_tick.volume
             self.bar.volume += max(volume_change, 0)
 
         self.last_tick = tick
 
-    def update_bar(self, bar: BarEvent):
+    def update_bar(self, bar: BarData):
         """
         Update 1 minute bar into generator
         """
         if not self.xmin_bar:
-            newxminbar = BarEvent()
-            newxminbar.full_symbol = bar.full_symbol
-            newxminbar.bar_start_time = bar.latestime
-            newxminbar.latestime = bar.latestime
-            newxminbar.open_price = bar.open_price
-            newxminbar.high_price = bar.high_price
-            newxminbar.low_price = bar.low_price
-
+            self.xmin_bar = BarData(
+                symbol=bar.symbol,
+                exchange=bar.exchange,
+                datetime=bar.datetime,
+                gateway_name=bar.gateway_name,
+                open_price=bar.open_price,
+                high_price=bar.high_price,
+                low_price=bar.low_price
+            )
         else:
             self.xmin_bar.high_price = max(
                 self.xmin_bar.high_price, bar.high_price)
@@ -180,8 +180,8 @@ class BarGenerator:
         self.xmin_bar.close_price = bar.close_price
         self.xmin_bar.volume += int(bar.volume)
 
-        if not (bar.latestime.minute + 1) % self.xmin:
-            self.xmin_bar.latestime = self.xmin_bar.latestime.replace(
+        if not (bar.datetime.minute + 1) % self.xmin:
+            self.xmin_bar.datetime = self.xmin_bar.datetime.replace(
                 second=0, microsecond=0
             )
             self.on_xmin_bar(self.xmin_bar)
@@ -194,6 +194,7 @@ class BarGenerator:
         """
         self.on_bar(self.bar)
         self.bar = None
+
 
 
 class ArrayManager(object):

@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
-from ..common.datastruct import FillEvent
+from ..common.datastruct import Event,TradeData
 
 class FillWindow(QtWidgets.QTableWidget):
-    fill_signal = QtCore.pyqtSignal(type(FillEvent()))
+    fill_signal = QtCore.pyqtSignal(Event)
 
     def __init__(self, order_manager, lang_dict, parent=None):
         super(FillWindow, self).__init__(parent)
@@ -43,27 +43,28 @@ class FillWindow(QtWidgets.QTableWidget):
         '''
         Only add row
         '''
-        if fill_event.orderNo in self._fillids:
-            row = self._fillids.index(fill_event.orderNo)
-            self.item(row, 9).setText(fill_event.fill_time)
+        fill = fill_event.data
+        if fill.vt_tradeid in self._fillids:
+            row = self._fillids.index(fill.vt_tradeid)
+            self.item(row, 6).setText(fill.time)
             print('received same fill twice')
         else:  # including empty
             try:
-                self._fillids.insert(0, fill_event.orderNo)
+                self._fillids.insert(0, fill.vt_tradeid)
                 self.insertRow(0)
-                self.setItem(0, 0, QtWidgets.QTableWidgetItem(fill_event.account))
-                self.setItem(0, 1, QtWidgets.QTableWidgetItem(str(fill_event.clientID)))
-                self.setItem(0, 2, QtWidgets.QTableWidgetItem(fill_event.full_symbol))
-                self.setItem(0, 3, QtWidgets.QTableWidgetItem(fill_event.fill_flag.name))
-                self.setItem(0, 4, QtWidgets.QTableWidgetItem(str(fill_event.fill_price)))
-                self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(fill_event.fill_size)))
-                self.setItem(0, 6, QtWidgets.QTableWidgetItem(fill_event.fill_time))
-                self.setItem(0, 7, QtWidgets.QTableWidgetItem(str(fill_event.commission)))
-                self.setItem(0, 8, QtWidgets.QTableWidgetItem(fill_event.api))
-                self.setItem(0, 9, QtWidgets.QTableWidgetItem(str(fill_event.broker_fill_id)))
-                self.setItem(0, 10, QtWidgets.QTableWidgetItem(str(fill_event.orderNo)))
-                self.setItem(0, 11, QtWidgets.QTableWidgetItem(str(fill_event.server_order_id)))
-                self.setItem(0, 12, QtWidgets.QTableWidgetItem(str(fill_event.client_order_id)))
+                self.setItem(0, 0, QtWidgets.QTableWidgetItem(fill.account))
+                self.setItem(0, 1, QtWidgets.QTableWidgetItem(str(fill.clientID)))
+                self.setItem(0, 2, QtWidgets.QTableWidgetItem(fill.full_symbol))
+                self.setItem(0, 3, QtWidgets.QTableWidgetItem(fill.fill_flag.name))
+                self.setItem(0, 4, QtWidgets.QTableWidgetItem(str(fill.price)))
+                self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(fill.volume)))
+                self.setItem(0, 6, QtWidgets.QTableWidgetItem(fill.time))
+                self.setItem(0, 7, QtWidgets.QTableWidgetItem(str(fill.commission)))
+                self.setItem(0, 8, QtWidgets.QTableWidgetItem(fill.api))
+                self.setItem(0, 9, QtWidgets.QTableWidgetItem(str(fill.vt_tradeid)))
+                self.setItem(0, 10, QtWidgets.QTableWidgetItem(str(fill.orderNo)))
+                self.setItem(0, 11, QtWidgets.QTableWidgetItem(str(fill.server_order_id)))
+                self.setItem(0, 12, QtWidgets.QTableWidgetItem(str(fill.client_order_id)))
             except:
                 print('unable to find order that matches this fill')
         self.resizeRowsToContents()

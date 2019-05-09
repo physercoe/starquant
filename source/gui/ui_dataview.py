@@ -14,12 +14,12 @@ import pyqtgraph as pg
 
 sys.path.insert(0,"../..")
 
-from source.common.datastruct import TickEvent, TickType
+from source.common.datastruct import Event, TickData
 
 
 
 class MarketDataView(QtWidgets.QWidget):
-    tick_signal = QtCore.pyqtSignal(type(TickEvent()))
+    tick_signal = QtCore.pyqtSignal(Event)
     symbol_signal = QtCore.pyqtSignal(str)
     def __init__(self):
         """"""
@@ -151,7 +151,7 @@ class DateAxis(pg.AxisItem):
 
 
 class OrderBookWidget(QtWidgets.QWidget):
-    tick_signal = QtCore.pyqtSignal(type(TickEvent()))
+    tick_signal = QtCore.pyqtSignal(Event)
     symbol_signal = QtCore.pyqtSignal(str)
 
     def __init__(self):
@@ -216,7 +216,7 @@ class OrderBookWidget(QtWidgets.QWidget):
         self.lp_label = self.create_label()
 
         self.size_label = self.create_label(alignment=QtCore.Qt.AlignRight)
-
+        self.last_volume = 0
         form2 = QtWidgets.QFormLayout()
         titlelabel = self.create_label(alignment=QtCore.Qt.AlignCenter)
         titlelabel.setText('OrderBook')
@@ -267,50 +267,50 @@ class OrderBookWidget(QtWidgets.QWidget):
         self.tick_signal.connect(self.process_tick_event)
         self.symbol_signal.connect(self.set_full_symbol)
 
-    def process_tick_event(self, tick: TickEvent):
+    def process_tick_event(self, tickevent: Event):        
         """"""
-        if tick.full_symbol != self.full_symbol:
+        tick = tickevent.data
+        if not tick:
             return
-                    # if (tickevent.tick_type == TickType.Bid):
-                    #     self.item(row, 4).setText(str(tickevent.size))
-                    #     self.item(row, 5).setText(str(tickevent.price))
-                    # elif (tickevent.tick_type == TickType.Ask):
-                    #     self.item(row, 6).setText(str(tickevent.price))
-                    #     self.item(row, 7).setText(str(tickevent.size))
-        self.lp_label.setText(str(tick.price))
-        self.open_label.setText(str(tick.open))
-        self.low_label.setText(str(tick.low))
-        self.high_label.setText(str(tick.high))
-        self.size_label.setText(str(tick.size))
-        self.bp1_label.setText(str(tick.bid_price_L1))
-        self.bv1_label.setText(str(tick.bid_size_L1))
-        self.ap1_label.setText(str(tick.ask_price_L1))
-        self.av1_label.setText(str(tick.ask_size_L1))
+        if (tick.full_symbol != self.full_symbol):
+            return
+        self.lp_label.setText(str(tick.last_price))
+        self.open_label.setText(str(tick.open_price))
+        self.low_label.setText(str(tick.low_price))
+        self.high_label.setText(str(tick.high_price))        
+        self.size_label.setText(str(tick.volume - self.last_volume))
+        self.last_volume = tick.volume
+        self.bp1_label.setText(str(tick.bid_price_1))
+        self.bv1_label.setText(str(tick.bid_volume_1))
+        self.ap1_label.setText(str(tick.ask_price_1))
+        self.av1_label.setText(str(tick.ask_volume_1))
+        self.uplimit_label.setText(str(tick.limit_up))
+        self.lplimit_lable.setText(str(tick.limit_down))
 
         if tick.pre_close != 0.0:
-            r = (tick.price / tick.pre_close - 1) * 100
+            r = (tick.last_price / tick.pre_close - 1) * 100
             self.change_label.setText(f"{r:.2f}%")
 
         if tick.depth == 5:
-            self.bp2_label.setText(str(tick.bid_price_L2))
-            self.bv2_label.setText(str(tick.bid_size_L2))
-            self.ap2_label.setText(str(tick.ask_price_L2))
-            self.av2_label.setText(str(tick.ask_size_L2))
+            self.bp2_label.setText(str(tick.bid_price_2))
+            self.bv2_label.setText(str(tick.bid_volume_2))
+            self.ap2_label.setText(str(tick.ask_price_2))
+            self.av2_label.setText(str(tick.ask_volume_2))
 
-            self.bp3_label.setText(str(tick.bid_price_L3))
-            self.bv3_label.setText(str(tick.bid_size_L3))
-            self.ap3_label.setText(str(tick.ask_price_L3))
-            self.av3_label.setText(str(tick.ask_size_L3))
+            self.bp3_label.setText(str(tick.bid_price_3))
+            self.bv3_label.setText(str(tick.bid_size_3))
+            self.ap3_label.setText(str(tick.ask_price_3))
+            self.av3_label.setText(str(tick.ask_size_3))
 
-            self.bp4_label.setText(str(tick.bid_price_L4))
-            self.bv4_label.setText(str(tick.bid_size_L4))
-            self.ap4_label.setText(str(tick.ask_price_L4))
-            self.av4_label.setText(str(tick.ask_size_L4))
+            self.bp4_label.setText(str(tick.bid_price_4))
+            self.bv4_label.setText(str(tick.bid_volume_4))
+            self.ap4_label.setText(str(tick.ask_price_4))
+            self.av4_label.setText(str(tick.ask_volume_4))
 
-            self.bp5_label.setText(str(tick.bid_price_L5))
-            self.bv5_label.setText(str(tick.bid_size_L5))
-            self.ap5_label.setText(str(tick.ask_price_L5))
-            self.av5_label.setText(str(tick.ask_size_L5))
+            self.bp5_label.setText(str(tick.bid_price_5))
+            self.bv5_label.setText(str(tick.bid_volume_5))
+            self.ap5_label.setText(str(tick.ask_price_5))
+            self.av5_label.setText(str(tick.ask_volume_5))
 
     def set_full_symbol(self,symbol: str):
         """
@@ -335,29 +335,29 @@ class OrderBookWidget(QtWidgets.QWidget):
         self.low_label.setText('Low')
         self.high_label.setText('High')
         self.size_label.setText('Volume')
-        self.bv1_label.setText("BV1")
-        self.bv2_label.setText("BV2")
-        self.bv3_label.setText("BV3")
-        self.bv4_label.setText("BV4")
-        self.bv5_label.setText("BV5")
+        self.bv1_label.setText("")
+        self.bv2_label.setText("")
+        self.bv3_label.setText("")
+        self.bv4_label.setText("")
+        self.bv5_label.setText("")
 
-        self.av1_label.setText("AV1")
-        self.av2_label.setText("AV2")
-        self.av3_label.setText("AV3")
-        self.av4_label.setText("AV4")
-        self.av5_label.setText("AV5")
+        self.av1_label.setText("")
+        self.av2_label.setText("")
+        self.av3_label.setText("")
+        self.av4_label.setText("")
+        self.av5_label.setText("")
 
-        self.bp1_label.setText("BP1")
-        self.bp2_label.setText("BP2")
-        self.bp3_label.setText("BP3")
-        self.bp4_label.setText("BP4")
-        self.bp5_label.setText("BP5")
+        self.bp1_label.setText("")
+        self.bp2_label.setText("")
+        self.bp3_label.setText("")
+        self.bp4_label.setText("")
+        self.bp5_label.setText("")
 
-        self.ap1_label.setText("AP1")
-        self.ap2_label.setText("AP2")
-        self.ap3_label.setText("AP3")
-        self.ap4_label.setText("AP4")
-        self.ap5_label.setText("AP5")
+        self.ap1_label.setText("")
+        self.ap2_label.setText("")
+        self.ap3_label.setText("")
+        self.ap4_label.setText("")
+        self.ap5_label.setText("")
 
 
 

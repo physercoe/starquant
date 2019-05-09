@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-from source.common.datastruct import *   #EventType
+from source.common.datastruct import Event,OrderData,MSG_TYPE   #EventType
 class OrderWindow(QtWidgets.QTableWidget):
     '''
     Order Monitor
     '''
-    order_status_signal = QtCore.pyqtSignal(type(OrderStatusEvent()))
+    order_status_signal = QtCore.pyqtSignal(Event)
 
     def __init__(self, order_manager, outgoing_queue, lang_dict, parent=None):
         super(OrderWindow, self).__init__(parent)
@@ -44,40 +44,38 @@ class OrderWindow(QtWidgets.QTableWidget):
         self.setSortingEnabled(False)
         self.itemDoubleClicked.connect(self.cancel_order)
 
-    def update_table(self, order_status_event):
+    def update_table(self, order_status_event:Event):
         '''
         If order id exist, update status
         else append one row
         '''
         # update = self._order_manager.on_order_status(order_status_event)
         # print("update order status",update)
+        orderstatus = order_status_event.data
         if (True):
-            if order_status_event.server_order_id in self._orderids:
-                row = self._orderids.index(order_status_event.server_order_id)
-                self.item(row, 6).setText(order_status_event.order_status.name)
-                self.item(row, 8).setText(order_status_event.order_status.update_time)
-                self.item(row, 9).setText(order_status_event.order_status.tag)
+            if orderstatus.server_order_id in self._orderids:
+                row = self._orderids.index(orderstatus.server_order_id)
+                self.item(row, 6).setText(orderstatus.order_status.name)
+                self.item(row, 8).setText(orderstatus.update_time)
+                self.item(row, 9).setText(orderstatus.tag)
             else:  # including empty
-                self._orderids.insert(0, order_status_event.server_order_id)
+                self._orderids.insert(0, orderstatus.server_order_id)
                 self.insertRow(0)
-                self.setItem(0, 0, QtWidgets.QTableWidgetItem(order_status_event.account))
-                self.setItem(0, 1, QtWidgets.QTableWidgetItem(str(order_status_event.clientID)))
-                self.setItem(0, 2, QtWidgets.QTableWidgetItem(order_status_event.full_symbol))
-                self.setItem(0, 3, QtWidgets.QTableWidgetItem(order_status_event.order_flag.name))
-                self.setItem(0, 4, QtWidgets.QTableWidgetItem(str(order_status_event.price)))
-                self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(order_status_event.quantity)))
-                self.setItem(0, 6, QtWidgets.QTableWidgetItem(order_status_event.order_status.name))
-                self.setItem(0, 7, QtWidgets.QTableWidgetItem(order_status_event.create_time))
-                self.setItem(0, 8, QtWidgets.QTableWidgetItem(order_status_event.update_time))
-                self.setItem(0, 9, QtWidgets.QTableWidgetItem(order_status_event.tag))
-                self.setItem(0, 10, QtWidgets.QTableWidgetItem(order_status_event.api))
-                self.setItem(0, 11, QtWidgets.QTableWidgetItem(str(order_status_event.client_order_id)))
-                self.setItem(0, 12, QtWidgets.QTableWidgetItem(str(order_status_event.server_order_id)))
-                self.setItem(0, 13, QtWidgets.QTableWidgetItem(order_status_event.orderNo))
+                self.setItem(0, 0, QtWidgets.QTableWidgetItem(orderstatus.account))
+                self.setItem(0, 1, QtWidgets.QTableWidgetItem(str(orderstatus.clientID)))
+                self.setItem(0, 2, QtWidgets.QTableWidgetItem(orderstatus.full_symbol))
+                self.setItem(0, 3, QtWidgets.QTableWidgetItem(orderstatus.flag.name))
+                self.setItem(0, 4, QtWidgets.QTableWidgetItem(str(orderstatus.price)))
+                self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(orderstatus.volume)))
+                self.setItem(0, 6, QtWidgets.QTableWidgetItem(orderstatus.order_status.name))
+                self.setItem(0, 7, QtWidgets.QTableWidgetItem(orderstatus.create_time))
+                self.setItem(0, 8, QtWidgets.QTableWidgetItem(orderstatus.update_time))
+                self.setItem(0, 9, QtWidgets.QTableWidgetItem(orderstatus.tag))
+                self.setItem(0, 10, QtWidgets.QTableWidgetItem(orderstatus.api))
+                self.setItem(0, 11, QtWidgets.QTableWidgetItem(str(orderstatus.client_order_id)))
+                self.setItem(0, 12, QtWidgets.QTableWidgetItem(str(orderstatus.server_order_id)))
+                self.setItem(0, 13, QtWidgets.QTableWidgetItem(orderstatus.orderNo))
         self.resizeRowsToContents()
-    def update_order_status(self, client_order_id, order_status):
-        row = self._orderids.index(client_order_id)
-        self.item(row, 6).setText(order_status.name)
 
     def cancel_order(self,mi):
         row = mi.row()

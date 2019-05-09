@@ -23,13 +23,12 @@ def print_content(msg):
     #     print(datastruct.wxcmd)
 
 class ManualWindow(QtWidgets.QFrame):
-    order_signal = QtCore.pyqtSignal(OrderEvent)
+    order_signal = QtCore.pyqtSignal(Event)
+    subscribe_signal = QtCore.pyqtSignal(Event)
+    qryacc_signal = QtCore.pyqtSignal(Event) 
+    qrypos_signal = QtCore.pyqtSignal(Event)    
+    qrycontract_signal = QtCore.pyqtSignal(Event) 
     manual_req = QtCore.pyqtSignal(str)
-    subscribe_signal = QtCore.pyqtSignal(SubscribeEvent)
-    qryacc_signal = QtCore.pyqtSignal(QryAccEvent) 
-    qrypos_signal = QtCore.pyqtSignal(QryPosEvent)    
-    qrycontract_signal = QtCore.pyqtSignal(QryContractEvent) 
-
     def __init__(self, apilist, acclist):
         super(ManualWindow, self).__init__()
 
@@ -60,11 +59,11 @@ class ManualWindow(QtWidgets.QFrame):
         apistatus = str(self._apistatusdict[key].name)
         self.apistatus.setText(apistatus)
         
-    def updateapistatusdict(self,msg):
-        key = msg.source
+    def updateapistatusdict(self,info_event):
+        key = info_event.source
         if key.endswith('.MD'):
             key = key.replace('.MD','.TD.')
-        self._apistatusdict[key] = ESTATE(int(msg.content))
+        self._apistatusdict[key] = ESTATE(int(info_event.data.msg))
         # print(self._apistatusdict[key].name)
         self.updatestatus()
         pass
@@ -114,29 +113,31 @@ class ManualWindow(QtWidgets.QFrame):
 
     def place_order_ctp(self,of):
         try:
-            o = OrderEvent()
-            o.msg_type = MSG_TYPE.MSG_TYPE_ORDER_CTP
-            o.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
-            o.source = '0'
-            o.api = o.destination #self.api_type.currentText() 
+            m = Event(EventType.ORDER)
+            m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_CTP
+            m.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+            m.source = '0'  
+            o = OrderData()
+            o.api = m.destination #self.api_type.currentText() 
             o.account = self.accounts.currentText()
             o.clientID = 0
             o.client_order_id = self.manualorderid
             self.manualorderid = self.manualorderid + 1
             # o.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
             o.orderfield = of
-            self.order_signal.emit(o)
+            m.data = o   
+            self.order_signal.emit(m)
         except:
             print('place order error')
 
     def place_order_paper(self,of):
         try:
-            o = OrderEvent()
-            o.msg_type = MSG_TYPE.MSG_TYPE_ORDER_PAPER
-            o.destination = self.api_type.currentText() + '.TD'
-            o.source = '0'
-
-            o.api = o.destination #self.api_type.currentText() 
+            m = Event(EventType.ORDER)
+            m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_PAPER
+            m.destination = self.api_type.currentText() + '.TD'
+            m.source = '0'
+            o = OrderData()
+            o.api = m.destination #self.api_type.currentText() 
             o.account = self.accounts.currentText()
             o.clientID = 0
             o.client_order_id = self.manualorderid
@@ -267,10 +268,10 @@ class ManualWindow(QtWidgets.QFrame):
 
 class CtpApiWindow(QtWidgets.QFrame):
     orderfield_signal = QtCore.pyqtSignal(CtpOrderField)
-    subscribe_signal = QtCore.pyqtSignal(SubscribeEvent)
-    qryacc_signal = QtCore.pyqtSignal(QryAccEvent) 
-    qrypos_signal = QtCore.pyqtSignal(QryPosEvent)    
-    qrycontract_signal = QtCore.pyqtSignal(QryContractEvent) 
+    subscribe_signal = QtCore.pyqtSignal(Event)
+    qryacc_signal = QtCore.pyqtSignal(Event) 
+    qrypos_signal = QtCore.pyqtSignal(Event)    
+    qrycontract_signal = QtCore.pyqtSignal(Event) 
     def __init__(self):
         super(CtpApiWindow, self).__init__()
         self.orderfielddict = {}
@@ -423,18 +424,23 @@ class CtpApiWindow(QtWidgets.QFrame):
 
     def qry(self):
         if(self.qry_type.currentText() == 'Account'):
-            qa = QryAccEvent()
+            qa = Event(EventType.QRY_ACCOUNT)
+            qa.msg_type = MSG_TYPE.MSG_TYPE_QRY_ACCOUNT
             self.qryacc_signal.emit(qa)
             return
         if (self.qry_type.currentText() == 'Position'):
-            qp = QryPosEvent()
+            qp = Event(EventType.QRY_POS)
+            qp.msg_type = MSG_TYPE.MSG_TYPE_QRY_POS
             self.qrypos_signal.emit(qp)
             return
         if (self.qry_type.currentText() == 'Contract'):
-            qp = QryContractEvent()
-            qp.sym_type = SYMBOL_TYPE.CTP
-            qp.content = self.qry_content.text()
-            self.qrycontract_signal.emit(qp)
+            qc = QryContractRequest()
+            qc.sym_type = SYMBOL_TYPE.CTP
+            qc.content = self.qry_content.text()
+            m = Event(EventType.QRY_CONTRACT)
+            m.msg_type = MSG_TYPE.MSG_TYPE_QRY_CONTRACT
+            m.data = qc
+            self.qrycontract_signal.emit(m)
             return
 
     def generate_request(self):
@@ -465,10 +471,13 @@ class CtpApiWindow(QtWidgets.QFrame):
             return
 
     def subscribe(self):
-        ss = SubscribeEvent()
+        ss = SubscribeRequest()
         ss.sym_type = SYMBOL_TYPE.CTP
         ss.content = str(self.sym.text())
-        self.subscribe_signal.emit()
+        m = Event(EventType.SUBSCRIBE)
+        m.msg_type = MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA
+        m.data = ss
+        self.subscribe_signal.emit(m)
         return
         
 

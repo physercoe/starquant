@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
-from ..common.datastruct import PositionEvent,FillEvent
+from ..common.datastruct import Event
 
 class StrategyWindow(QtWidgets.QTableWidget):
-    position_signal = QtCore.pyqtSignal(type(PositionEvent()))
-    fill_signal = QtCore.pyqtSignal(type(FillEvent()))
+    position_signal = QtCore.pyqtSignal(Event)
+    fill_signal = QtCore.pyqtSignal(Event)
     '''
     Strategy Monitor
     '''

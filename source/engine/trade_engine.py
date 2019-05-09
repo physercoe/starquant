@@ -682,36 +682,38 @@ class TradeEngine(BaseEngine):
                         msgin = msgin[:-1]
                     if msgin[-1] == '\x00':
                         msgin = msgin[:-1]
-                    v = msgin.split('|')
-                    msg2type = MSG_TYPE(int(v[2]))
-                    if msg2type == MSG_TYPE.MSG_TYPE_TICK_L1:
-                        m = TickEvent()
-                        m.deserialize(msgin)
-                    elif msg2type == MSG_TYPE.MSG_TYPE_RTN_ORDER:
-                       m = OrderStatusEvent()
-                       m.deserialize(msgin)
-                    elif msg2type == MSG_TYPE.MSG_TYPE_RTN_TRADE:
-                        m = FillEvent()
-                        m.deserialize(msgin)
-                    elif msg2type == MSG_TYPE.MSG_TYPE_RSP_POS:
-                        m = PositionEvent()
-                        m.deserialize(msgin)
-                    elif msg2type == MSG_TYPE.MSG_TYPE_Hist:
-                        m = HistoricalEvent()
-                        m.deserialize(msgin)
-                    elif msg2type == MSG_TYPE.MSG_TYPE_RSP_ACCOUNT:
-                        m = AccountEvent()
-                        m.deserialize(msgin)
-                    elif msg2type == MSG_TYPE.MSG_TYPE_RSP_CONTRACT:
-                        m = ContractEvent()
-                        m.deserialize(msgin)
-                    elif msg2type == MSG_TYPE.MSG_TYPE_INFO:
-                        m = InfoEvent()
-                        m.deserialize(msgin)
-                    else:
-                        m = GeneralReqEvent() 
-                        m.deserialize(msgin)
-                        pass
+                    # v = msgin.split('|')
+                    # msg2type = MSG_TYPE(int(v[2]))
+                    # if msg2type == MSG_TYPE.MSG_TYPE_TICK_L1:
+                    #     m = TickEvent()
+                    #     m.deserialize(msgin)
+                    # elif msg2type == MSG_TYPE.MSG_TYPE_RTN_ORDER:
+                    #    m = OrderStatusEvent()
+                    #    m.deserialize(msgin)
+                    # elif msg2type == MSG_TYPE.MSG_TYPE_RTN_TRADE:
+                    #     m = FillEvent()
+                    #     m.deserialize(msgin)
+                    # elif msg2type == MSG_TYPE.MSG_TYPE_RSP_POS:
+                    #     m = PositionEvent()
+                    #     m.deserialize(msgin)
+                    # elif msg2type == MSG_TYPE.MSG_TYPE_Hist:
+                    #     m = HistoricalEvent()
+                    #     m.deserialize(msgin)
+                    # elif msg2type == MSG_TYPE.MSG_TYPE_RSP_ACCOUNT:
+                    #     m = AccountEvent()
+                    #     m.deserialize(msgin)
+                    # elif msg2type == MSG_TYPE.MSG_TYPE_RSP_CONTRACT:
+                    #     m = ContractEvent()
+                    #     m.deserialize(msgin)
+                    # elif msg2type == MSG_TYPE.MSG_TYPE_INFO:
+                    #     m = InfoEvent()
+                    #     m.deserialize(msgin)
+                    # else:
+                    #     m = GeneralReqEvent() 
+                    #     m.deserialize(msgin)
+                    #     pass
+                    m = Event()
+                    m.deserialize(msgin)
                     self.event_engine.put(m)
                     # if m.event_type in self._handlers:
                     #     [handler(m) for handler in self._handlers[m.event_type]]
