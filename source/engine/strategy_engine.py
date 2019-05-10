@@ -19,7 +19,9 @@ from ..data.rqdata import rqdata_client
 from ..data import database_manager
 from ..trade.portfolio_manager import OffsetConverter
 from ..engine.iengine import BaseEngine
-class TradeEngine(BaseEngine):
+
+
+class StrategyEngine(BaseEngine):
     """
     Send to and receive from msg  server ,used for strategy 
     """
@@ -27,7 +29,7 @@ class TradeEngine(BaseEngine):
     data_filename = "cta_strategy_data.json"
 
     def __init__(self,config:dict):
-        super(TradeEngine, self).__init__()
+        super(StrategyEngine, self).__init__()
         """
         two sockets to send and recv msg
         """
@@ -64,7 +66,6 @@ class TradeEngine(BaseEngine):
         self.positions = {}
         self.accounts = {}
         self.contracts = {}
-
         self.active_orders = {}
 
 
@@ -95,7 +96,7 @@ class TradeEngine(BaseEngine):
     def register_event(self):
         """"""
         self.event_engine.register(EventType.TICK, self.process_tick_event)
-        self.event_engine.register(EventType.ORDERSTATUS, self.process_order_event)
+        self.event_engine.register(EventType.ORDERSTATUS, self.process_orderstatus_event)
         self.event_engine.register(EventType.FILL, self.process_trade_event)
         self.event_engine.register(EventType.POSITION, self.process_position_event)
         self.event_engine.register(EventType.ACCOUNT, self.process_account_event)
@@ -104,7 +105,7 @@ class TradeEngine(BaseEngine):
 
     def process_tick_event(self, event: Event):
         """"""
-        tick = event
+        tick = event.data
 
         strategies = self.symbol_strategy_map[tick.full_symbol]
         if not strategies:
@@ -115,9 +116,9 @@ class TradeEngine(BaseEngine):
                 self.call_strategy_func(strategy, strategy.on_tick, tick)
         self.ticks[tick.full_symbol] = tick
 
-    def process_order_event(self, event: Event):
+    def process_orderstatus_event(self, event: Event):
         """"""
-        order = event
+        order = event.data
         
         self.offset_converter.update_order(order)
 
@@ -160,7 +161,7 @@ class TradeEngine(BaseEngine):
 
     def process_trade_event(self, event: Event):
         """"""
-        trade = event
+        trade = event.data
 
         self.offset_converter.update_trade(trade)
 
@@ -181,7 +182,7 @@ class TradeEngine(BaseEngine):
 
     def process_position_event(self, event: Event):
         """"""
-        position = event
+        position = event.data
 
         self.offset_converter.update_position(position)
 
@@ -189,12 +190,12 @@ class TradeEngine(BaseEngine):
 
     def process_account_event(self, event: Event):
         """"""
-        account = event
+        account = event.data
         self.accounts[account.vt_accountid] = account
 
     def process_contract_event(self, event: Event):
         """"""
-        contract = event
+        contract = event.data
         self.contracts[contract.vt_symbol] = contract
 
     def call_strategy_func(
@@ -274,16 +275,19 @@ class TradeEngine(BaseEngine):
                     if value:
                         setattr(strategy, name, value)
 
-            # Subscribe market data
-            contract = self.get_contract(strategy.vt_symbol)
-            if contract:
-                req = SubscribeEvent()
-                req.destination = contract.gateway_name
-                req.source = "0"                
-                req.content = strategy.symbol
-                self.put(req)
-            else:
-                self.write_log(f"行情订阅失败，找不到合约{strategy.vt_symbol}", strategy)
+            # Subscribe market data, move to strategy's init function
+            # contract = self.get_contract(strategy.vt_symbol)
+            # if contract:
+            #     m = Event(type=EventType.SUBSCRIBE)
+            #     m.destination = contract.gateway_name
+            #     m.source = strategy_name
+            #     req = SubscribeRequest()
+            #     req.sym_type = SYMBOL_TYPE.CTP                
+            #     req.content = strategy.symbol
+            #     m.data = req
+            #     self.put(m)
+            # else:
+            #     self.write_log(f"行情订阅失败，找不到合约{strategy.vt_symbol}", strategy)
 
             # Put event to update init completed status.
             strategy.inited = True
@@ -516,8 +520,11 @@ class TradeEngine(BaseEngine):
         Put an event to update strategy status.
         """
         data = strategy.get_data()
+        sdata = {}
+        sdata[strategy.name] = data
         # event = Event(EVENT_CTA_STRATEGY, data)
         # self.event_engine.put(event)
+        save_json(self.data_filename, sdata)
         pass
 
 

@@ -1,7 +1,12 @@
 #include <vector>
+#include <fstream>
+#include <boost/algorithm/algorithm.hpp>
+#include <yaml-cpp/yaml.h>
 #include <Data/datamanager.h>
 #include <Trade/portfoliomanager.h>
 #include <Common/datastruct.h>
+
+
 
 namespace StarQuant {
 	DataManager* DataManager::pinstance_ = nullptr;
@@ -43,6 +48,71 @@ namespace StarQuant {
 		}
 	}
 
+	void DataManager::saveSecurityToFile() {
+		YAML::Node securities;
+		for (auto iterator = securityDetails_.begin(); iterator != securityDetails_.end(); ++iterator) {
+			auto sym = iterator->first;
+			auto sec = iterator->second;
+			securities[sym]["symbol"] = sec.symbol_; 
+			securities[sym]["exchange"] = sec.exchange_;
+			securities[sym]["product"] = sec.securityType_;
+			securities[sym]["size"] = sec.multiplier_;
+			securities[sym]["name"] = sec.localName_;
+			securities[sym]["pricetick"] = sec.ticksize_;
+			securities[sym]["option_underlying"] = sec.underlyingSymbol_;
+			securities[sym]["option_type"] = sec.optionType_;
+			securities[sym]["option_strike"] = sec.strikePrice_;
+			securities[sym]["option_expiry"] = sec.expiryDate_;
+			string fullsym;
+			string type;
+			string product;
+			string contracno;
+			int i;
+			if (sec.securityType_ == '1' || sec.securityType_ == '2'){
+				for(i = 0;i<sym.size();i++){
+					if (isdigit(sym[i]))
+						break;
+				}
+				product = sym.substr(0,i);
+				contracno = sym.substr(i);
+				type = (sec.securityType_ == '1'? "F":"O");
+				fullsym = sec.exchange_ + " " + type + " " + boost::to_upper_copy(product) + " " + contracno;
+			}
+			else if (sec.securityType_ == '3'){
+				int pos = sym.find(" ");
+				string combo = sym.substr(pos+1);
+				int sep = combo.find("&");
+				string sym1 = combo.substr(0,sep);
+				string sym2 = combo.substr(sep+1);
+				for(i = 0;i<sym1.size();i++){
+					if (isdigit(sym1[i]))
+						break;
+				}					
+				product = sym1.substr(0,i) + "&";
+				contracno = sym1.substr(i) + "&";
+				for(i = 0;i<sym2.size();i++){
+					if (isdigit(sym2[i]))
+						break;
+				}
+				product += sym2.substr(0,i);
+				contracno += sym2.substr(i);
+				fullsym = sec.exchange_ + " " + "S" + " " + boost::to_upper_copy(product) + " " + contracno;						
+			}
+			else 
+			{
+				fullsym = sec.exchange_ + " " + sec.securityType_ + " " + sym;	
+			}
+			securities[sym]["full_symbol"] = fullsym;
+			ctp2Full_[sym] = fullsym;
+			full2Ctp_[fullsym] = sym;
+			securityDetails_[sym].fullSymbol_ = fullsym;
+		}
+		std::ofstream fout("etc/ctpcontract.yaml");
+		fout<< securities;
+	}
+
+
+
 	void DataManager::reset() {
 		orderBook_.clear();
 		//_5s.clear();
@@ -52,6 +122,11 @@ namespace StarQuant {
 		securityDetails_.clear();
 		count_ = 0;
 	}
+
+
+
+
+
 
 	void DataManager::rebuild() {
 		// for (auto& s : CConfig::instance().securities) {

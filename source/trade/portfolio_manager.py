@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from copy import copy
 from functools import lru_cache
+
 from ..common.datastruct import *
 from ..common.config import marginrate
 from ..engine.iengine import BaseEngine
@@ -167,6 +169,10 @@ class OffsetConverter:
         """"""
         self.main_engine = main_engine
         self.holdings = {}
+        self.add_function()
+
+    def add_function(self):
+        self.main_engine.get_position_holding = self.get_position_holding
 
     def update_position(self, position: PositionData):
         """"""

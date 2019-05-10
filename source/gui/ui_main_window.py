@@ -203,8 +203,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def _contract_event_handler(self, contract_event):
         contract = contract_event.data
         self.portfolio_manager.on_contract(contract)
-        msg = "Contract {} tickprice = {} multiples = {}".format(contract.full_symbol,contract.pricetick,contract.size) 
-        self.manual_widget.logoutput.append(msg)
+        # msg = "Contract {} tickprice = {} multiples = {}".format(contract.full_symbol,contract.pricetick,contract.size) 
+        # self.manual_widget.logoutput.append(msg)
 
     def _historical_event_handler(self, historical_event):
         pass

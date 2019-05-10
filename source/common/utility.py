@@ -20,17 +20,31 @@ def extract_full_symbol(full_symbol: str):
 # from ctp symbol to full symbol
 def generate_full_symbol(exchange: Exchange, symbol: str, type:str = 'F'):
     product = ''
-    year = ''
-    month = ''
+    contractno = ''
+    fullsym = symbol
     if symbol:
-        for count, word in enumerate(symbol):
-            if word.isdigit():
-                break
-        product = symbol[:count]
-        year = symbol[count]
-        month = symbol[count + 1:]
-
-    fullsym = exchange.value + ' ' + type + ' ' + product.upper() + ' ' + year + month 
+        if type == 'F' or type == 'O':
+            for count, word in enumerate(symbol):
+                if word.isdigit():
+                    break
+            product = symbol[:count]
+            contractno = symbol[count:]
+            fullsym = exchange.value + ' ' + type + ' ' + product.upper() + ' ' + contractno 
+        elif type == 'S':
+            combo = symbol.split(' ',1)[1]
+            symbol1 = combo.split('&')[0]
+            symbol2 = combo.split('&')[1]
+            for count, word in enumerate(symbol1):
+                if word.isdigit():
+                    break
+            product = symbol1[:count]
+            contractno = symbol1[count:]
+            for count, word in enumerate(symbol2):
+                if word.isdigit():
+                    break
+            product += ('&' + symbol2[:count])
+            contractno += ('&' + symbol2[count:])
+            fullsym = exchange.value + ' ' + type + ' ' + product.upper() + ' ' + contractno 
     return fullsym
 
 

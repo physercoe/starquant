@@ -13,13 +13,13 @@ sys.path.append("..")
 from source.strategy.strategy_base import StrategyBase
 from source.trade.order_manager import OrderManager
 from source.trade.portfolio_manager import PortfolioManager
-from source.engine.trade_engine import TradeEngine
+from source.engine.strategy_engine import StrategyEngine
 
 
 strategy_list = {}
 strategy_id = {}
 path = os.path.abspath(os.path.dirname(__file__))
-
+print(path)
 # loop over all the files in the path
 for root, subdirs, files in os.walk(path):
     for name in files:
@@ -31,7 +31,7 @@ for root, subdirs, files in os.walk(path):
             module = importlib.import_module(moduleName)
             # loop through all the objects in the module and look for the one with 'Strategy' keyword
             for k in dir(module):
-                if ('Strategy' in k) and ('StrategyBase' not in k):
+                if ('Strategy' in k) and ('StrategyBase' not in k) and ('StrategyEngine' not in k):
                     v = module.__getattribute__(k)
                     strategy_list[k] = v
                     strategy_id[v.ID] = v
@@ -82,7 +82,7 @@ def startstrategy(name):
     if not strategyClass:
         print(u'can not find strategy：%s' % name)
     else:    
-        tradeengine = TradeEngine(config_server)
+        tradeengine = StrategyEngine(config_server)
         ordermanager = OrderManager()
         portfoliomanager = PortfolioManager(config_client['initial_cash'],config_server['tickers'])
         strategy = strategyClass(tradeengine,ordermanager,portfoliomanager)
@@ -113,7 +113,7 @@ def startsid(sid):
     if not strategyClass:
         print(u'can not find strategy id：%d' % sid)
     else:    
-        tradeengine = TradeEngine(config_server)
+        tradeengine = StrategyEngine(config_server)
         ordermanager = OrderManager()
         portfoliomanager = PortfolioManager(config_client['initial_cash'],config_server['tickers'])
         strategy = strategyClass(tradeengine,ordermanager,portfoliomanager)

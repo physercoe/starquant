@@ -261,7 +261,7 @@ class ManualWindow(QtWidgets.QFrame):
         manuallayout.addRow(self.api_widget)  
 
         self.logoutput =  QtWidgets.QTextBrowser()
-        self.logoutput.setMinimumHeight(600) 
+        self.logoutput.setMinimumHeight(400) 
         manuallayout.addRow(self.logoutput)  
 
         self.setLayout(manuallayout)

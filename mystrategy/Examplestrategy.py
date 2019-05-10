@@ -9,7 +9,7 @@ from source.strategy.strategy_base import StrategyBase
 from source.common.datastruct import *
 from source.trade.order_manager import OrderManager
 from source.trade.portfolio_manager import PortfolioManager
-from source.engine.trade_engine import TradeEngine
+from source.engine.strategy_engine import StrategyEngine
 import mystrategy 
 
 """

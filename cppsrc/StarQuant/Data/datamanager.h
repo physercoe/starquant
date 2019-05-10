@@ -35,8 +35,10 @@ namespace StarQuant
 
 		TickWriter recorder_;
 		uint64_t count_ = 0;
-		std::map<std::string, Security> securityDetails_;
+		std::map<std::string, Security> securityDetails_; //ctpsymbol to security
 		std::map<string, Tick> orderBook_;
+		std::map<string,string> ctp2Full_;
+		std::map<string,string> full2Ctp_;
 		//std::map<string, BarSeries> _5s;
 		//std::map<string, BarSeries> _15s;
 		// std::map<string, BarSeries> _60s;
@@ -48,6 +50,7 @@ namespace StarQuant
 		void rebuild();
 		void updateOrderBook(const Tick& k){ orderBook_[k.fullSymbol_] = k;};
 		void updateOrderBook(const Fill& fill);
+		void saveSecurityToFile();
 	};
 }
 

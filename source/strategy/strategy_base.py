@@ -15,7 +15,7 @@ class StrategyBase(metaclass=ABCMeta):
     """
     # class id and name
     ID = -1
-    name = "base"
+    NAME = "base"
 
     # for rqquant use
     context = dotdict()

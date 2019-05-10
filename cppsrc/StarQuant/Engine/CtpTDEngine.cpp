@@ -699,6 +699,11 @@ namespace StarQuant
 						MSG_TYPE_INFO_ENGINE_STATUS,
 						to_string(estate_));
 			messenger_->send(pmsgs);
+			//  qry instrument only at first login everyday(same as seetlementconfirm)
+			if ( ! issettleconfirmed_ ){
+				CThostFtdcQryInstrumentField req = {0};		
+				int error = this->api_->ReqQryInstrument(&req,reqId_++);
+			}
 			issettleconfirmed_ = true;
 			LOG_INFO(logger,name_ <<" Settlement confirmed.ConfirmDate="<<pSettlementInfoConfirm->ConfirmDate<<"ConfirmTime="<<pSettlementInfoConfirm->ConfirmTime);
 		}
@@ -1037,6 +1042,9 @@ namespace StarQuant
 			auto it = DataManager::instance().securityDetails_.find(symbol);
 			if (it == DataManager::instance().securityDetails_.end()) {
 				DataManager::instance().securityDetails_[symbol] = pmsg->data_;
+			}
+			if (bIsLast){
+				DataManager::instance().saveSecurityToFile();
 			}			
 			LOG_INFO(logger,name_ <<" OnRspQryInstrument:"
 				<<" InstrumentID="<<pInstrument->InstrumentID
