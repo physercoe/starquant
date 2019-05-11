@@ -176,51 +176,51 @@ class OffsetConverter:
 
     def update_position(self, position: PositionData):
         """"""
-        if not self.is_convert_required(position.vt_symbol):
+        if not self.is_convert_required(position.full_symbol):
             return
 
-        holding = self.get_position_holding(position.vt_symbol)
+        holding = self.get_position_holding(position.account,position.full_symbol)
         holding.update_position(position)
 
     def update_trade(self, trade: TradeData):
         """"""
-        if not self.is_convert_required(trade.vt_symbol):
+        if not self.is_convert_required(trade.full_symbol):
             return
 
-        holding = self.get_position_holding(trade.vt_symbol)
+        holding = self.get_position_holding(trade.account,trade.full_symbol)
         holding.update_trade(trade)
 
     def update_order(self, order: OrderData):
         """"""
-        if not self.is_convert_required(order.vt_symbol):
+        if not self.is_convert_required(order.full_symbol):
             return
 
-        holding = self.get_position_holding(order.vt_symbol)
+        holding = self.get_position_holding(order.account,order.full_symbol)
         holding.update_order(order)
 
-    def update_order_request(self, req: OrderRequest, vt_orderid: str):
+    def update_order_request(self, req: OrderRequest):
         """"""
-        if not self.is_convert_required(req.vt_symbol):
+        if not self.is_convert_required(req.full_symbol):
             return
 
-        holding = self.get_position_holding(req.vt_symbol)
-        holding.update_order_request(req, vt_orderid)
+        holding = self.get_position_holding(req.account,req.full_symbol)
+        holding.update_order_request(req)
 
-    def get_position_holding(self, vt_symbol: str):
+    def get_position_holding(self, acc: str, full_symbol: str):
         """"""
-        holding = self.holdings.get(vt_symbol, None)
+        holdingid = acc + "." + full_symbol
+        holding = self.holdings.get(holdingid, None)
         if not holding:
-            contract = self.main_engine.get_contract(vt_symbol)
-            holding = PositionHolding(contract)
-            self.holdings[vt_symbol] = holding
+            holding = PositionHolding(acc,full_symbol)
+            self.holdings[holdingid] = holding
         return holding
 
     def convert_order_request(self, req: OrderRequest, lock: bool):
         """"""
-        if not self.is_convert_required(req.vt_symbol):
+        if not self.is_convert_required(req.full_symbol):
             return [req]
 
-        holding = self.get_position_holding(req.vt_symbol)
+        holding = self.get_position_holding(req.account,req.full_symbol)
 
         if lock:
             return holding.convert_order_request_lock(req)
@@ -230,11 +230,11 @@ class OffsetConverter:
             return [req]
 
     @lru_cache()
-    def is_convert_required(self, vt_symbol: str):
+    def is_convert_required(self, full_symbol: str):
         """
         Check if the contract needs offset convert.
         """
-        contract = self.main_engine.get_contract(vt_symbol)
+        contract = self.main_engine.get_contract(full_symbol)
 
         # Only contracts with long-short position mode requires convert
         if not contract.net_position:
@@ -246,12 +246,16 @@ class OffsetConverter:
 class PositionHolding:
     """"""
 
-    def __init__(self, contract: ContractData):
+    def __init__(self, acc:str,full_symbol:str):
         """"""
-        self.vt_symbol = contract.vt_symbol
-        self.exchange = contract.exchange
+        self.account = acc
+        self.full_symbol = full_symbol
 
-        self.active_orders = {}
+        tmp = full_symbol.split(' ')[0]
+        self.exchange = Exchange(tmp)
+
+        self.active_orders = {}         # orderstatus received, server_order_id ->order
+        self.active_requests = {}   # requests, reqid ->order
 
         self.long_pos = 0
         self.long_yd = 0
@@ -282,20 +286,25 @@ class PositionHolding:
 
     def update_order(self, order: OrderData):
         """"""
-        if order.is_active():
-            self.active_orders[order.vt_orderid] = order
+        reqid  = str(order.clientID) + '.' + str(order.client_order_id)
+        if reqid in self.active_requests:                
+            self.active_requests.pop(reqid)
+        if order.is_active(): 
+            self.active_orders[order.server_order_id] = order
         else:
-            if order.vt_orderid in self.active_orders:
-                self.active_orders.pop(order.vt_orderid)
-
+            if order.server_order_id in self.active_orders:
+                self.active_orders.pop(order.server_order_id)
+        
         self.calculate_frozen()
 
-    def update_order_request(self, req: OrderRequest, vt_orderid: str):
+    def update_order_request(self, req: OrderRequest):
         """"""
-        gateway_name, orderid = vt_orderid.split(".")
+        # gateway_name, orderid = vt_orderid.split(".")
+        # order = req.create_order_data(orderid, gateway_name)
+        reqid = str(req.clientID) + '.' + str(req.client_order_id)
+        self.active_requests[reqid] = req
 
-        order = req.create_order_data(orderid, gateway_name)
-        self.update_order(order)
+        self.calculate_frozen()
 
     def update_trade(self, trade: TradeData):
         """"""
@@ -380,6 +389,42 @@ class PositionHolding:
             self.long_pos_frozen = self.long_td_frozen + self.long_yd_frozen
             self.short_pos_frozen = self.short_td_frozen + self.short_yd_frozen
 
+        for order in self.active_requests.values():
+            # Ignore position open orders
+            if order.offset == Offset.OPEN:
+                continue
+
+            frozen = order.volume - order.traded
+
+            if order.direction == Direction.LONG:
+                if order.offset == Offset.CLOSETODAY:
+                    self.short_td_frozen += frozen
+                elif order.offset == Offset.CLOSEYESTERDAY:
+                    self.short_yd_frozen += frozen
+                elif order.offset == Offset.CLOSE:
+                    self.short_td_frozen += frozen
+
+                    if self.short_td_frozen > self.short_td:
+                        self.short_yd_frozen += (self.short_td_frozen
+                                                 - self.short_td)
+                        self.short_td_frozen = self.short_td
+            elif order.direction == Direction.SHORT:
+                if order.offset == Offset.CLOSETODAY:
+                    self.long_td_frozen += frozen
+                elif order.offset == Offset.CLOSEYESTERDAY:
+                    self.long_yd_frozen += frozen
+                elif order.offset == Offset.CLOSE:
+                    self.long_td_frozen += frozen
+
+                    if self.long_td_frozen > self.short_td:
+                        self.long_yd_frozen += (self.long_td_frozen
+                                                - self.long_td)
+                        self.long_td_frozen = self.long_td
+
+            self.long_pos_frozen = self.long_td_frozen + self.long_yd_frozen
+            self.short_pos_frozen = self.short_td_frozen + self.short_yd_frozen
+
+
     def convert_order_request_shfe(self, req: OrderRequest):
         """"""
         if req.offset == Offset.OPEN:
@@ -395,21 +440,29 @@ class PositionHolding:
         if req.volume > pos_available:
             return [req]
         elif req.volume <= td_available:
-            req_td = copy(req)
+            req_td = copy(req)            
             req_td.offset = Offset.CLOSETODAY
+            if req_td.api == "CTP":
+                req_td.orderfield.CombOffsetFlag = '3'
             return [req_td]
         else:
             req_list = []
 
             if td_available > 0:
                 req_td = copy(req)
-                req_td.offset = Offset.CLOSETODAY
+                req_td.offset = Offset.CLOSETODAY             
                 req_td.volume = td_available
+                if req_td.api == "CTP":
+                    req_td.orderfield.CombOffsetFlag = '3' 
+                    req_td.orderfield.VolumeTotalOriginal = td_available            
                 req_list.append(req_td)
 
             req_yd = copy(req)
             req_yd.offset = Offset.CLOSEYESTERDAY
             req_yd.volume = req.volume - td_available
+            if req_yd.api == "CTP":
+                req_yd.orderfield.CombOffsetFlag = '4' 
+                req_yd.orderfield.VolumeTotalOriginal = req_yd.volume               
             req_list.append(req_yd)
 
             return req_list
@@ -438,14 +491,21 @@ class PositionHolding:
                 req_yd = copy(req)
                 if self.exchange == Exchange.SHFE:
                     req_yd.offset = Offset.CLOSEYESTERDAY
+                    if req_yd.api == "CTP":
+                        req_yd.orderfield.CombOffsetFlag = '4' 
                 else:
                     req_yd.offset = Offset.CLOSE
+                    if req_yd.api == "CTP":
+                        req_yd.orderfield.CombOffsetFlag = '2'  
                 req_list.append(req_yd)
 
             if open_volume:
                 req_open = copy(req)
                 req_open.offset = Offset.OPEN
                 req_open.volume = open_volume
+                if req_open.api == "CTP":
+                    req_open.orderfield.CombOffsetFlag = '1' 
+                    req_open.orderfield.VolumeTotalOriginal = req_open.volume 
                 req_list.append(req_open)
 
             return req_list

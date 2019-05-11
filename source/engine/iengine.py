@@ -9,7 +9,7 @@ from time import sleep
 from typing import Any, Callable
 from abc import ABC
 from ..common.datastruct import Event
-
+from ..common.constant import EventType
 
 # class Event:
 #     """
@@ -57,8 +57,8 @@ class EventEngine:
         while self._active:
             try:
                 event = self._queue.get(block=True, timeout=1)
-                if event.type in self._handlers:
-                    [handler(event) for handler in self._handlers[event.type]]
+                if event.event_type in self._handlers:
+                    [handler(event) for handler in self._handlers[event.event_type]]
             except Empty:
                 pass
 
@@ -108,7 +108,7 @@ class EventEngine:
         """
         self._queue.put(event)
 
-    def register(self, type: str, handler: HandlerType):
+    def register(self, type: EventType, handler: HandlerType):
         """
         Register a new handler function for a specific event type. Every 
         function can only be registered once for each event type.
@@ -117,7 +117,7 @@ class EventEngine:
         if handler not in handler_list:
             handler_list.append(handler)
 
-    def unregister(self, type: str, handler: HandlerType):
+    def unregister(self, type: EventType, handler: HandlerType):
         """
         Unregister an existing handler function from event engine.
         """

@@ -5,7 +5,7 @@ import sys
 import os
 import webbrowser
 import psutil
-
+from pathlib import Path
 
 from queue import Queue, Empty
 from PyQt5 import QtCore, QtWidgets, QtGui, QtWebEngineWidgets
@@ -32,7 +32,7 @@ from .ui_fill_window import FillWindow
 from .ui_position_window import PositionWindow
 from .ui_closeposition_window import ClosePositionWindow
 from .ui_account_window import AccountWindow
-from .ui_strategy_window import StrategyWindow
+from .ui_strategy_window import StrategyWindow, CtaManager
 from .ui_log_window import LogWindow
 from .ui_bt_dataview import BtDataViewWidget,BtDataPGChart
 from .ui_bt_resultsoverview import BtResultViewWidget
@@ -114,6 +114,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._ui_events_engine.register_handler(EventType.CONTRACT, self._contract_event_handler)
         self._ui_events_engine.register_handler(EventType.HISTORICAL, self._historical_event_handler)
         self._ui_events_engine.register_handler(EventType.INFO, self._info_event_handler)
+        self._ui_events_engine.register_handler(EventType.STRATEGY_CONTROL, self.ctastrategywindow.signal_strategy_in.emit)
         # TODO:add info and error handler
 
         self._outgoing_request_events_engine.register_handler(EventType.ORDER, self._outgoing_order_request_handler)
@@ -129,6 +130,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._outgoing_request_events_engine.start()
         self._client_mq.start()
         self._flowrate_timer.start(5000)
+
 
     #################################################################################################
     # -------------------------------- Event Handler   --------------------------------------------#
@@ -389,23 +391,25 @@ class MainWindow(QtWidgets.QMainWindow):
         bottomright.setFrameShape(QtWidgets.QFrame.StyledPanel)
         bottomright.setFont(self._font)
         strategy_manager_layout = QtWidgets.QFormLayout()
-        self.strategy_window = StrategyWindow(self._lang_dict, self._strategy_manager)
-        self.btn_strat_reload = QtWidgets.QPushButton(self._lang_dict['Load_Strat'])
-        self.btn_strat_reload.clicked.connect(self.reload_strategy)
-        self.btn_strat_start = QtWidgets.QPushButton(self._lang_dict['Start_Strat'])
-        self.btn_strat_start.clicked.connect(self.start_strategy)
-        self.btn_strat_stop = QtWidgets.QPushButton(self._lang_dict['Stop_Strat'])
-        self.btn_strat_stop.clicked.connect(self.stop_strategy)
-        self.btn_strat_liquidate = QtWidgets.QPushButton(self._lang_dict['Liquidate_Strat'])
-        btn_strat_layout = QtWidgets.QHBoxLayout()
-        btn_strat_layout.addWidget(self.btn_strat_start)
-        btn_strat_layout.addWidget(self.btn_strat_stop)
-        btn_strat_layout.addWidget(self.btn_strat_liquidate)
-        btn_strat_layout.addWidget(self.btn_strat_reload)
+        self.ctastrategywindow = CtaManager()
+        self.ctastrategywindow.signal_strategy_out.connect(self._outgoing_general_request_handler) 
+        # self.strategy_window = StrategyWindow(self._lang_dict, self._strategy_manager)
+        # self.btn_strat_reload = QtWidgets.QPushButton(self._lang_dict['Load_Strat'])
+        # self.btn_strat_reload.clicked.connect(self.reload_strategy)
+        # self.btn_strat_start = QtWidgets.QPushButton(self._lang_dict['Start_Strat'])
+        # self.btn_strat_start.clicked.connect(self.start_strategy)
+        # self.btn_strat_stop = QtWidgets.QPushButton(self._lang_dict['Stop_Strat'])
+        # self.btn_strat_stop.clicked.connect(self.stop_strategy)
+        # self.btn_strat_liquidate = QtWidgets.QPushButton(self._lang_dict['Liquidate_Strat'])
+        # btn_strat_layout = QtWidgets.QHBoxLayout()
+        # btn_strat_layout.addWidget(self.btn_strat_start)
+        # btn_strat_layout.addWidget(self.btn_strat_stop)
+        # btn_strat_layout.addWidget(self.btn_strat_liquidate)
+        # btn_strat_layout.addWidget(self.btn_strat_reload)
 
-        strategy_manager_layout.addRow(QtWidgets.QLabel(self._lang_dict['Automatic']))
-        strategy_manager_layout.addRow(self.strategy_window)
-        strategy_manager_layout.addRow(btn_strat_layout)
+        strategy_manager_layout.addRow(QtWidgets.QLabel('Strategy Engine'))
+        strategy_manager_layout.addWidget(self.ctastrategywindow)
+        # strategy_manager_layout.addRow(btn_strat_layout)
         bottomright.setLayout(strategy_manager_layout)
 
         # --------------------------------------------------------------------------------------#

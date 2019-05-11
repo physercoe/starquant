@@ -286,7 +286,9 @@ namespace StarQuant
 		{
 			string ctpticker = symbol[i];
 			if (st == ST_Full )
-				string ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
+				ctpticker = DataManager::instance().full2Ctp_[symbol[i]];
+				// string ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
+			
 			insts[i] = (char*)ctpticker.c_str();
 			sout += insts[i] +string("|");
 			lastsubs_.push_back(ctpticker);	
@@ -311,7 +313,8 @@ namespace StarQuant
 		{
 			string ctpticker = symbol[i];
 			if (st == ST_Full)
-				ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
+				ctpticker = DataManager::instance().full2Ctp_[symbol[i]];
+				// ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
 			insts[i] = (char*)ctpticker.c_str();
 			sout += insts[i] +string("|");
 			for(auto it = lastsubs_.begin();it != lastsubs_.end();){
@@ -499,6 +502,27 @@ namespace StarQuant
 		strcpy(b,pDepthMarketData->UpdateTime);
         std::sprintf(buf, "%c%c%c%c-%c%c-%c%c %c%c:%c%c:%c%c.%.3d", a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],b[0],b[1],b[3],b[4],b[6],b[7],pDepthMarketData->UpdateMillisec );
 
+		pk->destination_ = DESTINATION_ALL;
+		pk->source_ = name_;
+		pk->data_.time_ = buf;
+		// pk->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pDepthMarketData->InstrumentID);
+		pk->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pDepthMarketData->InstrumentID];
+		pk->data_.price_ = pDepthMarketData->LastPrice;
+		pk->data_.size_ = pDepthMarketData->Volume;			
+		pk->data_.bidPrice_[0] = pDepthMarketData->BidPrice1 == numeric_limits<double>::max()? 0.0: pDepthMarketData->BidPrice1;
+		pk->data_.bidSize_[0] = pDepthMarketData->BidVolume1;
+		pk->data_.askPrice_[0] = pDepthMarketData->AskPrice1 == numeric_limits<double>::max()? 0.0: pDepthMarketData->AskPrice1;
+		pk->data_.askSize_[0] = pDepthMarketData->AskVolume1;
+		pk->data_.openInterest_ = pDepthMarketData->OpenInterest;
+		pk->data_.open_ = pDepthMarketData->OpenPrice == numeric_limits<double>::max()? 0.0: pDepthMarketData->OpenPrice;
+		pk->data_.high_ = pDepthMarketData->HighestPrice == numeric_limits<double>::max()? 0.0: pDepthMarketData->HighestPrice;
+		pk->data_.low_ = pDepthMarketData->LowestPrice == numeric_limits<double>::max()? 0.0: pDepthMarketData->LowestPrice;
+		pk->data_.preClose_ = pDepthMarketData->PreClosePrice ;
+		pk->data_.upperLimitPrice_ = pDepthMarketData->UpperLimitPrice;
+		pk->data_.lowerLimitPrice_ = pDepthMarketData->LowerLimitPrice;
+
+		messenger_->send(pk,1);		
+		DataManager::instance().updateOrderBook(pk->data_);
 		LOG_DEBUG(logger,name_ <<"  OnRtnDepthMarketData at"<<arrivetime
 			<<" InstrumentID="<<pDepthMarketData->InstrumentID
 			<<" LastPrice="<<pDepthMarketData->LastPrice
@@ -516,26 +540,7 @@ namespace StarQuant
 			<<" LowerLimitPrice="<<pDepthMarketData->LowerLimitPrice
 			<<" UpdateTime="<<pDepthMarketData->UpdateTime<<"."<<pDepthMarketData->UpdateMillisec
 		);
-		pk->destination_ = DESTINATION_ALL;
-		pk->source_ = name_;
-		pk->data_.time_ = buf;
-		pk->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pDepthMarketData->InstrumentID);
-		pk->data_.price_ = pDepthMarketData->LastPrice;
-		pk->data_.size_ = pDepthMarketData->Volume;			
-		pk->data_.bidPrice_[0] = pDepthMarketData->BidPrice1 == numeric_limits<double>::max()? 0.0: pDepthMarketData->BidPrice1;
-		pk->data_.bidSize_[0] = pDepthMarketData->BidVolume1;
-		pk->data_.askPrice_[0] = pDepthMarketData->AskPrice1 == numeric_limits<double>::max()? 0.0: pDepthMarketData->AskPrice1;
-		pk->data_.askSize_[0] = pDepthMarketData->AskVolume1;
-		pk->data_.openInterest_ = pDepthMarketData->OpenInterest;
-		pk->data_.open_ = pDepthMarketData->OpenPrice == numeric_limits<double>::max()? 0.0: pDepthMarketData->OpenPrice;
-		pk->data_.high_ = pDepthMarketData->HighestPrice == numeric_limits<double>::max()? 0.0: pDepthMarketData->HighestPrice;
-		pk->data_.low_ = pDepthMarketData->LowestPrice == numeric_limits<double>::max()? 0.0: pDepthMarketData->LowestPrice;
-		pk->data_.preClose_ = pDepthMarketData->PreClosePrice ;
-		pk->data_.upperLimitPrice_ = pDepthMarketData->UpperLimitPrice;
-		pk->data_.lowerLimitPrice_ = pDepthMarketData->LowerLimitPrice;
 
-		messenger_->send(pk,1);
-		DataManager::instance().updateOrderBook(pk->data_);
 		// DataManager::instance().recorder_.insertdb(k);
 
 

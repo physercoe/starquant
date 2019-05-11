@@ -28,7 +28,7 @@ class StrategyBase(metaclass=ABCMeta):
 
 
     def __init__(self, 
-        events_engine: Any, 
+        strategy_engine: Any, 
         strategy_name: str, 
         symbol: str,
         setting: dict):
@@ -37,10 +37,10 @@ class StrategyBase(metaclass=ABCMeta):
         :param symbols:
         :param events_engine:backtest_event_engine or live_event engine that provides queue_.put()
         """
-        self.symbol = symbol
-        self._events_engine = events_engine
+        self.full_symbol = symbol
+        self.strategy_engine = strategy_engine
         self.id = -1
-        self.name = strategy_name
+        self.strategy_name = strategy_name
 
         self.active = False
         self.account = ''
@@ -96,8 +96,8 @@ class StrategyBase(metaclass=ABCMeta):
         Get strategy data.
         """
         strategy_data = {
-            "strategy_name": self.name,
-            "symbol": self.symbol,
+            "strategy_name": self.strategy_name,
+            "full_symbol": self.full_symbol,
             "class_name": self.__class__.__name__,
             "author": self.author,
             "parameters": self.get_parameters(),
@@ -110,32 +110,24 @@ class StrategyBase(metaclass=ABCMeta):
 
 
 
-    def set_capital(self, capital):
-        self.capital = capital
-
-    def set_symbols(self, symbols):
-        self.symbols = symbols
-
-
-
     # used for trade engine run 
     def register_event(self):
-        self._events_engine.register_handler(EventType.TICK, self.on_tick)
-        self._events_engine.register_handler(EventType.BAR,self.on_bar)
-        self._events_engine.register_handler(EventType.ORDERSTATUS, self.on_order_status)
-        self._events_engine.register_handler(EventType.FILL, self.on_fill)
-        self._events_engine.register_handler(EventType.POSITION, self.on_pos)
-        self._events_engine.register_handler(EventType.ACCOUNT, self.on_acc)
-        self._events_engine.register_handler(EventType.CONTRACT, self.on_contract)
-        self._events_engine.register_handler(EventType.HISTORICAL, self.on_bar)
-        self._events_engine.register_handler(EventType.INFO, self.on_info)
-        self._events_engine.register_handler(EventType.GENERAL_REQ, self.on_req)
-
+        # self.strategy_engine.register_handler(EventType.TICK, self.on_tick)
+        # self.strategy_engine.register_handler(EventType.BAR,self.on_bar)
+        # self.strategy_engine.register_handler(EventType.ORDERSTATUS, self.on_order_status)
+        # self.strategy_engine.register_handler(EventType.FILL, self.on_fill)
+        # self.strategy_engine.register_handler(EventType.POSITION, self.on_pos)
+        # self.strategy_engine.register_handler(EventType.ACCOUNT, self.on_acc)
+        # self.strategy_engine.register_handler(EventType.CONTRACT, self.on_contract)
+        # self.strategy_engine.register_handler(EventType.HISTORICAL, self.on_bar)
+        # self.strategy_engine.register_handler(EventType.INFO, self.on_info)
+        # self.strategy_engine.register_handler(EventType.GENERAL_REQ, self.on_req)
+        pass
 
     def run(self):
         self.register_event()
-        self._events_engine.id = self.id
-        self._events_engine.start()
+        self.strategy_engine.id = self.id
+        self.strategy_engine.start()
 
     #   event handlers
 
@@ -161,20 +153,20 @@ class StrategyBase(metaclass=ABCMeta):
         self.active = False
 
     @virtual
-    def on_tick(self, event):
+    def on_tick(self, tick):
         """
         Respond to tick
         """
         pass
     @virtual
-    def on_bar(self, event):
+    def on_bar(self, bar):
         """
         Respond to bar
         """
         pass
 
     @virtual
-    def on_order_status(self,event):
+    def on_order_status(self,order):
         """
         on order acknowledged
         :return:
@@ -191,7 +183,7 @@ class StrategyBase(metaclass=ABCMeta):
         pass
 
     @virtual
-    def on_fill(self,event):
+    def on_fill(self,trade):
         """
         on order filled
         :return:
@@ -199,27 +191,27 @@ class StrategyBase(metaclass=ABCMeta):
         
         pass
 
-    def on_trade(self,event):
-        self.on_fill(event)
+    def on_trade(self,trade):
+        self.on_fill(trade)
 
     @virtual
-    def on_pos(self,event):
+    def on_pos(self,position):
         pass
         
     @virtual
-    def on_acc(self,event):
+    def on_acc(self,acc):
         pass
 
     @virtual
-    def on_contract(self,event):
+    def on_contract(self,contract):
         pass
 
     @virtual
-    def on_info(self,event):
+    def on_info(self,info):
         pass
 
     @virtual
-    def on_req(self,event):
+    def on_req(self,req):
         pass
 
     @virtual
@@ -230,17 +222,25 @@ class StrategyBase(metaclass=ABCMeta):
         pass
 
 
-    def place_order(self, o):
-        o.clientID = self.id         # identify source
+    def place_order(self, o):        
         o.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
         if (self.active):
-            self._events_engine.put(o)
+            self.strategy_engine.send_order(o)
+
+    def cancel_order(self, oid):
+        pass
+
+    def cancel_all(self):
+        """
+        cancel all standing orders from this strategy id
+        :return:
+        """
+        pass
 
 
 
-
-
-    # wrapper function for easy use , rqquant's use  
+# wrapper function for easy use , 
+    # rqquant's use  
     def buy_open(self,symbol,size,type='mkt',price = 0.0,api = 'CTP.TD'):
         o = OrderEvent()
         o.api = api
@@ -354,17 +354,9 @@ class StrategyBase(metaclass=ABCMeta):
         Send cover order to close a short position.
         """
         pass
+# end wrapper
 
 
-    def cancel_order(self, oid):
-        pass
-
-    def cancel_all(self):
-        """
-        cancel all standing orders from this strategy id
-        :return:
-        """
-        pass
 
 
 
@@ -381,7 +373,7 @@ class StrategyBase(metaclass=ABCMeta):
         """
         Return whether the cta_engine is backtesting or live trading.
         """
-        return self._events_engine.engine_type
+        return self.strategy_engine.engine_type
         
 
     def load_bar(
@@ -396,13 +388,13 @@ class StrategyBase(metaclass=ABCMeta):
         if not callback:
             callback = self.on_bar
         pass
-        self._events_engine.load_bar(self.symbol, days, interval, callback)
+        self.strategy_engine.load_bar(self.full_symbol, days, interval, callback)
 
     def load_tick(self, days: int):
         """
         Load historical tick data for initializing strategy.
         """
-        self._events_engine.load_tick(self.symbol, days, self.on_tick)
+        self.strategy_engine.load_tick(self.full_symbol, days, self.on_tick)
         pass
 
 
@@ -410,8 +402,8 @@ class StrategyBase(metaclass=ABCMeta):
         """
         Put an strategy data event for ui update.
         """
-        # if self.inited:
-        #     self.cta_engine.put_strategy_event(self)
+        if self.inited:
+            self.strategy_engine.put_strategy_event(self)
         pass
 
     def send_email(self, msg):
@@ -426,8 +418,8 @@ class StrategyBase(metaclass=ABCMeta):
         """
         Sync strategy variables value into disk storage.
         """
-        # if self.trading:
-        #     self.cta_engine.sync_strategy_data(self)
+        if self.trading:
+            self.strategy_engine.sync_strategy_data(self)
         pass
 
 

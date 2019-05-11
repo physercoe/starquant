@@ -31,7 +31,9 @@ for root, subdirs, files in os.walk(path):
             module = importlib.import_module(moduleName)
             # loop through all the objects in the module and look for the one with 'Strategy' keyword
             for k in dir(module):
-                if ('Strategy' in k) and ('StrategyBase' not in k) and ('StrategyEngine' not in k):
+                value = getattr(module, k)
+                if (isinstance(value, type) and issubclass(value, StrategyBase) and value is not StrategyBase):
+                # if ('Strategy' in k) and ('StrategyBase' not in k) and ('StrategyEngine' not in k):
                     v = module.__getattribute__(k)
                     strategy_list[k] = v
                     strategy_id[v.ID] = v

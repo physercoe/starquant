@@ -15,7 +15,10 @@ def extract_full_symbol(full_symbol: str):
     tmp =  full_symbol.split(' ')
     symbol = tmp[2] + tmp[3]
     exchange_str = tmp[0]
-    return symbol, Exchange(exchange_str)
+    ex = Exchange(exchange_str)    
+    if ex in [Exchange.SHFE,Exchange.DCE,Exchange.INE]:
+        symbol = symbol.lower()
+    return symbol, ex
 
 # from ctp symbol to full symbol
 def generate_full_symbol(exchange: Exchange, symbol: str, type:str = 'F'):

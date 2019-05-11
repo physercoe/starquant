@@ -34,16 +34,19 @@ class Event(object):
         self.msg_type = msgtype
 
     @property
-    def typename(self):
+    def type(self):
         return self.event_type.name
 
     def serialize(self):
         msg = self.destination + '|' + self.source + '|' + str(self.msg_type.value)
         if self.data:
-            try:
-                msg = msg + '|' + self.data.serialize()
-            except:
-                pass
+            if type(self.data) == str:
+                msg = msg + '|' +self.data
+            else:
+                try:
+                    msg = msg + '|' + self.data.serialize()
+                except:
+                    pass
         return msg
 
     def deserialize(self,msg:str):        
@@ -85,6 +88,11 @@ class Event(object):
                 self.msg_type = msg2type
                 self.data = LogData(gateway_name = self.source)
                 self.data.deserialize(v[3])
+            elif v[2].startswith('12'):
+                self.event_type = EventType.STRATEGY_CONTROL
+                self.msg_type = msg2type
+                if len(v) > 3:
+                    self.data = v[3]
         except:
             pass
 

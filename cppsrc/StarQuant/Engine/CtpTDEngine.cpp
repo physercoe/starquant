@@ -397,7 +397,8 @@ namespace StarQuant
 		pmsg->data_.brokerOrderID_ = m_brokerOrderId_++;
 		pmsg->data_.localNo_ = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + to_string(orderRef_) ;
 		pmsg->data_.createTime_ = ymdhmsf();			
-		pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pmsg->data_.orderField_.InstrumentID);
+		//pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pmsg->data_.orderField_.InstrumentID);
+		pmsg->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pmsg->data_.orderField_.InstrumentID];
 		pmsg->data_.price_ = pmsg->data_.orderField_.LimitPrice;
 		int dir_ = pmsg->data_.orderField_.Direction != THOST_FTDC_D_Sell ? 1:-1 ;
 		pmsg->data_.quantity_ = dir_ * pmsg->data_.orderField_.VolumeTotalOriginal;
@@ -478,7 +479,8 @@ namespace StarQuant
 			ofront = stoi(locno[0]);
 			osess = stoi(locno[1]);
 			oref = locno[2];
-			ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(o->fullSymbol_);
+			// ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(o->fullSymbol_);
+			ctpsym = DataManager::instance().full2Ctp_[o->fullSymbol_];
 		}
 		else
 		{
@@ -552,7 +554,8 @@ namespace StarQuant
 		CThostFtdcQryInstrumentField req = {0};
 		string ctpsym = pmsg->data_;
 		if (pmsg->symtype_ == ST_Full) 
-			ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(pmsg->data_);
+			ctpsym = DataManager::instance().full2Ctp_[pmsg->data_];
+			// ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(pmsg->data_);
 		strcpy(req.InstrumentID, ctpsym.c_str());
 		int error = this->api_->ReqQryInstrument(&req,reqId_++);
 		if (error != 0){
@@ -822,7 +825,8 @@ namespace StarQuant
 				LOG_DEBUG(logger,name_ <<" onRspQrypos return nullptr.");
 				return;
 			}			
-			string fullsym = CConfig::instance().CtpSymbolToSecurityFullName(pInvestorPosition->InstrumentID);
+			// string fullsym = CConfig::instance().CtpSymbolToSecurityFullName(pInvestorPosition->InstrumentID);
+			string fullsym = DataManager::instance().ctp2Full_[pInvestorPosition->InstrumentID];
 			string exchid = stringsplit(fullsym,' ')[0];
 			string key = ctpacc_.userid + "." + fullsym + "." + pInvestorPosition->PosiDirection;
 			
@@ -1089,7 +1093,8 @@ namespace StarQuant
 			o = make_shared<Order>();
 			o->api_ = "UNKNOWN";
 			o->account_ = ctpacc_.id;    
-			o->fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pOrder->InstrumentID);
+			// o->fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pOrder->InstrumentID);
+			o->fullSymbol_ = DataManager::instance().ctp2Full_[pOrder->InstrumentID];
 			o->price_ = pOrder->LimitPrice;
 			int dir_ = pOrder->Direction != THOST_FTDC_D_Sell ? 1:-1 ;
 			o->quantity_ = dir_ * pOrder->VolumeTotalOriginal ;
@@ -1155,7 +1160,8 @@ namespace StarQuant
 		auto pmsg = make_shared<FillMsg>();
 		pmsg->destination_ = DESTINATION_ALL;
 		pmsg->source_ = name_;
-		pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pTrade->InstrumentID);
+		// pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pTrade->InstrumentID);
+		pmsg->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pTrade->InstrumentID];
 		pmsg->data_.tradeTime_ = pTrade->TradeTime;
 		//pmsg->data_.serverOrderID_ = std::stol(pTrade->OrderRef);
 		pmsg->data_.orderNo_ = pTrade->OrderSysID;

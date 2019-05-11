@@ -4,13 +4,14 @@ from queue import Queue, Empty
 from threading import Thread
 from nanomsg import Socket, PAIR, SUB, PUB, PUSH,SUB_SUBSCRIBE, AF_SP,SOL_SOCKET,RCVTIMEO
 from datetime import datetime, timedelta
-import os
+import os,sys
+import yaml
 from collections import defaultdict
 from copy import copy
-from pathlib import Path
 import traceback
 import importlib
 from typing import Any, Callable
+from pathlib import Path
 
 from ..common.datastruct import *
 from ..common.utility import *
@@ -25,34 +26,44 @@ class StrategyEngine(BaseEngine):
     """
     Send to and receive from msg  server ,used for strategy 
     """
+    config_filename = "config_server.yaml"
     setting_filename = "cta_strategy_setting.json"
     data_filename = "cta_strategy_data.json"
-
-    def __init__(self,config:dict):
+    
+    def __init__(self,configfile:str = '',id :int = 1):
         super(StrategyEngine, self).__init__()
         """
         two sockets to send and recv msg
         """
         self.__active = False
-        self.id = 0
+        self.id = id
         self.engine_type = EngineType.LIVE     
         self._recv_sock = Socket(SUB)
         self._send_sock = Socket(PUSH)
-        self._config = config
         self._handlers = defaultdict(list)
+        if configfile:            
+            self.config_filename = configfile
+        filepath = Path.cwd().joinpath("etc/" + self.config_filename)
+        with open(filepath, encoding='utf8') as fd:
+            self._config = yaml.load(fd)
+        self.ordercount = 0
 
 #  stragegy manage
         self.strategy_setting = {}  # strategy_name: dict
         self.strategy_data = {}     # strategy_name: dict
 
-        self.classes = {}           # class_name: stategy_class
+        self.classes = {}           # class_name: stategy_class        
         self.strategies = {}        # strategy_name: strategy
 
+        # self.classes_id = {}     # class_id : strategy
+        # self.strategies_id = {}     # strategy_ID: strategy
+
+
         self.symbol_strategy_map = defaultdict(
-            list)                   # vt_symbol: strategy list
+            list)                   # full_symbol: strategy list
         self.orderid_strategy_map = {}  # vt_orderid: strategy
         self.strategy_orderid_map = defaultdict(
-            set)                    # strategy_name: orderid list
+            set)                    # strategy_name: client_order_id list
 
         self.stop_order_count = 0   # for generating stop_orderid
         self.stop_orders = {}       # stop_orderid: stop_order
@@ -61,12 +72,12 @@ class StrategyEngine(BaseEngine):
 
 # order,tick,position ,etc manage
         self.ticks = {}
-        self.orders = {}
+        self.orders = {}               # clientorder id list
         self.trades = {}
         self.positions = {}
         self.accounts = {}
         self.contracts = {}
-        self.active_orders = {}
+        self.active_orders = {}        # SQ id list
 
 
 
@@ -81,17 +92,46 @@ class StrategyEngine(BaseEngine):
     def init_engine(self):
         self.init_nng()
         self.init_rqdata()
+        self.load_contract()
         self.load_strategy_class()
         self.load_strategy_setting()
         self.load_strategy_data()  
         self.register_event()
 
+    def init_nng(self):
+        self._recv_sock.set_string_option(SUB, SUB_SUBSCRIBE, '')  # receive msg start with all
+        self._recv_sock.set_int_option(SOL_SOCKET,RCVTIMEO,100)
+        self._recv_sock.connect(self._config['serverpub_url'])
+        self._send_sock.connect(self._config['serverpull_url'])
 
     def init_rqdata(self):
 
         result = rqdata_client.init()
         if result:
             self.write_log("RQData数据接口初始化成功")
+    
+    def load_contract(self):
+        contractfile = Path.cwd().joinpath("etc/ctpcontract.yaml")
+        with open(contractfile, encoding='utf8') as fc: 
+            contracts = yaml.load(fc)
+        print(len(contracts))
+        for sym, data in contracts.items():
+            contract = ContractData(
+                symbol=data["symbol"],
+                exchange=Exchange(data["exchange"]),
+                name=data["name"],
+                product=PRODUCT_CTP2VT[str(data["product"])],
+                size=data["size"],
+                pricetick=data["pricetick"],
+                full_symbol = data["full_symbol"]
+            )            
+            # For option only
+            if contract.product == Product.OPTION:
+                contract.option_underlying = data["option_underlying"],
+                contract.option_type = OPTIONTYPE_CTP2VT.get(str(data["option_type"]), None),
+                contract.option_strike = data["option_strike"],
+                contract.option_expiry = datetime.strptime(str(data["option_expiry"]), "%Y%m%d"),
+            self.contracts[contract.full_symbol] = contract
 
     def register_event(self):
         """"""
@@ -101,7 +141,7 @@ class StrategyEngine(BaseEngine):
         self.event_engine.register(EventType.POSITION, self.process_position_event)
         self.event_engine.register(EventType.ACCOUNT, self.process_account_event)
         self.event_engine.register(EventType.CONTRACT, self.process_contract_event)        
-
+        self.event_engine.register(EventType.STRATEGY_CONTROL,self.process_strategycontrol_event)
 
     def process_tick_event(self, event: Event):
         """"""
@@ -122,19 +162,21 @@ class StrategyEngine(BaseEngine):
         
         self.offset_converter.update_order(order)
 
-        strategy = self.orderid_strategy_map.get(order.vt_orderid, None)
+        if order.clientID != self.id:
+            return
+        strategy = self.orderid_strategy_map.get(order.client_order_id, None)
         if not strategy:
             return
 
-        # Remove vt_orderid if order is no longer active.
-        vt_orderids = self.strategy_orderid_map[strategy.strategy_name]
-        if order.vt_orderid in vt_orderids and not order.is_active():
-            vt_orderids.remove(order.vt_orderid)
+        # Remove client_order_id if order is no longer active.
+        client_order_ids = self.strategy_orderid_map[strategy.strategy_name]
+        if order.client_order_id in client_order_ids and not order.is_active():
+            client_order_ids.remove(order.client_order_id)
 
         # For server stop order, call strategy on_stop_order function
         # if order.type == OrderType.STOP:
         #     so = StopOrder(
-        #         vt_symbol=order.vt_symbol,
+        #         full_symbol=order.full_symbol,
         #         direction=order.direction,
         #         offset=order.offset,
         #         price=order.price,
@@ -150,14 +192,14 @@ class StrategyEngine(BaseEngine):
         self.call_strategy_func(strategy, strategy.on_order, order)
 
         
-        self.orders[order.vt_orderid] = order
+        self.orders[order.client_order_id] = order
 
         # If order is active, then update data in dict.
         if order.is_active():
-            self.active_orders[order.vt_orderid] = order
+            self.active_orders[order.client_order_id] = order
         # Otherwise, pop inactive order from in dict
-        elif order.vt_orderid in self.active_orders:
-            self.active_orders.pop(order.vt_orderid)     
+        elif order.client_order_id in self.active_orders:
+            self.active_orders.pop(order.client_order_id)     
 
     def process_trade_event(self, event: Event):
         """"""
@@ -165,7 +207,9 @@ class StrategyEngine(BaseEngine):
 
         self.offset_converter.update_trade(trade)
 
-        strategy = self.orderid_strategy_map.get(trade.vt_orderid, None)
+        if trade.clientID != self.id:
+            return
+        strategy = self.orderid_strategy_map.get(trade.client_order_id, None)
         if not strategy:
             return
 
@@ -186,17 +230,71 @@ class StrategyEngine(BaseEngine):
 
         self.offset_converter.update_position(position)
 
-        self.positions[position.vt_positionid] = position
+        self.positions[position.key] = position
 
     def process_account_event(self, event: Event):
         """"""
         account = event.data
-        self.accounts[account.vt_accountid] = account
+        self.accounts[account.accountid] = account
 
     def process_contract_event(self, event: Event):
         """"""
         contract = event.data
-        self.contracts[contract.vt_symbol] = contract
+        self.contracts[contract.full_symbol] = contract
+
+    def process_strategycontrol_event(self,event:Event):
+        msgtype = event.msg_type
+        if (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_STATUS):
+            m = Event(type=EventType.STRATEGY_CONTROL,
+                des='@0',
+                src=str(self.id),
+                msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STATUS
+                )
+            self._send_sock.send(m.serialize)
+        elif ((event.destination != str(self.id)) and (event.destination[1:] != str(self.id)) ) :
+            return
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_ADD):
+            v = event.data.split('|')
+            classname = v[0]
+            strname = v[1]
+            fulsym = v[2]
+            setting = json.loads(v[3])
+            self.add_strategy(classname,strname,fulsym,setting)
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_INIT):
+            self.init_strategy(event.data)
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_INIT_ALL):
+            self.init_all_strategies()
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_START):
+            self.start_strategy(event.data)
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_START_ALL):
+            self.start_all_strategies()
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_STOP):
+            self.stop_strategy(event.data)
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_STOP_ALL):
+            self.stop_all_strategies()
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_EDIT):
+            v = event.data.split('|')
+            setting = json.loads(v[1])
+            self.edit_strategy(v[0],setting)
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE):
+            if self.remove_strategy(event.data):
+                m = Event(type=EventType.STRATEGY_CONTROL,
+                data=event.data,
+                des='@0',
+                src=str(self.id),
+                msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RTN_REMOVE
+                )
+                self._send_sock.send(m.serialize())
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_GET_DATA):
+            print('begin get data')
+            strategy = self.strategies.get(event.data,None)
+            if strategy:
+                self.put_strategy_event(strategy)
+
+        
+
+
+
 
     def call_strategy_func(
         self, strategy: StrategyBase, func: Callable, params: Any = None
@@ -217,29 +315,30 @@ class StrategyEngine(BaseEngine):
             self.write_log(msg, strategy)
 
     def add_strategy(
-        self, class_name: str, strategy_name: str, vt_symbol: str, setting: dict
+        self, class_name: str, strategy_name: str, full_symbol: str, setting: dict
     ):
         """
         Add a new strategy.
         """
+        print("begin add strategy")
         if strategy_name in self.strategies:
             self.write_log(f"创建策略失败，存在重名{strategy_name}")
             return
 
         strategy_class = self.classes[class_name]
 
-        strategy = strategy_class(self, strategy_name, vt_symbol, setting)
-        self.strategies[strategy_name] = strategy
+        strategy = strategy_class(self,strategy_name, full_symbol, setting)
+        self.strategies[strategy_name] = strategy       
 
-        # Add vt_symbol to strategy map.
-        strategies = self.symbol_strategy_map[vt_symbol]
+        # Add full_symbol to strategy map.
+        strategies = self.symbol_strategy_map[full_symbol]
         strategies.append(strategy)
-
+        print("335 add strategy")
         # Update to setting file.
         self.update_strategy_setting(strategy_name, setting)
 
         self.put_strategy_event(strategy)
-
+        print("end add strategy")
     def init_strategy(self, strategy_name: str):
         """
         Init a strategy.
@@ -276,7 +375,7 @@ class StrategyEngine(BaseEngine):
                         setattr(strategy, name, value)
 
             # Subscribe market data, move to strategy's init function
-            # contract = self.get_contract(strategy.vt_symbol)
+            # contract = self.get_contract(strategy.full_symbol)
             # if contract:
             #     m = Event(type=EventType.SUBSCRIBE)
             #     m.destination = contract.gateway_name
@@ -287,7 +386,7 @@ class StrategyEngine(BaseEngine):
             #     m.data = req
             #     self.put(m)
             # else:
-            #     self.write_log(f"行情订阅失败，找不到合约{strategy.vt_symbol}", strategy)
+            #     self.write_log(f"行情订阅失败，找不到合约{strategy.full_symbol}", strategy)
 
             # Put event to update init completed status.
             strategy.inited = True
@@ -348,6 +447,7 @@ class StrategyEngine(BaseEngine):
         """
         Remove a strategy.
         """
+        print("begin remove")
         strategy = self.strategies[strategy_name]
         if strategy.trading:
             self.write_log(f"策略{strategy.strategy_name}移除失败，请先停止")
@@ -357,33 +457,33 @@ class StrategyEngine(BaseEngine):
         self.remove_strategy_setting(strategy_name)
 
         # Remove from symbol strategy map
-        strategies = self.symbol_strategy_map[strategy.vt_symbol]
+        strategies = self.symbol_strategy_map[strategy.full_symbol]
         strategies.remove(strategy)
 
         # Remove from active orderid map
         if strategy_name in self.strategy_orderid_map:
-            vt_orderids = self.strategy_orderid_map.pop(strategy_name)
+            orderids = self.strategy_orderid_map.pop(strategy_name)
 
             # Remove vt_orderid strategy map
-            for vt_orderid in vt_orderids:
-                if vt_orderid in self.orderid_strategy_map:
-                    self.orderid_strategy_map.pop(vt_orderid)
+            for _orderid in orderids:
+                if _orderid in self.orderid_strategy_map:
+                    self.orderid_strategy_map.pop(_orderid)
 
         # Remove from strategies
         self.strategies.pop(strategy_name)
-
+        print("end remove")
         return True
 
     def load_strategy_class(self):
         """
         Load strategy class from source code.
         """
-        path1 = Path(__file__).parent.joinpath("")
-        self.load_strategy_class_from_folder(
-            path1, "mystrategy")
+        # path1 = Path(__file__).parent.joinpath("")
+        # self.load_strategy_class_from_folder(
+        #     path1, "mystrategy")
 
-        path2 = Path.cwd().joinpath("")
-        self.load_strategy_class_from_folder(path2, "mystrategy")
+        path2 = Path.cwd().joinpath("mystrategy")
+        self.load_strategy_class_from_folder(path2, "")
 
     def load_strategy_class_from_folder(self, path: Path, module_name: str = ""):
         """
@@ -392,7 +492,7 @@ class StrategyEngine(BaseEngine):
         for dirpath, dirnames, filenames in os.walk(str(path)):
             for filename in filenames:
                 if filename.endswith(".py"):
-                    strategy_module_name = ".".join(
+                    strategy_module_name = "mystrategy.".join(
                         [module_name, filename.replace(".py", "")])
                     self.load_strategy_class_from_module(strategy_module_name)
 
@@ -427,6 +527,8 @@ class StrategyEngine(BaseEngine):
 
         self.strategy_data[strategy.strategy_name] = data
         save_json(self.data_filename, self.strategy_data)
+
+
 
     def get_all_strategy_class_names(self):
         """
@@ -481,7 +583,7 @@ class StrategyEngine(BaseEngine):
             self.add_strategy(
                 strategy_config["class_name"], 
                 strategy_name,
-                strategy_config["vt_symbol"], 
+                strategy_config["full_symbol"], 
                 strategy_config["setting"]
             )
 
@@ -493,7 +595,7 @@ class StrategyEngine(BaseEngine):
 
         self.strategy_setting[strategy_name] = {
             "class_name": strategy.__class__.__name__,
-            "vt_symbol": strategy.vt_symbol,
+            "full_symbol": strategy.full_symbol,
             "setting": setting,
         }
         save_json(self.setting_filename, self.strategy_setting)
@@ -521,22 +623,20 @@ class StrategyEngine(BaseEngine):
         """
         data = strategy.get_data()
         sdata = {}
-        sdata[strategy.name] = data
+        sdata[strategy.strategy_name] = data
         # event = Event(EVENT_CTA_STRATEGY, data)
         # self.event_engine.put(event)
+        msg = json.dumps(sdata)
+        m = Event(type=EventType.STRATEGY_CONTROL,data=msg,des='@0',src=str(self.id),msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RTN_DATA)
+        self._send_sock.send(m.serialize())
         save_json(self.data_filename, sdata)
-        pass
+        
 
 
 
 
 
 
-    def init_nng(self):
-        self._recv_sock.set_string_option(SUB, SUB_SUBSCRIBE, '')  # receive msg start with all
-        self._recv_sock.set_int_option(SOL_SOCKET,RCVTIMEO,100)
-        self._recv_sock.connect(self._config['serverpub_url'])
-        self._send_sock.connect(self._config['serverpull_url'])
     #------------------------------------ public functions -----------------------------#
     
     def query_bar_from_rq(
@@ -553,13 +653,13 @@ class StrategyEngine(BaseEngine):
     
     def load_bar(
         self, 
-        vt_symbol: str, 
+        full_symbol: str, 
         days: int, 
         interval: Interval,
         callback: Callable[[BarData], None]
     ):
         """"""
-        symbol, exchange = extract_vt_symbol(vt_symbol)
+        symbol, exchange = extract_full_symbol(full_symbol)
         end = datetime.now()
         start = end - timedelta(days)
 
@@ -579,17 +679,17 @@ class StrategyEngine(BaseEngine):
     
     
     
-    def get_tick(self, vt_symbol):
+    def get_tick(self, full_symbol):
         """
-        Get latest market tick data by vt_symbol.
+        Get latest market tick data by full_symbol.
         """
-        return self.ticks.get(vt_symbol, None)
+        return self.ticks.get(full_symbol, None)
 
-    def get_order(self, vt_orderid):
+    def get_order(self, orderid:int):
         """
-        Get latest order data by vt_orderid.
+        Get latest order data by orderid.
         """
-        return self.orders.get(vt_orderid, None)
+        return self.orders.get(orderid, None)
 
     def get_trade(self, vt_tradeid):
         """
@@ -597,23 +697,23 @@ class StrategyEngine(BaseEngine):
         """
         return self.trades.get(vt_tradeid, None)
 
-    def get_position(self, vt_positionid):
+    def get_position(self, key):
         """
         Get latest position data by vt_positionid.
         """
-        return self.positions.get(vt_positionid, None)
+        return self.positions.get(key, None)
 
-    def get_account(self, vt_accountid):
+    def get_account(self, accountid):
         """
-        Get latest account data by vt_accountid.
+        Get latest account data by accountid.
         """
-        return self.accounts.get(vt_accountid, None)
+        return self.accounts.get(accountid, None)
 
-    def get_contract(self, vt_symbol):
+    def get_contract(self, full_symbol):
         """
-        Get contract data by vt_symbol.
+        Get contract data by full_symbol.
         """
-        return self.contracts.get(vt_symbol, None)
+        return self.contracts.get(full_symbol, None)
 
     def get_all_ticks(self):
         """
@@ -651,24 +751,67 @@ class StrategyEngine(BaseEngine):
         """
         return list(self.contracts.values())
 
-    def get_all_active_orders(self, vt_symbol: str = ""):
+    def get_all_active_orders(self, full_symbol: str = ""):
         """
-        Get all active orders by vt_symbol.
+        Get all active orders by full_symbol.
 
-        If vt_symbol is empty, return all active orders.
+        If full_symbol is empty, return all active orders.
         """
-        if not vt_symbol:
+        if not full_symbol:
             return list(self.active_orders.values())
         else:
             active_orders = [
                 order
                 for order in self.active_orders.values()
-                if order.vt_symbol == vt_symbol
+                if order.full_symbol == full_symbol
             ]
             return active_orders    
     
 
+    def send_order(
+        self,
+        strategy: StrategyBase,
+        original_req: OrderRequest,
+        lock: bool = False
+    ):
+        """
+        Send a new order to server.
+        """
+        # Convert with offset converter
+        req_list = self.offset_converter.convert_order_request(original_req, lock)
 
+        # Send Orders
+        orderids = []
+
+        for req in req_list:
+            req.clientID = self.id
+            req.client_order_id = self.ordercount 
+            self.ordercount += 1
+            self._send_sock.send(req.serialize())
+            orderids.append(req.client_order_id)
+            self.offset_converter.update_order_request(req)
+            # Save relationship between orderid and strategy.
+            self.orderid_strategy_map[req.client_order_id] = strategy
+            self.strategy_orderid_map[strategy.strategy_name].add(req.client_order_id)
+        
+        return orderids
+
+    def cancel_order(self, strategy: StrategyBase, orderid: int):
+        """
+        Cancel existing order by orderid.
+        """
+        order = self.get_order(orderid)
+        if not order:
+            self.write_log(f"撤单失败，找不到委托{orderid}", strategy)
+            return
+
+        req = order.create_cancel_request()
+        m = Event(type=EventType.CANCEL,data=req)
+        if order.api == "CTP":
+            m.destination = "CTP.TD." + order.account
+            m.source = str(self.id)
+            m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_ACTION_CTP
+        self._send_sock.send(m.serialize())
     
     
     def start(self, timer=True):
@@ -678,7 +821,6 @@ class StrategyEngine(BaseEngine):
         self.event_engine.start()
         print('tradeclient started ,pid = %d ' % os.getpid())
         self.__active = True
-        # print(self._config['serverpub_url'])
         while self.__active:
             try:
                 msgin = self._recv_sock.recv(flags=0)
@@ -689,41 +831,9 @@ class StrategyEngine(BaseEngine):
                         msgin = msgin[:-1]
                     if msgin[-1] == '\x00':
                         msgin = msgin[:-1]
-                    # v = msgin.split('|')
-                    # msg2type = MSG_TYPE(int(v[2]))
-                    # if msg2type == MSG_TYPE.MSG_TYPE_TICK_L1:
-                    #     m = TickEvent()
-                    #     m.deserialize(msgin)
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_RTN_ORDER:
-                    #    m = OrderStatusEvent()
-                    #    m.deserialize(msgin)
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_RTN_TRADE:
-                    #     m = FillEvent()
-                    #     m.deserialize(msgin)
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_RSP_POS:
-                    #     m = PositionEvent()
-                    #     m.deserialize(msgin)
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_Hist:
-                    #     m = HistoricalEvent()
-                    #     m.deserialize(msgin)
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_RSP_ACCOUNT:
-                    #     m = AccountEvent()
-                    #     m.deserialize(msgin)
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_RSP_CONTRACT:
-                    #     m = ContractEvent()
-                    #     m.deserialize(msgin)
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_INFO:
-                    #     m = InfoEvent()
-                    #     m.deserialize(msgin)
-                    # else:
-                    #     m = GeneralReqEvent() 
-                    #     m.deserialize(msgin)
-                    #     pass
                     m = Event()
                     m.deserialize(msgin)
                     self.event_engine.put(m)
-                    # if m.event_type in self._handlers:
-                    #     [handler(m) for handler in self._handlers[m.event_type]]
             except Exception as e:
                 pass
                 #print("TradeEngineError {0}".format(str(e.args[0])).encode("utf-8"))
@@ -746,6 +856,7 @@ class StrategyEngine(BaseEngine):
         """
         register handler/subscriber
         """
+        # self.event_engine.register(type_,handler)
         # handlerList = self._handlers[type_]
 
         # if handler not in handlerList:
