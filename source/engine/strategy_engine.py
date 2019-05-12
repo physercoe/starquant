@@ -29,14 +29,14 @@ class StrategyEngine(BaseEngine):
     config_filename = "config_server.yaml"
     setting_filename = "cta_strategy_setting.json"
     data_filename = "cta_strategy_data.json"
-    
+# init    
     def __init__(self,configfile:str = '',id :int = 1):
         super(StrategyEngine, self).__init__()
         """
         two sockets to send and recv msg
         """
         self.__active = False
-        self.id = id
+        self.id = os.getpid()
         self.engine_type = EngineType.LIVE     
         self._recv_sock = Socket(SUB)
         self._send_sock = Socket(PUSH)
@@ -48,7 +48,7 @@ class StrategyEngine(BaseEngine):
             self._config = yaml.load(fd)
         self.ordercount = 0
 
-#  stragegy manage
+        #  stragegy manage
         self.strategy_setting = {}  # strategy_name: dict
         self.strategy_data = {}     # strategy_name: dict
 
@@ -70,7 +70,7 @@ class StrategyEngine(BaseEngine):
         self.init_thread = None
         self.init_queue = Queue()
 
-# order,tick,position ,etc manage
+        # order,tick,position ,etc manage
         self.ticks = {}
         self.orders = {}               # clientorder id list
         self.trades = {}
@@ -88,7 +88,7 @@ class StrategyEngine(BaseEngine):
 
         self.init_engine()
 
-
+# init functions 
     def init_engine(self):
         self.init_nng()
         self.init_rqdata()
@@ -142,6 +142,12 @@ class StrategyEngine(BaseEngine):
         self.event_engine.register(EventType.ACCOUNT, self.process_account_event)
         self.event_engine.register(EventType.CONTRACT, self.process_contract_event)        
         self.event_engine.register(EventType.STRATEGY_CONTROL,self.process_strategycontrol_event)
+        self.event_engine.register(EventType.HEADER,self.process_general_event)
+# event handler
+    def process_general_event(self, event):
+        for name, strategy in self.strategies.items():
+            self.call_strategy_func(strategy, strategy.on_headermsg, event)
+        pass
 
     def process_tick_event(self, event: Event):
         """"""
@@ -244,14 +250,17 @@ class StrategyEngine(BaseEngine):
 
     def process_strategycontrol_event(self,event:Event):
         msgtype = event.msg_type
-        if (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_STATUS):
+        deslist = ['@*',str(self.id),'@'+str(self.id)]
+        if (event.destination not in deslist ) :
+            return
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_STATUS):
             m = Event(type=EventType.STRATEGY_CONTROL,
                 des='@0',
                 src=str(self.id),
                 msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STATUS
                 )
-            self._send_sock.send(m.serialize)
-        elif ((event.destination != str(self.id)) and (event.destination[1:] != str(self.id)) ) :
+            self._send_sock.send(m.serialize())
+        elif (event.destination not in deslist ) :
             return
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_ADD):
             v = event.data.split('|')
@@ -285,16 +294,18 @@ class StrategyEngine(BaseEngine):
                 msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RTN_REMOVE
                 )
                 self._send_sock.send(m.serialize())
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE_DUPLICATE):
+            self.remove_strategy(event.data,True)
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_GET_DATA):
-            print('begin get data')
-            strategy = self.strategies.get(event.data,None)
-            if strategy:
-                self.put_strategy_event(strategy)
-
+            # print('begin get data')
+            if event.data:
+                strategy = self.strategies.get(event.data,None)
+                if strategy:
+                    self.put_strategy_event(strategy)
+            else : # get all strategy data
+                for strategy in self.strategies.values():
+                    self.put_strategy_event(strategy)
         
-
-
-
 
     def call_strategy_func(
         self, strategy: StrategyBase, func: Callable, params: Any = None
@@ -313,7 +324,7 @@ class StrategyEngine(BaseEngine):
 
             msg = f"触发异常已停止\n{traceback.format_exc()}"
             self.write_log(msg, strategy)
-
+# strategy manage
     def add_strategy(
         self, class_name: str, strategy_name: str, full_symbol: str, setting: dict
     ):
@@ -333,12 +344,12 @@ class StrategyEngine(BaseEngine):
         # Add full_symbol to strategy map.
         strategies = self.symbol_strategy_map[full_symbol]
         strategies.append(strategy)
-        print("335 add strategy")
+        # print("335 add strategy")
         # Update to setting file.
         self.update_strategy_setting(strategy_name, setting)
 
         self.put_strategy_event(strategy)
-        print("end add strategy")
+        # print("end add strategy")
     def init_strategy(self, strategy_name: str):
         """
         Init a strategy.
@@ -374,19 +385,19 @@ class StrategyEngine(BaseEngine):
                     if value:
                         setattr(strategy, name, value)
 
-            # Subscribe market data, move to strategy's init function
-            # contract = self.get_contract(strategy.full_symbol)
-            # if contract:
-            #     m = Event(type=EventType.SUBSCRIBE)
-            #     m.destination = contract.gateway_name
-            #     m.source = strategy_name
-            #     req = SubscribeRequest()
-            #     req.sym_type = SYMBOL_TYPE.CTP                
-            #     req.content = strategy.symbol
-            #     m.data = req
-            #     self.put(m)
-            # else:
-            #     self.write_log(f"行情订阅失败，找不到合约{strategy.full_symbol}", strategy)
+            # Subscribe market data
+            contract = self.get_contract(strategy.full_symbol)
+            if contract:
+                m = Event(type=EventType.SUBSCRIBE,msgtype=MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA)
+                m.destination = "CTP.MD"
+                m.source = str(self.id)
+                req = SubscribeRequest()
+                req.sym_type = SYMBOL_TYPE.CTP                
+                req.content = contract.symbol
+                m.data = req
+                self._send_sock.send(m.serialize())
+            else:
+                self.write_log(f"行情订阅失败，找不到合约{strategy.full_symbol}", strategy)
 
             # Put event to update init completed status.
             strategy.inited = True
@@ -443,7 +454,7 @@ class StrategyEngine(BaseEngine):
         self.update_strategy_setting(strategy_name, setting)
         self.put_strategy_event(strategy)
 
-    def remove_strategy(self, strategy_name: str):
+    def remove_strategy(self, strategy_name: str, duplicate:bool = False):
         """
         Remove a strategy.
         """
@@ -454,7 +465,8 @@ class StrategyEngine(BaseEngine):
             return
 
         # Remove setting
-        self.remove_strategy_setting(strategy_name)
+        if not duplicate:
+            self.remove_strategy_setting(strategy_name)
 
         # Remove from symbol strategy map
         strategies = self.symbol_strategy_map[strategy.full_symbol]
@@ -525,6 +537,8 @@ class StrategyEngine(BaseEngine):
         data.pop("inited")      # Strategy status (inited, trading) should not be synced.
         data.pop("trading")
 
+        self.strategy_data = load_json(self.data_filename)
+
         self.strategy_data[strategy.strategy_name] = data
         save_json(self.data_filename, self.strategy_data)
 
@@ -592,12 +606,14 @@ class StrategyEngine(BaseEngine):
         Update setting file.
         """
         strategy = self.strategies[strategy_name]
-
+        # in order to save other engine's setting, should load again
+        self.strategy_setting = load_json(self.setting_filename)
         self.strategy_setting[strategy_name] = {
             "class_name": strategy.__class__.__name__,
             "full_symbol": strategy.full_symbol,
             "setting": setting,
         }
+
         save_json(self.setting_filename, self.strategy_setting)
 
     def remove_strategy_setting(self, strategy_name: str):
@@ -606,7 +622,8 @@ class StrategyEngine(BaseEngine):
         """
         if strategy_name not in self.strategy_setting:
             return
-
+        # in order to save other engine's setting, should load again
+        self.strategy_setting = load_json(self.setting_filename)
         self.strategy_setting.pop(strategy_name)
         save_json(self.setting_filename, self.strategy_setting)
 
@@ -629,16 +646,11 @@ class StrategyEngine(BaseEngine):
         msg = json.dumps(sdata)
         m = Event(type=EventType.STRATEGY_CONTROL,data=msg,des='@0',src=str(self.id),msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RTN_DATA)
         self._send_sock.send(m.serialize())
-        save_json(self.data_filename, sdata)
+
+        # save_json(self.data_filename, sdata)
         
-
-
-
-
-
-
-    #------------------------------------ public functions -----------------------------#
-    
+# strategy functions 
+  #get ,qry  
     def query_bar_from_rq(
         self, symbol: str, exchange: Exchange, interval: Interval, start: datetime, end: datetime
     ):
@@ -676,7 +688,6 @@ class StrategyEngine(BaseEngine):
 
         for bar in bars:
             callback(bar)
-    
     
     
     def get_tick(self, full_symbol):
@@ -766,8 +777,11 @@ class StrategyEngine(BaseEngine):
                 if order.full_symbol == full_symbol
             ]
             return active_orders    
-    
+    def get_position_holding(self, acc:str, full_symbol:str):
+        return self.offset_converter.get_position_holding(acc,full_symbol)
 
+
+  #order, cancel
     def send_order(
         self,
         strategy: StrategyBase,
@@ -787,7 +801,13 @@ class StrategyEngine(BaseEngine):
             req.clientID = self.id
             req.client_order_id = self.ordercount 
             self.ordercount += 1
-            self._send_sock.send(req.serialize())
+            m = Event(type=EventType.ORDER,
+                data=req,
+                des=req.api + '.TD.' + req.account, 
+                src=str(self.id),
+                msgtype=MSG_TYPE.MSG_TYPE_ORDER
+                )
+            self._send_sock.send(m.serialize())
             orderids.append(req.client_order_id)
             self.offset_converter.update_order_request(req)
             # Save relationship between orderid and strategy.
@@ -806,14 +826,19 @@ class StrategyEngine(BaseEngine):
             return
 
         req = order.create_cancel_request()
-        m = Event(type=EventType.CANCEL,data=req)
-        if order.api == "CTP":
-            m.destination = "CTP.TD." + order.account
-            m.source = str(self.id)
-            m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_ACTION_CTP
+        m = Event(type=EventType.CANCEL,            
+            data=req,
+            des=order.api + '.TD.'+ order.account,
+            src=str(self.id),
+            msgtype=MSG_TYPE.MSG_TYPE_ORDER_ACTION
+            )
         self._send_sock.send(m.serialize())
     
-    
+    def send_testmsg(self):
+        m = Event(des='CTP.MD',src=str(self.id),msgtype=MSG_TYPE.MSG_TYPE_TEST)
+        self._send_sock.send(m.serialize())
+
+# start and stop    
     def start(self, timer=True):
         """
         start the dispatcher thread and begin to recv msg through nng
@@ -826,7 +851,7 @@ class StrategyEngine(BaseEngine):
                 msgin = self._recv_sock.recv(flags=0)
                 msgin = msgin.decode("utf-8")
                 if msgin is not None and msgin.index('|') > 0:
-                    print('tradeclient(id = %d) rec server msg:'%(self.id), msgin,'at ', datetime.now())
+                    print('tradeclient(pid = %d) rec server msg:'%(self.id), msgin,'at ', datetime.now())
                     if msgin[-1] == '\0':
                         msgin = msgin[:-1]
                     if msgin[-1] == '\x00':

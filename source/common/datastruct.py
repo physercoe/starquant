@@ -93,6 +93,9 @@ class Event(object):
                 self.msg_type = msg2type
                 if len(v) > 3:
                     self.data = v[3]
+            else:
+                self.event_type = EventType.HEADER
+                self.msg_type = msg2type
         except:
             pass
 

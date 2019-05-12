@@ -407,7 +407,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # btn_strat_layout.addWidget(self.btn_strat_liquidate)
         # btn_strat_layout.addWidget(self.btn_strat_reload)
 
-        strategy_manager_layout.addRow(QtWidgets.QLabel('Strategy Engine'))
+        strategy_manager_layout.addRow(QtWidgets.QLabel('Strategy Manager'))
         strategy_manager_layout.addWidget(self.ctastrategywindow)
         # strategy_manager_layout.addRow(btn_strat_layout)
         bottomright.setLayout(strategy_manager_layout)

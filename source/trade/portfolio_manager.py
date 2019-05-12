@@ -169,10 +169,10 @@ class OffsetConverter:
         """"""
         self.main_engine = main_engine
         self.holdings = {}
-        self.add_function()
+        # self.add_function()
 
-    def add_function(self):
-        self.main_engine.get_position_holding = self.get_position_holding
+    # def add_function(self):
+    #     self.main_engine.get_position_holding = self.get_position_holding
 
     def update_position(self, position: PositionData):
         """"""

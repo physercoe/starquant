@@ -102,7 +102,7 @@ namespace StarQuant
 
 	void CtpTDEngine::start(){
 		while(estate_ != EState::STOP){
-			auto pmsgin = messenger_->recv(1);
+			auto pmsgin = messenger_->recv();
 			bool processmsg = ((pmsgin != nullptr) && ( startwith(pmsgin->destination_,DESTINATION_ALL) || (pmsgin->destination_ == name_ )));
 			// if (pmsgin == nullptr || (pmsgin->destination_ != name_  && ! startwith(pmsgin->destination_,DESTINATION_ALL) ) )
 			// 	continue;
@@ -119,6 +119,7 @@ namespace StarQuant
 					case MSG_TYPE_ENGINE_DISCONNECT:
 						disconnect();
 						break;
+					case MSG_TYPE_ORDER:
 					case MSG_TYPE_ORDER_CTP:
 						if (pmsgin->destination_ != name_)
 							break;

@@ -142,7 +142,8 @@ class CtaManager(QtWidgets.QWidget):
         self.strategy_setting = {}  # strategy_name: dict
         self.strategy_data = {}     # strategy_name: dict
         self.classes = {}           # class_name: stategy_class  
-
+        self.engines = []
+        self.strategy_engine_map ={} # strategy_name -> engine_id map
         self.managers = {}
         self.load_strategy_class()
         self.load_strategy_setting()
@@ -151,7 +152,7 @@ class CtaManager(QtWidgets.QWidget):
         self.register_event()
         # self.cta_engine.init_engine()
         self.update_class_combo()
-
+        self.refresh_strategies()
 
     def load_strategy_class(self):
         """
@@ -224,21 +225,25 @@ class CtaManager(QtWidgets.QWidget):
 
     def init_ui(self):
         """"""
-        self.setWindowTitle("CTA策略")
+        self.setWindowTitle("CTA Strategy")
 
         # Create widgets
         self.class_combo = QtWidgets.QComboBox()
+        self.engine_combo = QtWidgets.QComboBox()
 
-        add_button = QtWidgets.QPushButton("添加策略")
+        add_button = QtWidgets.QPushButton("Add")
         add_button.clicked.connect(self.add_strategy)
 
-        init_button = QtWidgets.QPushButton("全部初始化")
+        refresh_button = QtWidgets.QPushButton("Refresh")
+        refresh_button.clicked.connect(self.refresh_strategies)
+
+        init_button = QtWidgets.QPushButton("Init All")
         init_button.clicked.connect(self.init_all_strategies)
 
-        start_button = QtWidgets.QPushButton("全部启动")
+        start_button = QtWidgets.QPushButton("Start ALL")
         start_button.clicked.connect(self.start_all_strategies)
 
-        stop_button = QtWidgets.QPushButton("全部停止")
+        stop_button = QtWidgets.QPushButton("Stop ALL")
         stop_button.clicked.connect(self.stop_all_strategies)
 
         self.scroll_layout = QtWidgets.QVBoxLayout()
@@ -259,9 +264,13 @@ class CtaManager(QtWidgets.QWidget):
 
         # Set layout
         hbox1 = QtWidgets.QHBoxLayout()
+        hbox1.addWidget(QtWidgets.QLabel('Strategy'))        
         hbox1.addWidget(self.class_combo)
         hbox1.addWidget(add_button)
+        hbox1.addWidget(QtWidgets.QLabel('Engine PID'))
+        hbox1.addWidget(self.engine_combo)
         hbox1.addStretch()
+        hbox1.addWidget(refresh_button)
         hbox1.addWidget(init_button)
         hbox1.addWidget(start_button)
         hbox1.addWidget(stop_button)
@@ -300,59 +309,88 @@ class CtaManager(QtWidgets.QWidget):
             strmsg = event.data
             data = json.loads(strmsg)
             # print(type(data),data)
+            # first remove not active strategy
+            # for sname in self.managers.keys():
+            #     if sname not in data.keys():
+            #         self.remove_strategy(sname)
+            # second update data in managers
             for strategy_name, strategy_config in data.items():
                 if strategy_name in self.managers:
+                    # if this strategy already exist in other engine, remove it 
+                    if self.strategy_engine_map[strategy_name] != strategy_config["engine_id"] :
+                        self.send_remove_strategy_msg(strategy_name,str(strategy_config["engine_id"]),True)
+                        continue
                     manager = self.managers[strategy_name]
                     manager.update_data(strategy_config)
                 else:
                     manager = StrategyManager(self, strategy_config)
                     self.scroll_layout.insertWidget(0, manager)
                     self.managers[strategy_name] = manager
+                    self.strategy_engine_map[strategy_name] = strategy_config["engine_id"]
         elif event.msg_type == MSG_TYPE.MSG_TYPE_STRATEGY_RTN_REMOVE :
-            self.remove_strategy(event.data)
+            if str(self.strategy_engine_map[event.data]) == event.source:
+                self.remove_strategy(event.data)
+        elif event.msg_type == MSG_TYPE.MSG_TYPE_STRATEGY_STATUS:
+            if (event.source != '0') and (event.source not in self.engines):
+                self.engines.append(event.source)
+                self.engine_combo.addItem(event.source)
 
+    def refresh_strategies(self): 
+        while self.managers:
+            name, manager = self.managers.popitem()
+            manager.deleteLater()        
+        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_GET_DATA)
+        self.signal_strategy_out.emit(m)
+        self.engine_combo.clear()
+        self.engines.clear()
+        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STATUS)
+        self.signal_strategy_out.emit(m)
 
     def init_all_strategies(self):
-        m = Event(type=EventType.STRATEGY_CONTROL,des='@1',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_INIT_ALL)
+        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_INIT_ALL)
         self.signal_strategy_out.emit(m)
 
 
     def start_all_strategies(self):
-        m = Event(type=EventType.STRATEGY_CONTROL,des='@1',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_START_ALL)
+        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_START_ALL)
         self.signal_strategy_out.emit(m)
 
 
     def stop_all_strategies(self):
-        m = Event(type=EventType.STRATEGY_CONTROL,des='@1',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STOP_ALL)
+        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STOP_ALL)
         self.signal_strategy_out.emit(m)
 
 
-    def init_strategy(self,strategy_name:str):
-        m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@1',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_INIT)
+    def init_strategy(self,strategy_name:str, id:str):
+        m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_INIT)
         self.signal_strategy_out.emit(m)
         
 
-    def start_strategy(self,strategy_name:str):
-        m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@1',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_START)
+    def start_strategy(self,strategy_name:str,id:str):
+        m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_START)
         self.signal_strategy_out.emit(m)        
 
-    def stop_strategy(self,strategy_name:str):
-        m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@1',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STOP)
+    def stop_strategy(self,strategy_name:str,id:str):
+        m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STOP)
         self.signal_strategy_out.emit(m)
 
-    def edit_strategy(self,strategy_name:str, setting:dict):
+    def edit_strategy(self,strategy_name:str, setting:dict,id:str):
         msg = strategy_name + '|' + json.dumps(setting)
-        m = Event(type=EventType.STRATEGY_CONTROL,data=msg,des='@1',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_EDIT)
+        m = Event(type=EventType.STRATEGY_CONTROL,data=msg,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_EDIT)
         self.signal_strategy_out.emit(m)
 
 
-    def send_remove_strategy_msg(self,strategy_name):
-        m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@1',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE)
+    def send_remove_strategy_msg(self,strategy_name:str,id:str, duplicate:bool = False):
+        if duplicate:
+            m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE_DUPLICATE)
+        else:
+            m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE)
         self.signal_strategy_out.emit(m)
 
     def remove_strategy(self, strategy_name):
         """"""
         manager = self.managers.pop(strategy_name)
+        self.strategy_engine_map.pop(strategy_name)
         manager.deleteLater()
 
     def add_strategy(self):
@@ -360,7 +398,10 @@ class CtaManager(QtWidgets.QWidget):
         class_name = str(self.class_combo.currentText())
         if not class_name:
             return
-
+        engine_id  = str(self.engine_combo.currentText())
+        if not engine_id:
+            return
+        desid = '@'+ engine_id
         parameters = self.get_strategy_class_parameters(class_name)
         editor = SettingEditor(parameters, class_name=class_name)
         n = editor.exec_()
@@ -369,10 +410,12 @@ class CtaManager(QtWidgets.QWidget):
             setting = editor.get_setting()
             full_symbol = setting.pop("full_symbol")
             strategy_name = setting.pop("strategy_name")
-
+            if strategy_name in self.managers.keys():
+                QtWidgets.QMessageBox().information(None, 'Error','strategy name already exist!',QtWidgets.QMessageBox.Ok)
+                return
             strsetting = json.dumps(setting) 
             msg = class_name +'|' +strategy_name + '|' + full_symbol +'|' + strsetting           
-            m = Event(type=EventType.STRATEGY_CONTROL,data=msg,des='@1',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_ADD)
+            m = Event(type=EventType.STRATEGY_CONTROL,data=msg,des=desid,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_ADD)
             self.signal_strategy_out.emit(m)
 
     def show(self):
@@ -395,46 +438,50 @@ class StrategyManager(QtWidgets.QFrame):
         # self.cta_engine = cta_engine
 
         self.strategy_name = data["strategy_name"]
+        self.engine_id = str(data["engine_id"])
         self._data = data
 
         self.init_ui()
 
     def init_ui(self):
         """"""
-        self.setMaximumHeight(200)
+        self.setMaximumHeight(180)
         self.setFrameShape(self.Box)
         self.setLineWidth(1)
 
-        init_button = QtWidgets.QPushButton("初始化")
+        init_button = QtWidgets.QPushButton("  Init  ")
         init_button.clicked.connect(self.init_strategy)
 
-        start_button = QtWidgets.QPushButton("启动")
+        start_button = QtWidgets.QPushButton(" Start ")
         start_button.clicked.connect(self.start_strategy)
 
-        stop_button = QtWidgets.QPushButton("停止")
+        stop_button = QtWidgets.QPushButton(" Stop ")
         stop_button.clicked.connect(self.stop_strategy)
 
-        edit_button = QtWidgets.QPushButton("编辑")
+        edit_button = QtWidgets.QPushButton(" Edit ")
         edit_button.clicked.connect(self.edit_strategy)
 
-        remove_button = QtWidgets.QPushButton("移除")
+        remove_button = QtWidgets.QPushButton("Remove")
         remove_button.clicked.connect(self.remove_strategy)
 
+        engine_id = self._data["engine_id"]
         strategy_name = self._data["strategy_name"]
         full_symbol = self._data["full_symbol"]
         class_name = self._data["class_name"]
         author = self._data["author"]
 
         label_text = (
-            f"{strategy_name}  -  {full_symbol}  ({class_name} by {author})"
+            f"{strategy_name}@{engine_id}  -  {full_symbol}  ({class_name} by {author})"
         )
         label = QtWidgets.QLabel(label_text)
-        label.setAlignment(QtCore.Qt.AlignCenter)
+        label.setAlignment(QtCore.Qt.AlignLeft)
 
         self.parameters_monitor = DataMonitor(self._data["parameters"])
         self.variables_monitor = DataMonitor(self._data["variables"])
 
         hbox = QtWidgets.QHBoxLayout()
+        hbox.addWidget(label)
+        hbox.addStretch()
         hbox.addWidget(init_button)
         hbox.addWidget(start_button)
         hbox.addWidget(stop_button)
@@ -442,7 +489,7 @@ class StrategyManager(QtWidgets.QFrame):
         hbox.addWidget(remove_button)
 
         vbox = QtWidgets.QVBoxLayout()
-        vbox.addWidget(label)
+        # vbox.addWidget(label)
         vbox.addLayout(hbox)
         vbox.addWidget(self.parameters_monitor)
         vbox.addWidget(self.variables_monitor)
@@ -457,27 +504,27 @@ class StrategyManager(QtWidgets.QFrame):
 
     def init_strategy(self):
         """"""
-        self.cta_manager.init_strategy(self.strategy_name)
+        self.cta_manager.init_strategy(self.strategy_name,self.engine_id)
 
     def start_strategy(self):
         """"""
-        self.cta_manager.start_strategy(self.strategy_name)
+        self.cta_manager.start_strategy(self.strategy_name,self.engine_id)
 
     def stop_strategy(self):
         """"""
-        self.cta_manager.stop_strategy(self.strategy_name)
+        self.cta_manager.stop_strategy(self.strategy_name,self.engine_id)
 
     def edit_strategy(self):
         """"""
         strategy_name = self._data["strategy_name"]
-
+        
         parameters = self.parameters_monitor._data
         editor = SettingEditor(parameters, strategy_name=strategy_name)
         n = editor.exec_()
 
         if n == editor.Accepted:
             setting = editor.get_setting()
-            self.cta_manager.edit_strategy(strategy_name, setting)
+            self.cta_manager.edit_strategy(strategy_name, setting, self.engine_id)
 
     def remove_strategy(self):
         """"""
@@ -486,7 +533,9 @@ class StrategyManager(QtWidgets.QFrame):
         # # Only remove strategy gui manager if it has been removed from engine
         # if result:
         #     self.cta_manager.remove_strategy(self.strategy_name)
-        self.cta_manager.send_remove_strategy_msg(self.strategy_name)
+        mbox = QtWidgets.QMessageBox().question(None, 'confirm','are you sure',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.Yes)
+        if mbox == QtWidgets.QMessageBox.Yes:
+            self.cta_manager.send_remove_strategy_msg(self.strategy_name,self.engine_id)
 
 
 class DataMonitor(QtWidgets.QTableWidget):
