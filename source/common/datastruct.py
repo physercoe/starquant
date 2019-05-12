@@ -358,29 +358,28 @@ class OrderData(BaseData):
         if (self.orderfield):
             msg = msg + '|' + self.orderfield.serialize()
         return msg   
-
+@dataclass
 class CtpOrderField(object):
-    def __init__(self):
-        self.fullsymbol = ''
-        self.InstrumentID = ''
-        self.OrderPriceType = ''
-        self.Direction = ''
-        self.CombOffsetFlag = ''
-        self.CombHedgeFlag = ''
-        self.LimitPrice = 0.0
-        self.VolumeTotalOriginal = 0
-        self.TimeCondition = ''
-        self.GTDDate = ''
-        self.VolumeCondition = ''
-        self.MinVolume = 0
-        self.ContingentCondition = ''
-        self.StopPrice = 0.0
-        self.ForceCloseReason = '0'
-        self.IsAutoSuspend = 0
-        self.UserForceClose = 0
-        self.IsSwapOrder = 0
-        self.BusinessUnit = ''
-        self.CurrencyID = ''
+
+    InstrumentID :str = ''
+    OrderPriceType :str = ''
+    Direction :str = ''
+    CombOffsetFlag:str = ''
+    CombHedgeFlag : str = ''
+    LimitPrice : float = 0.0
+    VolumeTotalOriginal : int = 0
+    TimeCondition :str = ''
+    GTDDate :str = ''
+    VolumeCondition :str = ''
+    MinVolume :int = 0
+    ContingentCondition :str = ''
+    StopPrice :float = 0.0
+    ForceCloseReason :str = '0'
+    IsAutoSuspend :int = 0
+    UserForceClose :int = 0
+    IsSwapOrder :int = 0
+    BusinessUnit :str = ''
+    CurrencyID :str = ''
 
     def serialize(self):
         msg = str( self.InstrumentID  
@@ -403,15 +402,16 @@ class CtpOrderField(object):
             + '|' + self.BusinessUnit
             + '|' + self.CurrencyID )
         return msg 
-            
+
+@dataclass            
 class PaperOrderField(object):
-    def __init__(self):  
-        self.order_type = OrderType.MKT
-        self.full_symbol = ''
-        self.order_flag = OrderFlag.OPEN
-        self.limit_price = 0.0
-        self.stop_price = 0.0
-        self.order_size = 0
+
+    order_type : OrderType = OrderType.MKT
+    full_symbol :str = ''
+    order_flag : OrderFlag = OrderFlag.OPEN
+    limit_price :float = 0.0
+    stop_price :float = 0.0
+    order_size :int = 0
 
     def serialize(self):
         msg = str( str(self.order_type.value)  

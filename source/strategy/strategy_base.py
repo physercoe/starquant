@@ -38,6 +38,8 @@ class StrategyBase(metaclass=ABCMeta):
         :variables
         """
         self.full_symbol = symbol
+        sym, ex  = extract_full_symbol(self.full_symbol)
+        self.symbol = sym
         self.strategy_engine = strategy_engine
         self.engine_id = self.strategy_engine.id
         self.strategy_name = strategy_name
@@ -120,16 +122,7 @@ class StrategyBase(metaclass=ABCMeta):
 
     @virtual 
     def on_init(self, params_dict=None):
-        # self.inited = True
-
-        # # set params
-        # if params_dict is not None:
-        #     for key, value in params_dict.items():
-        #         try:
-        #             self.__setattr__(key, value)
-        #         except:
-        #             pass
-        pass
+         pass
         
     @virtual 
     def on_start(self):
@@ -213,12 +206,9 @@ class StrategyBase(metaclass=ABCMeta):
         pass
 
 
-    def place_order(self, o):        
-        o.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
-        if (self.active):
-            self.strategy_engine.send_order(o)
-
     def cancel_order(self, oid):
+        if self.trading:
+            pass
         pass
 
     def cancel_all(self):
@@ -226,99 +216,786 @@ class StrategyBase(metaclass=ABCMeta):
         cancel all standing orders from this strategy id
         :return:
         """
+        if self.trading :
+            pass
         pass
-
 
 
 # wrapper function for easy use , 
   # rqquant's use  
-    def buy_open(self,symbol,size,type='mkt',price = 0.0,api = 'CTP'):
-        o = OrderRequest()
-        o.api = api
-        o.full_symbol = symbol
-        o.account = self.account
-        o.order_flag = OrderFlag.OPEN
-        o.order_size = size
-        if type == 'mkt' :
-            o.order_type = OrderType.MKT
-        elif type =='lmt':
-            o.order_type = OrderType.LMT
-            o.limit_price = price
+    def buy_open(self,price:float, size: int,type='lmt',api = 'CTP'):
+        if not self.trading :
+            return       
+        if (type =='mkt'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '1',
+                    LimitPrice = price,
+                    Direction = '2',
+                    CombOffsetFlag = '0',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '3',
+                    VolumeCondition = '1',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.MKT,
+                    direction = Direction.LONG,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.MKT,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.OPEN,
+                    order_size = size
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.MKT,
+                    direction = Direction.LONG,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)
+        elif (type =='lmt'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '2',
+                    LimitPrice = price,
+                    Direction = '2',
+                    CombOffsetFlag = '0',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '3',
+                    VolumeCondition = '1',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.LMT,
+                    direction = Direction.LONG,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.LMT,
+                    limit_price = price,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.OPEN,
+                    order_size = size
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.LMT,
+                    direction = Direction.LONG,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)            
+        elif (type =='fak'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '2',
+                    LimitPrice = price,
+                    Direction = '2',
+                    CombOffsetFlag = '0',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '1',
+                    VolumeCondition = '1',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.FAK,
+                    direction = Direction.LONG,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.FAK,
+                    limit_price = price,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.OPEN,
+                    order_size = size
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.FAK,
+                    direction = Direction.LONG,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)
+        elif (type =='fok'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '2',
+                    LimitPrice = price,
+                    Direction = '2',
+                    CombOffsetFlag = '0',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '1',
+                    VolumeCondition = '3',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.FOK,
+                    direction = Direction.LONG,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.FOK,
+                    limit_price = price,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.OPEN,
+                    order_size = size
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.FOK,
+                    direction = Direction.LONG,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)
         else:
-            print('order type unknown, using mkt !')
-            o.order_type = OrderType.MKT
-        #print('place order buy open')
-        self.place_order(o)
+            print('order type not supported!') 
 
-    def buy_close(self,symbol,size,type='mkt',price = 0.0,closetoday = False, api = 'CTP.TD'):
-        o = OrderEvent()
-        o.api = api
-        o.full_symbol = symbol
-        o.account = self.account
-        if closetoday:
-            o.order_flag = OrderFlag.CLOSE_TODAY
+    def buy_close(self,price:float, size: int,type='lmt',api = 'CTP'):
+        if not self.trading :
+            return
+        if (type =='mkt'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '1',
+                    LimitPrice = price,
+                    Direction = '2',
+                    CombOffsetFlag = '1',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '3',
+                    VolumeCondition = '1',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.MKT,
+                    direction = Direction.LONG,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.MKT,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.CLOSE,
+                    order_size = size
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.MKT,
+                    direction = Direction.LONG,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)
+        elif (type =='lmt'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '2',
+                    LimitPrice = price,
+                    Direction = '2',
+                    CombOffsetFlag = '1',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '3',
+                    VolumeCondition = '1',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.LMT,
+                    direction = Direction.LONG,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.LMT,
+                    limit_price = price,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.CLOSE,
+                    order_size = size
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.LMT,
+                    direction = Direction.LONG,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)            
+        elif (type =='fak'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '2',
+                    LimitPrice = price,
+                    Direction = '2',
+                    CombOffsetFlag = '1',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '1',
+                    VolumeCondition = '1',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.FAK,
+                    direction = Direction.LONG,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.FAK,
+                    limit_price = price,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.CLOSE,
+                    order_size = size
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.FAK,
+                    direction = Direction.LONG,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)
+        elif (type =='fok'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '2',
+                    LimitPrice = price,
+                    Direction = '2',
+                    CombOffsetFlag = '1',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '1',
+                    VolumeCondition = '3',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.FOK,
+                    direction = Direction.LONG,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.FOK,
+                    limit_price = price,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.CLOSE,
+                    order_size = size
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.FOK,
+                    direction = Direction.LONG,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)
         else:
-            o.order_flag = OrderFlag.CLOSE
-        o.order_size = size
-        if type == 'mkt' :
-            o.order_type = OrderType.MKT
-        elif type =='lmt':
-            o.order_type = OrderType.LMT
-            o.limit_price = price
-        elif type == 'stp':
-            o.order_type = OrderType.STP
-        elif type == 'stplmt':
-            o.order_type = OrderType.STPLMT
-            o.stop_price = price
-        else:
-            print('order type unknown, using mkt !')
-            o.order_type = OrderType.MKT
-        #print('place order buy close')
-        self.place_order(o)
+            print('order type not supported!') 
 
-    def sell_open(self,symbol,size,type='mkt',price = 0.0,api = 'CTP.TD'):
-        o = OrderEvent()
-        o.api = api
-        o.full_symbol = symbol
-        o.account = self.account
-        o.order_flag = OrderFlag.OPEN
-        o.order_size = -1*abs(size)
-        if type == 'mkt' :
-            o.order_type = OrderType.MKT
-        elif type =='lmt':
-            o.order_type = OrderType.LMT
-            o.limit_price = price
-        else:
-            print('order type unknown, using mkt !')
-            o.order_type = OrderType.MKT
-        #print('place order sell open')
-        self.place_order(o)  
 
-    def sell_close(self,symbol,size,type='mkt',price = 0.0,closetoday = False,api = 'CTP.TD'):
-        o = OrderEvent()
-        o.api = api
-        o.full_symbol = symbol
-        o.account = self.account
-        if closetoday:
-            o.order_flag = OrderFlag.CLOSE_TODAY
+
+    def sell_open(self,price:float,size: int,type='lmt',api = 'CTP'):
+        if not self.trading :
+            return        
+        if (type =='mkt'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '1',
+                    LimitPrice = price,
+                    Direction = '3',
+                    CombOffsetFlag = '0',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '3',
+                    VolumeCondition = '1',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.MKT,
+                    direction = Direction.SHORT,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.MKT,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.OPEN,
+                    order_size = size *(-1)
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.MKT,
+                    direction = Direction.SHORT,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)
+        elif (type =='lmt'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '2',
+                    LimitPrice = price,
+                    Direction = '3',
+                    CombOffsetFlag = '0',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '3',
+                    VolumeCondition = '1',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.LMT,
+                    direction = Direction.SHORT,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.LMT,
+                    limit_price = price,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.OPEN,
+                    order_size = size *(-1)
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.LMT,
+                    direction = Direction.SHORT,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)            
+        elif (type =='fak'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '2',
+                    LimitPrice = price,
+                    Direction = '3',
+                    CombOffsetFlag = '0',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '1',
+                    VolumeCondition = '1',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.FAK,
+                    direction = Direction.SHORT,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.FAK,
+                    limit_price = price,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.OPEN,
+                    order_size = size *(-1)
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.FAK,
+                    direction = Direction.SHORT,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)
+        elif (type =='fok'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '2',
+                    LimitPrice = price,
+                    Direction = '3',
+                    CombOffsetFlag = '0',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '1',
+                    VolumeCondition = '3',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.FOK,
+                    direction = Direction.SHORT,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.FOK,
+                    limit_price = price,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.OPEN,
+                    order_size = size * (-1)
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.OPEN,
+                    type = OrderType.FOK,
+                    direction = Direction.SHORT,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)
         else:
-            o.order_flag = OrderFlag.CLOSE
-        o.order_size = -1*abs(size)
-        if type == 'mkt' :
-            o.order_type = OrderType.MKT
-        elif type =='lmt':
-            o.order_type = OrderType.LMT
-            o.limit_price = price
-        elif type == 'stp':
-            o.order_type = OrderType.STP
-        elif type == 'stplmt':
-            o.order_type = OrderType.STPLMT
-            o.stop_price = price
+            print('order type not supported!') 
+
+    def sell_close(self,price:float,size: int,type='lmt',api = 'CTP'):
+        if not self.trading :
+            return        
+        if (type =='mkt'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '1',
+                    LimitPrice = price,
+                    Direction = '3',
+                    CombOffsetFlag = '1',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '3',
+                    VolumeCondition = '1',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.MKT,
+                    direction = Direction.SHORT,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.MKT,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.CLOSE,
+                    order_size = size *(-1)
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.MKT,
+                    direction = Direction.SHORT,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)
+        elif (type =='lmt'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '2',
+                    LimitPrice = price,
+                    Direction = '3',
+                    CombOffsetFlag = '1',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '3',
+                    VolumeCondition = '1',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.LMT,
+                    direction = Direction.SHORT,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.LMT,
+                    limit_price = price,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.CLOSE,
+                    order_size = size *(-1)
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.LMT,
+                    direction = Direction.SHORT,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)            
+        elif (type =='fak'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '2',
+                    LimitPrice = price,
+                    Direction = '3',
+                    CombOffsetFlag = '1',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '1',
+                    VolumeCondition = '1',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.FAK,
+                    direction = Direction.SHORT,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.FAK,
+                    limit_price = price,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.CLOSE,
+                    order_size = size *(-1)
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.FAK,
+                    direction = Direction.SHORT,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)
+        elif (type =='fok'):
+            if api == 'CTP':
+                of = CtpOrderField(
+                    InstrumentID = self.symbol,
+                    OrderPriceType = '2',
+                    LimitPrice = price,
+                    Direction = '3',
+                    CombOffsetFlag = '1',
+                    CombHedgeFlag = '1',
+                    VolumeTotalOriginal = size,
+                    TimeCondition = '1',
+                    VolumeCondition = '3',
+                    MinVolume = 1,
+                    ContingentCondition = '1'
+                )
+                order = OrderRequest(
+                    api = "CTP",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.FOK,
+                    direction = Direction.SHORT,
+                    orderfield = of                    
+                )
+                self.strategy_engine.send_order(self,order)
+            elif api == 'PAPER':                
+                of = PaperOrderField(
+                    order_type = OrderType.FOK,
+                    limit_price = price,
+                    full_symbol = self.full_symbol,
+                    order_flag = OrderFlag.CLOSE,
+                    order_size = size *(-1)
+                )
+                order = OrderRequest(
+                    api = "PAPER",
+                    account = self.account,
+                    symbol = self.symbol,
+                    price = price,
+                    volume = size,
+                    offset = Offset.CLOSE,
+                    type = OrderType.FOK,
+                    direction = Direction.SHORT,
+                    orderfield = of 
+                )
+                self.strategy_engine.send_order(self,order)
         else:
-            print('order type unknown, using mkt !')
-            o.order_type = OrderType.MKT
-        #print('place order sell close')
-        self.place_order(o)       
+            print('order type not supported!')   
 
 
   # vnpy's use  
@@ -327,6 +1004,7 @@ class StrategyBase(metaclass=ABCMeta):
         Send buy order to open a long position.
 
         """
+        self.buy_open(price,volume)
 
         pass
 
@@ -334,18 +1012,21 @@ class StrategyBase(metaclass=ABCMeta):
         """
         Send sell order to close a long position.
         """
+        self.sell_close(price,volume)
         pass
 
     def short(self, price: float, volume: float, stop: bool = False):
         """
         Send short order to open as short position.
         """
+        self.sell_open(price,volume)
         pass
 
     def cover(self, price: float, volume: float, stop: bool = False):
         """
         Send cover order to close a short position.
         """
+        self.buy_close(price,volume)
         pass
 # end wrapper
 
