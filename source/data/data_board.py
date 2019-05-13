@@ -370,3 +370,40 @@ class ArrayManager(object):
         if array:
             return up, down
         return up[-1], down[-1]
+
+    def highlow(self, HighPoint, LowPoint, HigherRatio,LowerRatio):
+        PriceBFired = False
+        PriceA = 0.0
+        PriceB = 0.0
+        PriceBFired2 = False
+        PriceA2 = 0.0
+        PriceB2 = 0.0   
+
+        TempHigh = np.max(self.high)
+        TempLow = np.min(self.low)
+        TempHighTime = np.where(self.high == TempHigh)[0][-1]
+        TempLowTime = np.where(self.low == TempLow)[0][0]
+        TempLowMin1 = self.low[TempHighTime:]
+        TempHighMin1 = self.high[TempLowTime:]
+        if self.high[-1] == TempHigh and TempHigh > HighPoint:
+            TempLow1 = np.min(TempLowMin1)
+            TempLow1Time = np.where(TempLowMin1 == TempLow1)[0][-1]
+            TempIfTimeBC = len(TempLowMin1) - TempLow1Time > 2
+            TempIfTimeAB = TempLow1Time > 2
+            TempIfPriceOA = (TempHigh - TempLow1 > LowerRatio * HighPoint) and (TempHigh - TempLow1 < HigherRatio * HighPoint)
+            if TempIfTimeBC and TempIfTimeAB and TempIfPriceOA:
+                PriceBFired = True
+                PriceA = TempHigh
+                PriceB = TempLow1
+        if self.low[-1] == TempLow and TempLow < LowPoint :
+            TempHigh1 = np.max(TempHighMin1)
+            TempHigh1Time = np.where(TempHighMin1 == TempHigh1)[0][-1]
+            TempIfTimeBC2 = len(TempHighMin1) - TempHigh1Time > 2 
+            TempIfTimeAB2 = TempHigh1Time > 2 
+            TempIfPriceAB2 = TempHigh1 - TempLow > LowerRatio * LowPoint and TempHigh1 - TempLow < HigherRatio * LowPoint
+            if TempIfTimeBC2 and TempIfTimeAB2 and TempIfPriceAB2:
+                PriceBFired2 = True
+                PriceA2 = TempLow
+                PriceB2 = TempHigh1
+        return PriceBFired,PriceA,PriceB,PriceBFired2,PriceA2,PriceB2
+

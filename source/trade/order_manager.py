@@ -27,10 +27,12 @@ class OrderManager(object):
         """
         pass
 
-    def on_order(self, o):
+    def on_order(self, event):
         """
         on order placed by trader
         """
+        return
+        o = event.data
         if o.client_order_id < 0:         # client_order_id not yet assigned
             o.client_order_id = self._client_order_id
             o.order_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
@@ -43,6 +45,7 @@ class OrderManager(object):
         on order status change from broker
         including canceled status
         """
+        return
         if order_status_event.client_order_id in self.order_dict:
             if (order_status_event.full_symbol != self.order_dict[order_status_event.client_order_id].full_symbol):
                 print("Error: orders dont match")
@@ -79,6 +82,7 @@ class OrderManager(object):
         """
         on receive fill_event from broker
         """
+        return
         if fill_event.broker_fill_id in self.fill_dict:
             print('fill exists')
         else:

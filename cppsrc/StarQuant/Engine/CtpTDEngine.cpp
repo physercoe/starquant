@@ -386,7 +386,7 @@ namespace StarQuant
 
 
 	void CtpTDEngine::insertOrder(shared_ptr<CtpOrderMsg> pmsg){
-		strcpy(pmsg->data_.orderField_.OrderRef, to_string(orderRef_++).c_str());
+		strcpy(pmsg->data_.orderField_.OrderRef, to_string(orderRef_).c_str());
 		strcpy(pmsg->data_.orderField_.InvestorID, ctpacc_.userid.c_str());
 		strcpy(pmsg->data_.orderField_.UserID, ctpacc_.userid.c_str());
 		strcpy(pmsg->data_.orderField_.BrokerID, ctpacc_.brokerid.c_str());
@@ -396,7 +396,7 @@ namespace StarQuant
 		lock_guard<mutex> g(oid_mtx);
 		pmsg->data_.serverOrderID_ = m_serverOrderId++;
 		pmsg->data_.brokerOrderID_ = m_brokerOrderId_++;
-		pmsg->data_.localNo_ = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + to_string(orderRef_) ;
+		pmsg->data_.localNo_ = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + to_string(orderRef_++) ;
 		pmsg->data_.createTime_ = ymdhmsf();			
 		//pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pmsg->data_.orderField_.InstrumentID);
 		pmsg->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pmsg->data_.orderField_.InstrumentID];
@@ -1270,6 +1270,7 @@ namespace StarQuant
 				<<" CombOffsetFlag="<<pInputOrder->CombOffsetFlag
 				<<" LimitPrice="<<pInputOrder->LimitPrice
 				<<" VolumeTotalOriginal="<<pInputOrder->VolumeTotalOriginal
+				
 			);
 		}
 		else{

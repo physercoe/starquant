@@ -349,7 +349,7 @@ class StrategyEngine(BaseEngine):
         self.update_strategy_setting(strategy_name, setting)
 
         self.put_strategy_event(strategy)
-        # print("end add strategy")
+        print("end add strategy")
     def init_strategy(self, strategy_name: str):
         """
         Init a strategy.

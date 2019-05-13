@@ -13,6 +13,8 @@ def extract_full_symbol(full_symbol: str):
     :return: (symbol, exchange)
     """
     tmp =  full_symbol.split(' ')
+    if len(tmp) < 4:
+        return "unknwonsymbol", Exchange.SHFE
     symbol = tmp[2] + tmp[3]
     exchange_str = tmp[0]
     ex = Exchange(exchange_str)    

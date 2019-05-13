@@ -318,8 +318,8 @@ class CtpApiWindow(QtWidgets.QFrame):
         self.hedge_type.addItems(['Speculation','Arbitrage','Hedge','MarketMaker','SpecHedge','HedgeSpec'])
         self.orderfielddict['hedge'] = ['1','2','3','5','6','7']
         self.direction_type = QtWidgets.QComboBox()
-        self.direction_type.addItems(['Net', 'Long','Short'])
-        self.orderfielddict['direction'] = ['1','2','3']
+        self.direction_type.addItems(['Buy','Sell'])
+        self.orderfielddict['direction'] = ['0','1']
         self.order_flag_type = QtWidgets.QComboBox()
         self.order_flag_type.addItems(['Open', 'Close', 'Force_Close','Close_Today','Close_Yesterday', 'Force_Off','Local_Forceclose'])
         self.orderfielddict['orderflag'] = ['0','1','2','3','4','5','6']
