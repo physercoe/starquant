@@ -7,6 +7,7 @@ from typing import Any, Callable
 from ..common.datastruct import *
 from ..common.sqglobal import dotdict
 from ..common.utility import virtual
+from ..api.ctp_constant import *
 
 class StrategyBase(metaclass=ABCMeta):
     """
@@ -22,7 +23,9 @@ class StrategyBase(metaclass=ABCMeta):
 
     # parameters and variables,for vnpy use 
     author = ""
-    parameters = []
+    account = ""
+    api = ""
+    parameters = ["api","account"]
     variables = []
 
 
@@ -30,14 +33,14 @@ class StrategyBase(metaclass=ABCMeta):
     def __init__(self, 
         strategy_engine: Any, 
         strategy_name: str, 
-        symbol: str,
+        full_symbol: str,
         setting: dict):
         """
         initialize trategy
         :param
         :variables
         """
-        self.full_symbol = symbol
+        self.full_symbol = full_symbol
         sym, ex  = extract_full_symbol(self.full_symbol)
         self.symbol = sym
         self.strategy_engine = strategy_engine
@@ -45,11 +48,17 @@ class StrategyBase(metaclass=ABCMeta):
         self.strategy_name = strategy_name
 
         self.active = False
-        self.account = ''
 
         self.inited = False
         self.trading = False
         self.pos = 0
+
+        self.long_pos = 0
+        self.long_pos_frozen = 0
+        self.short_pos = 0
+        self.short_pos_frozen = 0
+        self.long_price = 0.0
+        self.short_price = 0.0
 
         self.variables.insert(0, "inited")
         self.variables.insert(1, "trading")
@@ -57,6 +66,8 @@ class StrategyBase(metaclass=ABCMeta):
 
         self.update_setting(setting)
         self.add_functions()
+
+
 
     def add_functions(self):
         self.get_position_holding = self.strategy_engine.get_position_holding
@@ -66,6 +77,19 @@ class StrategyBase(metaclass=ABCMeta):
         self.get_trade = self.strategy_engine.get_trade
         self.get_position = self.strategy_engine.get_position
         self.get_contract = self.strategy_engine.get_contract
+        self.get_all_active_orders = self.strategy_engine.get_all_active_orders
+
+    def get_active_orderids(self):
+        return self.strategy_engine.strategy_orderid_map[self.strategy_name]
+
+    def get_my_position_holding(self):
+        holding = self.get_position_holding(self.account,self.full_symbol)
+        self.long_pos = holding.long_pos
+        self.long_pos_frozen = holding.long_pos_frozen
+        self.short_pos = holding.short_pos
+        self.short_pos_frozen = holding.short_pos_frozen
+        self.long_price = holding.long_price
+        self.short_price = holding.short_price
 
     def update_setting(self, setting: dict):
         """
@@ -208,38 +232,38 @@ class StrategyBase(metaclass=ABCMeta):
 
     def cancel_order(self, oid):
         if self.trading:
-            pass
-        pass
+            self.strategy_engine.cancel_order(self,oid)
 
+    
     def cancel_all(self):
         """
-        cancel all standing orders from this strategy id
-        :return:
+        cancel all standing orders from this strategy 
+
         """
         if self.trading :
-            pass
-        pass
+            self.strategy_engine.cancel_all(self)
+        
 
 
 # wrapper function for easy use , 
   # rqquant's use  
-    def buy_open(self,price:float, size: int,type='lmt',api = 'CTP'):
+    def buy_open(self,price:float, size: int,type='lmt'):
         if not self.trading :
             return       
         if (type =='mkt'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '1',
+                    OrderPriceType = THOST_FTDC_OPT_AnyPrice,
                     LimitPrice = price,
-                    Direction = '2',
-                    CombOffsetFlag = '0',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Buy,
+                    CombOffsetFlag = THOST_FTDC_OF_Open,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '3',
-                    VolumeCondition = '1',
+                    TimeCondition = THOST_FTDC_TC_GFD,
+                    VolumeCondition = THOST_FTDC_VC_AV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -253,7 +277,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.MKT,
                     full_symbol = self.full_symbol,
@@ -273,19 +297,19 @@ class StrategyBase(metaclass=ABCMeta):
                 )
                 self.strategy_engine.send_order(self,order)
         elif (type =='lmt'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '2',
+                    OrderPriceType = THOST_FTDC_OPT_LimitPrice,
                     LimitPrice = price,
-                    Direction = '2',
-                    CombOffsetFlag = '0',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Buy,
+                    CombOffsetFlag = THOST_FTDC_OF_Open,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '3',
-                    VolumeCondition = '1',
+                    TimeCondition = THOST_FTDC_TC_GFD,
+                    VolumeCondition = THOST_FTDC_VC_AV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -299,7 +323,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.LMT,
                     limit_price = price,
@@ -320,19 +344,19 @@ class StrategyBase(metaclass=ABCMeta):
                 )
                 self.strategy_engine.send_order(self,order)            
         elif (type =='fak'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '2',
+                    OrderPriceType = THOST_FTDC_OPT_LimitPrice,
                     LimitPrice = price,
-                    Direction = '2',
-                    CombOffsetFlag = '0',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Buy,
+                    CombOffsetFlag = THOST_FTDC_OF_Open,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '1',
-                    VolumeCondition = '1',
+                    TimeCondition = THOST_FTDC_TC_IOC,
+                    VolumeCondition = THOST_FTDC_VC_AV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -346,7 +370,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.FAK,
                     limit_price = price,
@@ -367,19 +391,19 @@ class StrategyBase(metaclass=ABCMeta):
                 )
                 self.strategy_engine.send_order(self,order)
         elif (type =='fok'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '2',
+                    OrderPriceType = THOST_FTDC_OPT_LimitPrice,
                     LimitPrice = price,
-                    Direction = '2',
-                    CombOffsetFlag = '0',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Buy,
+                    CombOffsetFlag = THOST_FTDC_OF_Open,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '1',
-                    VolumeCondition = '3',
+                    TimeCondition = THOST_FTDC_TC_IOC,
+                    VolumeCondition = THOST_FTDC_VC_CV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -393,7 +417,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.FOK,
                     limit_price = price,
@@ -416,23 +440,23 @@ class StrategyBase(metaclass=ABCMeta):
         else:
             print('order type not supported!') 
 
-    def buy_close(self,price:float, size: int,type='lmt',api = 'CTP'):
+    def buy_close(self,price:float, size: int,type='lmt'):
         if not self.trading :
             return
         if (type =='mkt'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '1',
+                    OrderPriceType = THOST_FTDC_OPT_AnyPrice,
                     LimitPrice = price,
-                    Direction = '2',
-                    CombOffsetFlag = '1',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Buy,
+                    CombOffsetFlag = THOST_FTDC_OF_Close,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '3',
-                    VolumeCondition = '1',
+                    TimeCondition = THOST_FTDC_TC_GFD,
+                    VolumeCondition = THOST_FTDC_VC_AV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -446,7 +470,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.MKT,
                     full_symbol = self.full_symbol,
@@ -466,19 +490,19 @@ class StrategyBase(metaclass=ABCMeta):
                 )
                 self.strategy_engine.send_order(self,order)
         elif (type =='lmt'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '2',
+                    OrderPriceType = THOST_FTDC_OPT_LimitPrice,
                     LimitPrice = price,
-                    Direction = '2',
-                    CombOffsetFlag = '1',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Buy,
+                    CombOffsetFlag = THOST_FTDC_OF_Close,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '3',
-                    VolumeCondition = '1',
+                    TimeCondition = THOST_FTDC_TC_GFD,
+                    VolumeCondition = THOST_FTDC_VC_AV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -492,7 +516,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.LMT,
                     limit_price = price,
@@ -513,19 +537,19 @@ class StrategyBase(metaclass=ABCMeta):
                 )
                 self.strategy_engine.send_order(self,order)            
         elif (type =='fak'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '2',
+                    OrderPriceType = THOST_FTDC_OPT_LimitPrice,
                     LimitPrice = price,
-                    Direction = '2',
-                    CombOffsetFlag = '1',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Buy,
+                    CombOffsetFlag = THOST_FTDC_OF_Close,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '1',
-                    VolumeCondition = '1',
+                    TimeCondition = THOST_FTDC_TC_IOC,
+                    VolumeCondition = THOST_FTDC_VC_AV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -539,7 +563,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.FAK,
                     limit_price = price,
@@ -560,19 +584,19 @@ class StrategyBase(metaclass=ABCMeta):
                 )
                 self.strategy_engine.send_order(self,order)
         elif (type =='fok'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '2',
+                    OrderPriceType = THOST_FTDC_OPT_LimitPrice,
                     LimitPrice = price,
-                    Direction = '2',
-                    CombOffsetFlag = '1',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Buy,
+                    CombOffsetFlag = THOST_FTDC_OF_Close,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '1',
-                    VolumeCondition = '3',
+                    TimeCondition = THOST_FTDC_TC_IOC,
+                    VolumeCondition = THOST_FTDC_VC_CV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -586,7 +610,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.FOK,
                     limit_price = price,
@@ -611,23 +635,23 @@ class StrategyBase(metaclass=ABCMeta):
 
 
 
-    def sell_open(self,price:float,size: int,type='lmt',api = 'CTP'):
+    def sell_open(self,price:float,size: int,type='lmt'):
         if not self.trading :
             return        
         if (type =='mkt'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '1',
+                    OrderPriceType = THOST_FTDC_OPT_AnyPrice,
                     LimitPrice = price,
-                    Direction = '3',
-                    CombOffsetFlag = '0',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Sell,
+                    CombOffsetFlag = THOST_FTDC_OF_Open,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '3',
-                    VolumeCondition = '1',
+                    TimeCondition = THOST_FTDC_TC_GFD,
+                    VolumeCondition = THOST_FTDC_VC_AV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -641,7 +665,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.MKT,
                     full_symbol = self.full_symbol,
@@ -661,19 +685,19 @@ class StrategyBase(metaclass=ABCMeta):
                 )
                 self.strategy_engine.send_order(self,order)
         elif (type =='lmt'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '2',
+                    OrderPriceType = THOST_FTDC_OPT_LimitPrice,
                     LimitPrice = price,
-                    Direction = '3',
-                    CombOffsetFlag = '0',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Sell,
+                    CombOffsetFlag = THOST_FTDC_OF_Open,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '3',
-                    VolumeCondition = '1',
+                    TimeCondition = THOST_FTDC_TC_GFD,
+                    VolumeCondition = THOST_FTDC_VC_AV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -687,7 +711,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.LMT,
                     limit_price = price,
@@ -708,19 +732,19 @@ class StrategyBase(metaclass=ABCMeta):
                 )
                 self.strategy_engine.send_order(self,order)            
         elif (type =='fak'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '2',
+                    OrderPriceType = THOST_FTDC_OPT_LimitPrice,
                     LimitPrice = price,
-                    Direction = '3',
-                    CombOffsetFlag = '0',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Sell,
+                    CombOffsetFlag = THOST_FTDC_OF_Open,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '1',
-                    VolumeCondition = '1',
+                    TimeCondition = THOST_FTDC_TC_IOC,
+                    VolumeCondition = THOST_FTDC_VC_AV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -734,7 +758,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.FAK,
                     limit_price = price,
@@ -755,19 +779,19 @@ class StrategyBase(metaclass=ABCMeta):
                 )
                 self.strategy_engine.send_order(self,order)
         elif (type =='fok'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '2',
+                    OrderPriceType = THOST_FTDC_OPT_LimitPrice,
                     LimitPrice = price,
-                    Direction = '3',
-                    CombOffsetFlag = '0',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Sell,
+                    CombOffsetFlag = THOST_FTDC_OF_Open,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '1',
-                    VolumeCondition = '3',
+                    TimeCondition = THOST_FTDC_TC_IOC,
+                    VolumeCondition = THOST_FTDC_VC_CV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -781,7 +805,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.FOK,
                     limit_price = price,
@@ -804,23 +828,23 @@ class StrategyBase(metaclass=ABCMeta):
         else:
             print('order type not supported!') 
 
-    def sell_close(self,price:float,size: int,type='lmt',api = 'CTP'):
+    def sell_close(self,price:float,size: int,type='lmt'):
         if not self.trading :
             return        
         if (type =='mkt'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '1',
+                    OrderPriceType = THOST_FTDC_OPT_AnyPrice,
                     LimitPrice = price,
-                    Direction = '3',
-                    CombOffsetFlag = '1',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Sell,
+                    CombOffsetFlag = THOST_FTDC_OF_Close,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '3',
-                    VolumeCondition = '1',
+                    TimeCondition = THOST_FTDC_TC_GFD,
+                    VolumeCondition = THOST_FTDC_VC_AV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -834,7 +858,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.MKT,
                     full_symbol = self.full_symbol,
@@ -854,19 +878,19 @@ class StrategyBase(metaclass=ABCMeta):
                 )
                 self.strategy_engine.send_order(self,order)
         elif (type =='lmt'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '2',
+                    OrderPriceType = THOST_FTDC_OPT_LimitPrice,
                     LimitPrice = price,
-                    Direction = '3',
-                    CombOffsetFlag = '1',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Sell,
+                    CombOffsetFlag = THOST_FTDC_OF_Close,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '3',
-                    VolumeCondition = '1',
+                    TimeCondition = THOST_FTDC_TC_GFD,
+                    VolumeCondition = THOST_FTDC_VC_AV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -880,7 +904,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.LMT,
                     limit_price = price,
@@ -901,19 +925,19 @@ class StrategyBase(metaclass=ABCMeta):
                 )
                 self.strategy_engine.send_order(self,order)            
         elif (type =='fak'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '2',
+                    OrderPriceType = THOST_FTDC_OPT_LimitPrice,
                     LimitPrice = price,
-                    Direction = '3',
-                    CombOffsetFlag = '1',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Sell,
+                    CombOffsetFlag = THOST_FTDC_OF_Close,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '1',
-                    VolumeCondition = '1',
+                    TimeCondition = THOST_FTDC_TC_IOC,
+                    VolumeCondition = THOST_FTDC_VC_AV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -927,7 +951,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.FAK,
                     limit_price = price,
@@ -948,19 +972,19 @@ class StrategyBase(metaclass=ABCMeta):
                 )
                 self.strategy_engine.send_order(self,order)
         elif (type =='fok'):
-            if api == 'CTP':
+            if self.api == 'CTP':
                 of = CtpOrderField(
                     InstrumentID = self.symbol,
-                    OrderPriceType = '2',
+                    OrderPriceType = THOST_FTDC_OPT_LimitPrice,
                     LimitPrice = price,
-                    Direction = '3',
-                    CombOffsetFlag = '1',
-                    CombHedgeFlag = '1',
+                    Direction = THOST_FTDC_D_Sell,
+                    CombOffsetFlag = THOST_FTDC_OF_Close,
+                    CombHedgeFlag = THOST_FTDC_HF_Speculation,
                     VolumeTotalOriginal = size,
-                    TimeCondition = '1',
-                    VolumeCondition = '3',
+                    TimeCondition = THOST_FTDC_TC_IOC,
+                    VolumeCondition = THOST_FTDC_VC_CV,
                     MinVolume = 1,
-                    ContingentCondition = '1'
+                    ContingentCondition = THOST_FTDC_CC_Immediately
                 )
                 order = OrderRequest(
                     api = "CTP",
@@ -974,7 +998,7 @@ class StrategyBase(metaclass=ABCMeta):
                     orderfield = of                    
                 )
                 self.strategy_engine.send_order(self,order)
-            elif api == 'PAPER':                
+            elif self.api == 'PAPER':                
                 of = PaperOrderField(
                     order_type = OrderType.FOK,
                     limit_price = price,

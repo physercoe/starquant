@@ -296,6 +296,9 @@ class MongoManager(BaseDatabaseManager):
             updates = self.to_update_param(d)
             updates.pop("set__gateway_name")
             updates.pop("set__vt_symbol")
+            updates.pop("set__full_symbol")
+            updates.pop("set__adj_close_price")
+            updates.pop("set__bar_start_time")
             (
                 DbBarData.objects(
                     symbol=d.symbol, interval=d.interval.value, datetime=d.datetime
@@ -307,6 +310,10 @@ class MongoManager(BaseDatabaseManager):
             updates = self.to_update_param(d)
             updates.pop("set__gateway_name")
             updates.pop("set__vt_symbol")
+            updates.pop("set__depth")
+            updates.pop("set__open_interest")
+            updates.pop("set__full_symbol")
+            updates.pop("set__timestamp")
             (
                 DbTickData.objects(
                     symbol=d.symbol, exchange=d.exchange.value, datetime=d.datetime

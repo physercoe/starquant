@@ -170,6 +170,15 @@ class StrategyEngine(BaseEngine):
 
         if order.clientID != self.id:
             return
+
+        self.orders[order.client_order_id] = order
+        # If order is active, then update data in dict.
+        if order.is_active():
+            self.active_orders[order.client_order_id] = order
+        # Otherwise, pop inactive order from in dict
+        elif order.client_order_id in self.active_orders:
+            self.active_orders.pop(order.client_order_id)  
+
         strategy = self.orderid_strategy_map.get(order.client_order_id, None)
         if not strategy:
             return
@@ -198,14 +207,7 @@ class StrategyEngine(BaseEngine):
         self.call_strategy_func(strategy, strategy.on_order, order)
 
         
-        self.orders[order.client_order_id] = order
-
-        # If order is active, then update data in dict.
-        if order.is_active():
-            self.active_orders[order.client_order_id] = order
-        # Otherwise, pop inactive order from in dict
-        elif order.client_order_id in self.active_orders:
-            self.active_orders.pop(order.client_order_id)     
+   
 
     def process_trade_event(self, event: Event):
         """"""
@@ -776,7 +778,8 @@ class StrategyEngine(BaseEngine):
                 for order in self.active_orders.values()
                 if order.full_symbol == full_symbol
             ]
-            return active_orders    
+            return active_orders
+
     def get_position_holding(self, acc:str, full_symbol:str):
         return self.offset_converter.get_position_holding(acc,full_symbol)
 
@@ -834,6 +837,18 @@ class StrategyEngine(BaseEngine):
             )
         self._send_sock.send(m.serialize())
     
+    def cancel_all(self, strategy: StrategyBase):
+        """
+        Cancel all active orders of a strategy.
+        """
+        orderids = self.strategy_orderid_map[strategy.strategy_name]
+        if not orderids:
+            return
+
+        for orderid in copy(vt_orderids):
+            self.cancel_order(strategy, orderid)
+
+
     def send_testmsg(self):
         m = Event(des='CTP.MD',src=str(self.id),msgtype=MSG_TYPE.MSG_TYPE_TEST)
         self._send_sock.send(m.serialize())

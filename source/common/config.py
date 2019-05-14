@@ -31,17 +31,17 @@ SETTINGS = {
     "rqdata.username": "",
     "rqdata.password": "",
 
-    "database.driver": "sqlite",  # see database.Driver
-    "database.database": "database.db",  # for sqlite, use this as filepath
+    "database.driver": "mongodb",  # see database.Driver
+    "database.database": "findata",  # for sqlite, use this as filepath
     "database.host": "localhost",
-    "database.port": 3306,
-    "database.user": "root",
+    "database.port": 27017,
+    "database.user": "",
     "database.password": "",
-    "database.authentication_source": "admin",  # for mongodb
+    "database.authentication_source": "",  # for mongodb
 }
 
 # Load global setting from json file.
-SETTING_FILENAME = "vt_setting.json"
+SETTING_FILENAME = "sq_setting.json"
 SETTINGS.update(load_json(SETTING_FILENAME))
 
 

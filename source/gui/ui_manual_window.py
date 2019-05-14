@@ -10,6 +10,7 @@ import requests
 import itchat
 sys.path.insert(0,"../..")
 
+from source.api.ctp_constant import *
 from source.common.datastruct import *  
 from source.common import sqglobal
 
@@ -316,13 +317,13 @@ class CtpApiWindow(QtWidgets.QFrame):
 
         self.hedge_type = QtWidgets.QComboBox()
         self.hedge_type.addItems(['Speculation','Arbitrage','Hedge','MarketMaker','SpecHedge','HedgeSpec'])
-        self.orderfielddict['hedge'] = ['1','2','3','5','6','7']
+        self.orderfielddict['hedge'] = [THOST_FTDC_HF_Speculation,THOST_FTDC_HF_Arbitrage,THOST_FTDC_HF_Hedge,THOST_FTDC_HF_MarketMaker,THOST_FTDC_HF_SpecHedge,THOST_FTDC_HF_HedgeSpec]
         self.direction_type = QtWidgets.QComboBox()
         self.direction_type.addItems(['Buy','Sell'])
-        self.orderfielddict['direction'] = ['0','1']
+        self.orderfielddict['direction'] = [THOST_FTDC_D_Buy,THOST_FTDC_D_Sell]
         self.order_flag_type = QtWidgets.QComboBox()
         self.order_flag_type.addItems(['Open', 'Close', 'Force_Close','Close_Today','Close_Yesterday', 'Force_Off','Local_Forceclose'])
-        self.orderfielddict['orderflag'] = ['0','1','2','3','4','5','6']
+        self.orderfielddict['orderflag'] = [THOST_FTDC_OF_Open,THOST_FTDC_OF_Close,THOST_FTDC_OF_ForceClose,THOST_FTDC_OF_CloseToday,THOST_FTDC_OF_CloseYesterday,THOST_FTDC_OF_ForceOff,THOST_FTDC_OF_LocalForceClose]
         ctphboxlayout4 = QtWidgets.QHBoxLayout()
         ctphboxlayout4.addWidget(QtWidgets.QLabel('Hedge'))
         ctphboxlayout4.addWidget(self.hedge_type)         
@@ -335,7 +336,7 @@ class CtpApiWindow(QtWidgets.QFrame):
 
         self.order_price_type = QtWidgets.QComboBox()
         self.order_price_type.addItems(['AnyPrice','LimitPrice','BestPrice','LastPrice','AskPrice1','BidPrice1'])
-        self.orderfielddict['pricetype'] = ['1','2','3','4','8','C']
+        self.orderfielddict['pricetype'] = [THOST_FTDC_OPT_AnyPrice,THOST_FTDC_OPT_LimitPrice,THOST_FTDC_OPT_BestPrice,THOST_FTDC_OPT_LastPrice,THOST_FTDC_OPT_AskPrice1,THOST_FTDC_OPT_BidPrice1]
         self.limit_price = QtWidgets.QLineEdit()
         self.limit_price.setValidator(QtGui.QDoubleValidator())
         self.limit_price.setText('0')
@@ -363,7 +364,7 @@ class CtpApiWindow(QtWidgets.QFrame):
 
         self.order_condition_type = QtWidgets.QComboBox()
         self.order_condition_type.addItems(['Immediately','Touch','TouchProfit','ParkedOrder','LastPriceGreater','LastPriceLesser'])
-        self.orderfielddict['condition'] = ['1','2','3','4','5','7']
+        self.orderfielddict['condition'] = [THOST_FTDC_CC_Immediately,THOST_FTDC_CC_Touch,THOST_FTDC_CC_TouchProfit,THOST_FTDC_CC_ParkedOrder,THOST_FTDC_CC_LastPriceGreaterThanStopPrice,THOST_FTDC_CC_LastPriceLesserThanStopPrice]
         self.stop_price = QtWidgets.QLineEdit()
         self.stop_price.setValidator(QtGui.QDoubleValidator())
         self.stop_price.setText('0.0')
@@ -377,11 +378,11 @@ class CtpApiWindow(QtWidgets.QFrame):
 
         self.time_condition_type = QtWidgets.QComboBox()
         self.time_condition_type.addItems(['IOC','GFS','GFD','GTD','GTC','GFA'])
-        self.orderfielddict['timecondition'] = ['1','2','3','4','5','6']
+        self.orderfielddict['timecondition'] = [THOST_FTDC_TC_IOC,THOST_FTDC_TC_GFS,THOST_FTDC_TC_GFD,THOST_FTDC_TC_GTD,THOST_FTDC_TC_GTC,THOST_FTDC_TC_GFA]
         self.time_condition_time = QtWidgets.QLineEdit()
         self.volume_condition_type = QtWidgets.QComboBox()
         self.volume_condition_type.addItems(['Any','Min','Total'])
-        self.orderfielddict['volumecondition'] = ['1','2','3']
+        self.orderfielddict['volumecondition'] = [THOST_FTDC_VC_AV,THOST_FTDC_VC_MV,THOST_FTDC_VC_CV]
         ctphboxlayout8 = QtWidgets.QHBoxLayout()
         ctphboxlayout8.addWidget(QtWidgets.QLabel('TimeCondition'))
         ctphboxlayout8.addWidget(self.time_condition_type)
@@ -456,9 +457,7 @@ class CtpApiWindow(QtWidgets.QFrame):
             of.GTDDate = self.time_condition_time.text()
             of.VolumeCondition = self.orderfielddict['volumecondition'][self.volume_condition_type.currentIndex()]
             of.ContingentCondition = self.orderfielddict['condition'][self.order_condition_type.currentIndex()]
-            of.ForceCloseReason = '0'
-            of.IsAutoSuspend = 0
-            of.UserForceClose = 0
+            of.ForceCloseReason = THOST_FTDC_FCC_NotForceClose
             try:
                 of.LimitPrice = float(self.limit_price.text())
                 of.VolumeTotalOriginal = int(self.order_quantity.text())

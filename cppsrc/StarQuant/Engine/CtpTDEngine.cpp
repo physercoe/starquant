@@ -844,19 +844,21 @@ namespace StarQuant
 			{
 				pos = posbuffer_[key];
 			}
-			int dirsign =  pInvestorPosition->PosiDirection == THOST_FTDC_PD_Long ? 1 : -1;
+			int dirsign =  pInvestorPosition->PosiDirection == THOST_FTDC_PD_Short ? -1 : 1;
 			if (exchid == "SHFE"){
 				if ((pInvestorPosition->YdPosition != 0 ) && (pInvestorPosition->TodayPosition == 0))
 					pos->preSize_ = dirsign * pInvestorPosition->Position;
 			}else{
 				pos->preSize_ = dirsign *(pInvestorPosition->Position - pInvestorPosition->TodayPosition);
 			}
-			double cost = pos->avgPrice_ * abs(pos->size_);
+			int multiples  = DataManager::instance().securityDetails_[pInvestorPosition->InstrumentID].multiplier_;
+
+			double cost = pos->avgPrice_ * abs(pos->size_) * multiples;
 			pos->size_ += dirsign * pInvestorPosition->Position;
 			pos->openpl_ += pInvestorPosition->PositionProfit;
-			if (pos->size_ != 0){
+			if (pos->size_ != 0 && multiples ){
 				cost += pInvestorPosition->PositionCost;
-				pos->avgPrice_ = cost /abs(pos->size_);
+				pos->avgPrice_ = cost /(abs(pos->size_)*multiples);
 			}
 			if (pos->size_ > 0){
 				pos->freezedSize_ -= pInvestorPosition->ShortFrozen;
@@ -1050,8 +1052,7 @@ namespace StarQuant
 			}
 			if (bIsLast){
 				DataManager::instance().saveSecurityToFile();
-			}			
-			LOG_INFO(logger,name_ <<" OnRspQryInstrument:"
+				LOG_DEBUG(logger,name_ <<" OnRspQryInstrument:"
 				<<" InstrumentID="<<pInstrument->InstrumentID
 				<<" InstrumentName="<<GBKToUTF8(pInstrument->InstrumentName)
 				<<" ExchangeID="<<pInstrument->ExchangeID
@@ -1062,7 +1063,9 @@ namespace StarQuant
 				<<" ProductClass="<<pInstrument->ProductClass
 				<<" ExpireDate="<<pInstrument->ExpireDate
 				<<" LongMarginRatio="<<pInstrument->LongMarginRatio
-			);
+				);
+			}			
+
 		}
 	}
 	///错误应答

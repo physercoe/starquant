@@ -10,7 +10,7 @@ import numpy as np
 import talib
 
 from ..common.datastruct import Event,TickData, BarData
-
+from ..common.constant import Interval
 class DataBoard(object):
     """
     Data tracker that holds current market data info
@@ -139,6 +139,7 @@ class BarGenerator:
                 symbol=tick.symbol,
                 exchange=tick.exchange,
                 datetime=tick.datetime,
+                interval = Interval.MINUTE,
                 gateway_name=tick.gateway_name,
                 open_price=tick.last_price,
                 high_price=tick.last_price,

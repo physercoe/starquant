@@ -469,9 +469,11 @@ class StrategyManager(QtWidgets.QFrame):
         full_symbol = self._data["full_symbol"]
         class_name = self._data["class_name"]
         author = self._data["author"]
+        account = self._data["parameters"].get("account","")
+        api = self._data["parameters"].get("api","")
 
         label_text = (
-            f"{strategy_name}@{engine_id}  -  {full_symbol}  ({class_name} by {author})"
+            f"{api}.{account}: {strategy_name}@{engine_id}  -  {full_symbol}  ({class_name} by {author})"
         )
         label = QtWidgets.QLabel(label_text)
         label.setAlignment(QtCore.Qt.AlignLeft)
