@@ -37,4 +37,5 @@ class LogWindow(QtWidgets.QTableWidget):
             self.setItem(0, 1, QtWidgets.QTableWidgetItem(geneal_event.data.msg))
             self.setItem(0, 2, QtWidgets.QTableWidgetItem(geneal_event.data.timestamp))
             self.resizeRowsToContents()
+            self.horizontalHeader().resizeSections(QtWidgets.QHeaderView.ResizeToContents)
 

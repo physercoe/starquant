@@ -137,7 +137,11 @@ namespace StarQuant {
 			case MSG_TYPE_ORDER_CTP:
 				pheader = make_shared<CtpOrderMsg>();
 				pheader->deserialize(msgin);
-				break;			
+				break;
+			case MSG_TYPE_ORDER_PAPER:
+				pheader = make_shared<PaperOrderMsg>();
+				pheader->deserialize(msgin);
+				break;							
 			case MSG_TYPE_SUBSCRIBE_MARKET_DATA:
 				pheader = make_shared<SubscribeMsg>(des,src);
 				pheader->deserialize(msgin);

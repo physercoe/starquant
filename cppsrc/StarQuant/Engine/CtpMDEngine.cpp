@@ -506,7 +506,7 @@ namespace StarQuant
 		pk->source_ = name_;
 		pk->data_.time_ = buf;
 		// pk->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pDepthMarketData->InstrumentID);
-		pk->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pDepthMarketData->InstrumentID];
+		pk->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pDepthMarketData->InstrumentID];		
 		pk->data_.price_ = pDepthMarketData->LastPrice;
 		pk->data_.size_ = pDepthMarketData->Volume;			
 		pk->data_.bidPrice_[0] = pDepthMarketData->BidPrice1 == numeric_limits<double>::max()? 0.0: pDepthMarketData->BidPrice1;

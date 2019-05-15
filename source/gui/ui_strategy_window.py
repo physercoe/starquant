@@ -246,6 +246,9 @@ class CtaManager(QtWidgets.QWidget):
         stop_button = QtWidgets.QPushButton("Stop ALL")
         stop_button.clicked.connect(self.stop_all_strategies)
 
+        reset_button = QtWidgets.QPushButton("Reset ALL")
+        reset_button.clicked.connect(self.reset_all_strategies)
+
         self.scroll_layout = QtWidgets.QVBoxLayout()
         self.scroll_layout.addStretch()
 
@@ -264,16 +267,17 @@ class CtaManager(QtWidgets.QWidget):
 
         # Set layout
         hbox1 = QtWidgets.QHBoxLayout()
+        hbox1.addWidget(refresh_button)
         hbox1.addWidget(QtWidgets.QLabel('Strategy'))        
         hbox1.addWidget(self.class_combo)
         hbox1.addWidget(add_button)
         hbox1.addWidget(QtWidgets.QLabel('Engine PID'))
         hbox1.addWidget(self.engine_combo)
         hbox1.addStretch()
-        hbox1.addWidget(refresh_button)
         hbox1.addWidget(init_button)
         hbox1.addWidget(start_button)
         hbox1.addWidget(stop_button)
+        hbox1.addWidget(reset_button)
 
         grid = QtWidgets.QGridLayout()
         grid.addWidget(scroll_area, 0, 0, 2, 1)
@@ -336,11 +340,15 @@ class CtaManager(QtWidgets.QWidget):
                 self.engine_combo.addItem(event.source)
 
     def refresh_strategies(self): 
+        # reload all the strategy class
+        self.reload_strategies()
+        # reload all the managers, delete first, send qry msg, then add manager according to reply
         while self.managers:
             name, manager = self.managers.popitem()
             manager.deleteLater()        
         m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_GET_DATA)
         self.signal_strategy_out.emit(m)
+        # reload all the engine, delele first , send qry msg, then add according to reply
         self.engine_combo.clear()
         self.engines.clear()
         m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STATUS)
@@ -360,6 +368,17 @@ class CtaManager(QtWidgets.QWidget):
         m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STOP_ALL)
         self.signal_strategy_out.emit(m)
 
+    def reset_all_strategies(self):
+        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RESET_ALL)
+        self.signal_strategy_out.emit(m)
+
+    def reload_strategies(self):
+        self.class_combo.clear()
+        self.classes.clear()
+        self.load_strategy_class()
+        self.update_class_combo()
+        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RELOAD)
+        self.signal_strategy_out.emit(m)      
 
     def init_strategy(self,strategy_name:str, id:str):
         m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_INIT)
@@ -372,6 +391,10 @@ class CtaManager(QtWidgets.QWidget):
 
     def stop_strategy(self,strategy_name:str,id:str):
         m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STOP)
+        self.signal_strategy_out.emit(m)
+
+    def reset_strategy(self,strategy_name:str,id:str):
+        m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RESET)
         self.signal_strategy_out.emit(m)
 
     def edit_strategy(self,strategy_name:str, setting:dict,id:str):
@@ -458,6 +481,9 @@ class StrategyManager(QtWidgets.QFrame):
         stop_button = QtWidgets.QPushButton(" Stop ")
         stop_button.clicked.connect(self.stop_strategy)
 
+        reset_button = QtWidgets.QPushButton(" Reset ")
+        reset_button.clicked.connect(self.reset_strategy)
+
         edit_button = QtWidgets.QPushButton(" Edit ")
         edit_button.clicked.connect(self.edit_strategy)
 
@@ -473,7 +499,7 @@ class StrategyManager(QtWidgets.QFrame):
         api = self._data["parameters"].get("api","")
 
         label_text = (
-            f"{api}.{account}: {strategy_name}@{engine_id}  -  {full_symbol}  ({class_name} by {author})"
+            f"{api}|{account}: {strategy_name}@{engine_id}  -  {full_symbol}  ({class_name} by {author})"
         )
         label = QtWidgets.QLabel(label_text)
         label.setAlignment(QtCore.Qt.AlignLeft)
@@ -487,6 +513,7 @@ class StrategyManager(QtWidgets.QFrame):
         hbox.addWidget(init_button)
         hbox.addWidget(start_button)
         hbox.addWidget(stop_button)
+        hbox.addWidget(reset_button)
         hbox.addWidget(edit_button)
         hbox.addWidget(remove_button)
 
@@ -515,6 +542,9 @@ class StrategyManager(QtWidgets.QFrame):
     def stop_strategy(self):
         """"""
         self.cta_manager.stop_strategy(self.strategy_name,self.engine_id)
+
+    def reset_strategy(self):
+        self.cta_manager.reset_strategy(self.strategy_name,self.engine_id)
 
     def edit_strategy(self):
         """"""

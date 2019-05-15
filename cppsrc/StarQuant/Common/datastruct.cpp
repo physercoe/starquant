@@ -177,11 +177,11 @@ void PaperOrderMsg::deserialize(const string& msgin){
     data_.tag_ = v[7];
 
     data_.orderType_ = static_cast<OrderType>(stoi(v[8]));
-    data_.orderSize_ = stoi(v[9]);
-    data_.limitPrice_ = stof(v[10]);
-    data_.stopPrice_ = stof(v[11]);
-    data_.orderFlag_ = static_cast<OrderFlag>(stoi(v[12]));
-
+    data_.fullSymbol_ = v[9];
+    data_.orderFlag_ = static_cast<OrderFlag>(stoi(v[10]));
+    data_.orderSize_ = stoi(v[11]);
+    data_.limitPrice_ = stof(v[12]);
+    data_.stopPrice_ = stof(v[13]);
 }
 
 std::shared_ptr<Order> PaperOrderMsg::toPOrder(){

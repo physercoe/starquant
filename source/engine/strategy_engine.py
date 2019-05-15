@@ -283,6 +283,13 @@ class StrategyEngine(BaseEngine):
             self.stop_strategy(event.data)
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_STOP_ALL):
             self.stop_all_strategies()
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_RELOAD):
+            self.classes.clear()
+            self.load_strategy_class()
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_RESET):
+            self.reset_strategy(event.data)
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_RESET_ALL): 
+            self.reset_all_strategies()
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_EDIT):
             v = event.data.split('|')
             setting = json.loads(v[1])
@@ -337,7 +344,9 @@ class StrategyEngine(BaseEngine):
         if strategy_name in self.strategies:
             self.write_log(f"创建策略失败，存在重名{strategy_name}")
             return
-
+        if class_name not in self.classes:
+            self.write_log(f'strategy class[{class_name}] not exist, please check')
+            return
         strategy_class = self.classes[class_name]
 
         strategy = strategy_class(self,strategy_name, full_symbol, setting)
@@ -441,9 +450,23 @@ class StrategyEngine(BaseEngine):
         strategy.trading = False
 
         # Cancel all orders of the strategy
-        # self.cancel_all(strategy)
+        self.cancel_all(strategy)
 
         # Update GUI
+        self.put_strategy_event(strategy)
+    def reset_strategy(self,strategy_name: str):
+        "Reset a strategy"
+        strategy = self.strategies[strategy_name]
+        if not strategy.inited:
+            return
+        # stop first
+        self.call_strategy_func(strategy, strategy.on_stop)
+        strategy.trading = False
+        self.cancel_all(strategy)
+        # reset
+        self.call_strategy_func(strategy,strategy.on_reset)
+        strategy.inited = False
+
         self.put_strategy_event(strategy)
 
     def edit_strategy(self, strategy_name: str, setting: dict):
@@ -589,6 +612,10 @@ class StrategyEngine(BaseEngine):
         for strategy_name in self.strategies.keys():
             self.stop_strategy(strategy_name)
 
+    def reset_all_strategies(self):
+        for strategy_name in self.strategies.keys():
+            self.reset_strategy(strategy_name)
+
     def load_strategy_setting(self):
         """
         Load setting file.
@@ -647,6 +674,7 @@ class StrategyEngine(BaseEngine):
         # self.event_engine.put(event)
         msg = json.dumps(sdata)
         m = Event(type=EventType.STRATEGY_CONTROL,data=msg,des='@0',src=str(self.id),msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RTN_DATA)
+        
         self._send_sock.send(m.serialize())
 
         # save_json(self.data_filename, sdata)
@@ -805,12 +833,20 @@ class StrategyEngine(BaseEngine):
             req.client_order_id = self.ordercount 
             self.ordercount += 1
             m = Event(type=EventType.ORDER,
-                data=req,
-                des=req.api + '.TD.' + req.account, 
-                src=str(self.id),
-                msgtype=MSG_TYPE.MSG_TYPE_ORDER
+                    data=req,
+                    des=req.api + '.TD.' + req.account, 
+                    src=str(self.id)
                 )
-            self._send_sock.send(m.serialize())
+            if req.api == "CTP":
+                m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_CTP
+            elif req.api == "PAPER":
+                m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_PAPER
+            else:
+                print("error:api not support!")
+                return []
+            msg = m.serialize()
+            print(f'tradeclient {self.id} send msg: {msg}')
+            self._send_sock.send(msg)
             orderids.append(req.client_order_id)
             self.offset_converter.update_order_request(req)
             # Save relationship between orderid and strategy.
@@ -835,7 +871,9 @@ class StrategyEngine(BaseEngine):
             src=str(self.id),
             msgtype=MSG_TYPE.MSG_TYPE_ORDER_ACTION
             )
-        self._send_sock.send(m.serialize())
+        msg = m.serialize()
+        print(f'tradeclient {self.id} send msg: {msg}')
+        self._send_sock.send(msg)
     
     def cancel_all(self, strategy: StrategyBase):
         """
@@ -845,13 +883,15 @@ class StrategyEngine(BaseEngine):
         if not orderids:
             return
 
-        for orderid in copy(vt_orderids):
+        for orderid in copy(orderids):
             self.cancel_order(strategy, orderid)
 
 
     def send_testmsg(self):
         m = Event(des='CTP.MD',src=str(self.id),msgtype=MSG_TYPE.MSG_TYPE_TEST)
-        self._send_sock.send(m.serialize())
+        msg = m.serialize()
+        self._send_sock.send(msg)
+        print(f'tradeclient {self.id} send msg: {msg}')
 
 # start and stop    
     def start(self, timer=True):
@@ -866,7 +906,8 @@ class StrategyEngine(BaseEngine):
                 msgin = self._recv_sock.recv(flags=0)
                 msgin = msgin.decode("utf-8")
                 if msgin is not None and msgin.index('|') > 0:
-                    print('tradeclient(pid = %d) rec server msg:'%(self.id), msgin,'at ', datetime.now())
+                    if msgin[0] == '@':
+                        print('tradeclient(pid = %d) rec @ msg:'%(self.id), msgin,'at ', datetime.now())
                     if msgin[-1] == '\0':
                         msgin = msgin[:-1]
                     if msgin[-1] == '\x00':

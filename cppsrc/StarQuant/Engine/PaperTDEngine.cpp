@@ -57,7 +57,7 @@ namespace StarQuant
 	void PaperTDEngine::start(){
 		while(estate_ != EState::STOP){
 			auto pmsgin = messenger_->recv();
-			bool processmsg = ((pmsgin != nullptr) && ( startwith(pmsgin->destination_,DESTINATION_ALL) || (pmsgin->destination_ == name_ )));
+			bool processmsg = ((pmsgin != nullptr) && ( startwith(pmsgin->destination_,DESTINATION_ALL) || (startwith(pmsgin->destination_,name_) )));
 			// if (pmsgin == nullptr || !startwith(pmsgin->destination_, name_) )
 			// 	continue;
 			if (processmsg){
@@ -75,6 +75,7 @@ namespace StarQuant
 						disconnect();
 						break;
 					case MSG_TYPE_ORDER_PAPER:
+					case MSG_TYPE_ORDER:
 						if (estate_ == LOGIN_ACK){
 							auto pmsgin2 = static_pointer_cast<PaperOrderMsg>(pmsgin);
 							insertOrder(pmsgin2);
@@ -191,6 +192,9 @@ namespace StarQuant
 		pmsg->data_.localNo_ = pmsg->data_.orderNo_;
 		pmsg->data_.createTime_ = ymdhmsf();
 		pmsg->data_.orderStatus_ = OrderStatus::OS_Submitted;
+		pmsg->data_.price_ = pmsg->data_.limitPrice_;
+		pmsg->data_.quantity_ = pmsg->data_.orderSize_;
+		pmsg->data_.flag_ = pmsg->data_.orderFlag_;
 
 		auto o = static_pointer_cast<PaperOrder>(pmsg->toPOrder());
 		OrderManager::instance().trackOrder(o);
@@ -248,11 +252,13 @@ namespace StarQuant
 					{
 						lock_guard<mutex> gs(orderStatus_mtx);
 						o->orderStatus_ = OrderStatus::OS_Error;
-						auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
-							MSG_TYPE_ERROR_INSERTORDER,
-							to_string(o->clientOrderID_));
-						messenger_->send(pmsgout);
-						LOG_ERROR(logger,"Paper TD cannot deal due to price is below ask price");
+						auto pos = make_shared<OrderStatusMsg>(pmsg->source_,name_);
+						pos->set(o);
+						// auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+						// 	MSG_TYPE_ERROR_INSERTORDER,
+						// 	to_string(o->clientOrderID_));
+						messenger_->send(pos);
+						LOG_INFO(logger,"Paper TD cannot deal due to price is below ask price");
 						return;
 					}
 				}
@@ -277,11 +283,13 @@ namespace StarQuant
 					{
 						lock_guard<mutex> gs(orderStatus_mtx);
 						o->orderStatus_ = OrderStatus::OS_Error;
-						auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
-							MSG_TYPE_ERROR_INSERTORDER,
-							to_string(o->clientOrderID_));
-						messenger_->send(pmsgout);	
-						LOG_ERROR(logger,"Paper TD cannot deal due to price is above bid price");
+						auto pos = make_shared<OrderStatusMsg>(pmsg->source_,name_);
+						pos->set(o);						
+						// auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+						// 	MSG_TYPE_ERROR_INSERTORDER,
+						// 	to_string(o->clientOrderID_));
+						messenger_->send(pos);	
+						LOG_INFO(logger,"Paper TD cannot deal due to price is above bid price");
 						return;
 					}
 				}				
@@ -289,16 +297,19 @@ namespace StarQuant
 			else if (o->orderType_ == OrderType::OT_StopLimit){
 				lock_guard<mutex> gs(orderStatus_mtx);				
 				o->orderStatus_ = OrderStatus::OS_Error;
-				auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
-					MSG_TYPE_ERROR_INSERTORDER,
-					to_string(o->clientOrderID_));
-				messenger_->send(pmsgout);
+				auto pos = make_shared<OrderStatusMsg>(pmsg->source_,name_);
+				pos->set(o);	
+				// auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+				// 	MSG_TYPE_ERROR_INSERTORDER,
+				// 	to_string(o->clientOrderID_));
+				messenger_->send(pos);
 				LOG_ERROR(logger,"Paper TD donot support stop order yet");
 				return;				
 			}
 			OrderManager::instance().gotFill(pmsgfill->data_);	
 			lock_guard<mutex> gs(orderStatus_mtx);					
 			o->orderStatus_ = OrderStatus::OS_Filled;
+			o->tradedvol_ = pmsgfill->data_.tradeSize_;
 			auto pos = make_shared<OrderStatusMsg>(pmsg->source_,name_);
 			pos->set(o);
 			messenger_->send(pos);
@@ -309,10 +320,12 @@ namespace StarQuant
 		{
 			lock_guard<mutex> gs(orderStatus_mtx);
 			o->orderStatus_ = OrderStatus::OS_Error;
-			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
-				MSG_TYPE_ERROR_INSERTORDER,
-				to_string(o->clientOrderID_));
-			messenger_->send(pmsgout);
+			auto pos = make_shared<OrderStatusMsg>(pmsg->source_,name_);
+			pos->set(o);	
+			// auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+			// 	MSG_TYPE_ERROR_INSERTORDER,
+			// 	to_string(o->clientOrderID_));
+			messenger_->send(pos);
 			LOG_ERROR(logger,"Paper TD order insert error: due to DM dont have markets info");
 			return;
 		}

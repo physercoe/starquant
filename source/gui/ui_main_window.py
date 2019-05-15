@@ -12,9 +12,9 @@ from PyQt5 import QtCore, QtWidgets, QtGui, QtWebEngineWidgets
 from datetime import datetime
 import requests
 import itchat
-
+from pathlib import Path
+import yaml
 from source.common.datastruct import *   
-
 
 from mystrategy import strategy_list
 from source.data.data_board import DataBoard
@@ -26,6 +26,7 @@ from source.trade.account_manager import AccountManager
 from source.engine.live_event_engine import LiveEventEngine
 from source.common.client_mq import ClientMq
 
+from .ui_basic import EnumCell,BaseCell
 from .ui_market_window import MarketWindow
 from .ui_order_window import OrderWindow
 from .ui_fill_window import FillWindow
@@ -89,14 +90,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # 7 portfolio manager and position manager
         self.portfolio_manager = PortfolioManager(self._config_client['initial_cash'],self._symbols[:])
-
+        self.contract_manager = ContractManager()
         ## 4. strategy_manager
         self._strategy_manager = StrategyManager(self._config_client, self._outgoing_request_events_engine,self._order_manager,self.portfolio_manager)
         self._strategy_manager.load_strategy()
 
         ## 8. client mq
         self._client_mq = ClientMq(self._config_server,self._ui_events_engine, self._outgoing_queue)
-
+        
         # 1. set up gui windows
         self.setGeometry(50, 50, 850, 650)
         self.setWindowTitle(lang_dict['Prog_Name'])
@@ -204,7 +205,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _contract_event_handler(self, contract_event):
         contract = contract_event.data
-        self.portfolio_manager.on_contract(contract)
+        # self.portfolio_manager.on_contract(contract)
+        self.contract_manager.on_contract(contract)
         # msg = "Contract {} tickprice = {} multiples = {}".format(contract.full_symbol,contract.pricetick,contract.size) 
         # self.manual_widget.logoutput.append(msg)
 
@@ -304,6 +306,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         #help menu
         helpMenu = menubar.addMenu('Help')
+        help_contractaction = QtWidgets.QAction('Query Contracts', self)
+        help_contractaction.triggered.connect(self.contract_manager.show)
+        helpMenu.addAction(help_contractaction)
         help_webaction = QtWidgets.QAction('Web/Jupyter Notebook', self)
         help_webaction.triggered.connect(self.openweb)        
         helpMenu.addAction(help_webaction)
@@ -324,6 +329,8 @@ class MainWindow(QtWidgets.QMainWindow):
         except KeyError:
             self._widget_dict['web'] = WebWindow()
             self._widget_dict['web'].show()
+
+
     def init_status_bar(self):
         self.statusthread = StatusThread()
         self.statusthread.status_update.connect(self.update_status_bar)
@@ -526,6 +533,121 @@ class StatusThread(QtCore.QThread):
             memoryPercent = psutil.virtual_memory().percent
             self.status_update.emit('CPU Usage: ' + str(cpuPercent) + '% Memory Usage: ' + str(memoryPercent) + '%')
             self.sleep(1)
+
+
+
+
+class ContractManager(QtWidgets.QWidget):
+    """
+    Query contract data available to trade in system.
+    """
+
+    headers = {
+        "full_symbol":"全称",
+        "symbol": "代码",
+        "exchange": "交易所",
+        "name": "名称",
+        "product": "合约分类",
+        "size": "合约乘数",
+        "pricetick": "价格跳动",
+        "min_volume": "最小委托量"
+    }
+
+    def __init__(self):
+        super(ContractManager, self).__init__()
+
+        self.contracts = {}
+        self.load_contract()
+
+
+        self.init_ui()
+
+    def load_contract(self):
+        contractfile = Path.cwd().joinpath("etc/ctpcontract.yaml")
+        with open(contractfile, encoding='utf8') as fc: 
+            contracts = yaml.load(fc)
+        print(len(contracts))
+        for sym, data in contracts.items():
+            contract = ContractData(
+                symbol=data["symbol"],
+                exchange=Exchange(data["exchange"]),
+                name=data["name"],
+                product=PRODUCT_CTP2VT[str(data["product"])],
+                size=data["size"],
+                pricetick=data["pricetick"],
+                full_symbol = data["full_symbol"]
+            )            
+            # For option only
+            if contract.product == Product.OPTION:
+                contract.option_underlying = data["option_underlying"],
+                contract.option_type = OPTIONTYPE_CTP2VT.get(str(data["option_type"]), None),
+                contract.option_strike = data["option_strike"],
+                contract.option_expiry = datetime.strptime(str(data["option_expiry"]), "%Y%m%d"),
+            self.contracts[contract.full_symbol] = contract      
+
+    def init_ui(self):
+        """"""
+        self.setWindowTitle("合约查询")
+        self.resize(1000, 600)
+
+        self.filter_line = QtWidgets.QLineEdit()
+        self.filter_line.setPlaceholderText("输入全称字段（交易所,类别，产品代码，合约编号），留空则查询所有合约")
+        self.filter_line.returnPressed.connect(self.show_contracts)
+        self.button_show = QtWidgets.QPushButton("查询")
+        self.button_show.clicked.connect(self.show_contracts)
+
+        labels = []
+        for name, display in self.headers.items():
+            label = f"{display}\n{name}"
+            labels.append(label)
+
+        self.contract_table = QtWidgets.QTableWidget()
+        self.contract_table.setColumnCount(len(self.headers))
+        self.contract_table.setHorizontalHeaderLabels(labels)
+        self.contract_table.verticalHeader().setVisible(False)
+        self.contract_table.setEditTriggers(self.contract_table.NoEditTriggers)
+        self.contract_table.setAlternatingRowColors(True)
+
+        hbox = QtWidgets.QHBoxLayout()
+        hbox.addWidget(self.filter_line)
+        hbox.addWidget(self.button_show)
+
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.addLayout(hbox)
+        vbox.addWidget(self.contract_table)
+
+        self.setLayout(vbox)
+
+    def show_contracts(self):
+        """
+        Show contracts by symbol
+        """
+        flt = str(self.filter_line.text()).upper()
+
+
+        if flt:
+            contracts = [
+                contract for contract in self.contracts.values() if flt in contract.full_symbol
+            ]
+        else:
+            contracts = self.contracts
+
+        self.contract_table.clearContents()
+        self.contract_table.setRowCount(len(contracts))
+
+        for row, contract in enumerate(contracts):
+            for column, name in enumerate(self.headers.keys()):
+                value = getattr(contract, name)
+                if isinstance(value, Enum):
+                    cell = EnumCell(value, contract)
+                else:
+                    cell = BaseCell(value, contract)
+                self.contract_table.setItem(row, column, cell)
+
+        self.contract_table.resizeColumnsToContents()
+    
+    def on_contract(self,contract):
+        self.contracts[contract.full_symbol] = contract
 
 
 class AboutWidget(QtWidgets.QDialog):

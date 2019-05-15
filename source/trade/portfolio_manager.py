@@ -236,7 +236,8 @@ class OffsetConverter:
         Check if the contract needs offset convert.
         """
         contract = self.main_engine.get_contract(full_symbol)
-
+        if not contract:
+            return False
         # Only contracts with long-short position mode requires convert
         if not contract.net_position:
             return True
