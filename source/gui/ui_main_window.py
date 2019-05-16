@@ -6,6 +6,7 @@ import os
 import webbrowser
 import psutil
 from pathlib import Path
+import csv
 
 from queue import Queue, Empty
 from PyQt5 import QtCore, QtWidgets, QtGui, QtWebEngineWidgets
@@ -14,10 +15,12 @@ import requests
 import itchat
 from pathlib import Path
 import yaml
-from source.common.datastruct import *   
+from typing import TextIO
 
+from source.common.datastruct import * 
 from mystrategy import strategy_list
 from source.data.data_board import DataBoard
+from source.data import database_manager
 from source.trade.order_manager import OrderManager
 from source.strategy.strategy_manager import StrategyManager
 from source.trade.portfolio_manager import PortfolioManager
@@ -44,7 +47,7 @@ from .ui_bt_setting import BtSettingWindow
 from .ui_web_window import WebWindow
 from .ui_dataview import MarketDataView
 
-from ..common import datastruct
+from ..api.ctp_constant import THOST_FTDC_PT_Net
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, config_server, config_client, lang_dict):
@@ -190,7 +193,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.position_window.position_signal.emit(position_event)     # display
 
-        self.closeposition_window.position_signal.emit(position_event)
+        #self.closeposition_window.position_signal.emit(position_event)
 
         #self._strategy_manager.update_position()
         #self._strategy_manager.on_position(position_event)
@@ -304,6 +307,13 @@ class MainWindow(QtWidgets.QMainWindow):
         mode_backtestAction.triggered.connect(self.displaybacktest)
         modeMenu.addAction(mode_backtestAction)
 
+        #tool menu
+        toolMenu = menubar.addMenu('Tools')
+        tool_csvloader = QtWidgets.QAction('CSV Loader',self)
+        tool_csvloader.triggered.connect(self.opencsvloader)
+        toolMenu.addAction(tool_csvloader)
+
+
         #help menu
         helpMenu = menubar.addMenu('Help')
         help_contractaction = QtWidgets.QAction('Query Contracts', self)
@@ -315,6 +325,13 @@ class MainWindow(QtWidgets.QMainWindow):
         help_action = QtWidgets.QAction('About', self)
         help_action.triggered.connect(self.openabout)        
         helpMenu.addAction(help_action)
+
+    def opencsvloader(self):
+        try:
+            self._widget_dict['csvloader'].show()           
+        except KeyError:
+            self._widget_dict['csvloader'] = CsvLoaderWidget()
+            self._widget_dict['csvloader'].show()  
 
 
     def openabout(self):
@@ -354,13 +371,13 @@ class MainWindow(QtWidgets.QMainWindow):
         tab2 = QtWidgets.QWidget()
         tab3 = QtWidgets.QWidget()
         tab4 = QtWidgets.QWidget()
-        tab5 = QtWidgets.QWidget()
+        # tab5 = QtWidgets.QWidget()
         tab6 = QtWidgets.QWidget()
         bottomleft.addTab(tab1, self._lang_dict['Log'])
         bottomleft.addTab(tab2, self._lang_dict['Order'])
         bottomleft.addTab(tab3, self._lang_dict['Fill'])
         bottomleft.addTab(tab4, self._lang_dict['Position'])
-        bottomleft.addTab(tab5, self._lang_dict['ClosePosition'])
+        # bottomleft.addTab(tab5, self._lang_dict['ClosePosition'])
         bottomleft.addTab(tab6, self._lang_dict['Account'])
 
         self.log_window = LogWindow(self._lang_dict)
@@ -383,10 +400,10 @@ class MainWindow(QtWidgets.QMainWindow):
         tab4_layout.addWidget(self.position_window)
         tab4.setLayout(tab4_layout)
 
-        self.closeposition_window = ClosePositionWindow(self._lang_dict)
-        tab5_layout = QtWidgets.QVBoxLayout()
-        tab5_layout.addWidget(self.closeposition_window)
-        tab5.setLayout(tab5_layout)
+        # self.closeposition_window = ClosePositionWindow(self._lang_dict)
+        # tab5_layout = QtWidgets.QVBoxLayout()
+        # tab5_layout.addWidget(self.closeposition_window)
+        # tab5.setLayout(tab5_layout)
 
         self.account_window = AccountWindow(self.account_manager, self._lang_dict)
         tab6_layout = QtWidgets.QVBoxLayout()
@@ -550,7 +567,10 @@ class ContractManager(QtWidgets.QWidget):
         "product": "合约分类",
         "size": "合约乘数",
         "pricetick": "价格跳动",
-        "min_volume": "最小委托量"
+        "min_volume": "最小委托量",
+        "net_position":"是否净持仓",
+        "long_margin_ratio":"多仓保证金率",
+        "short_margin_ratio":"空仓保证金率"
     }
 
     def __init__(self):
@@ -575,6 +595,9 @@ class ContractManager(QtWidgets.QWidget):
                 product=PRODUCT_CTP2VT[str(data["product"])],
                 size=data["size"],
                 pricetick=data["pricetick"],
+                net_position = True if str(data["positiontype"]) == THOST_FTDC_PT_Net else False,
+                long_margin_ratio = data["long_margin_ratio"],
+                short_margin_ratio = data["short_margin_ratio"],
                 full_symbol = data["full_symbol"]
             )            
             # For option only
@@ -648,6 +671,226 @@ class ContractManager(QtWidgets.QWidget):
     
     def on_contract(self,contract):
         self.contracts[contract.full_symbol] = contract
+
+
+
+class CsvLoaderWidget(QtWidgets.QWidget):
+    """"""
+
+    def __init__(self):
+        """"""
+        super().__init__()
+
+        self.init_ui()
+
+    def init_ui(self):
+        """"""
+        self.setWindowTitle("CSV载入")
+        self.setFixedWidth(300)
+
+        self.setWindowFlags(
+            (self.windowFlags() | QtCore.Qt.CustomizeWindowHint)
+            & ~QtCore.Qt.WindowMaximizeButtonHint)
+
+        file_button = QtWidgets.QPushButton("选择文件")
+        file_button.clicked.connect(self.select_file)
+
+        load_button = QtWidgets.QPushButton("载入数据")
+        load_button.clicked.connect(self.load_data)
+
+        self.file_edit = QtWidgets.QLineEdit()
+        self.symbol_edit = QtWidgets.QLineEdit()
+
+        self.exchange_combo = QtWidgets.QComboBox()
+        for i in Exchange:
+            self.exchange_combo.addItem(str(i.name), i)
+
+        self.interval_combo = QtWidgets.QComboBox()
+        for i in Interval:
+            self.interval_combo.addItem(str(i.name), i)
+
+        self.datetime_edit = QtWidgets.QLineEdit("Datetime")
+        self.open_edit = QtWidgets.QLineEdit("Open")
+        self.high_edit = QtWidgets.QLineEdit("High")
+        self.low_edit = QtWidgets.QLineEdit("Low")
+        self.close_edit = QtWidgets.QLineEdit("Close")
+        self.volume_edit = QtWidgets.QLineEdit("Volume")
+
+        self.format_edit = QtWidgets.QLineEdit("%Y-%m-%d %H:%M:%S")
+
+        info_label = QtWidgets.QLabel("合约信息")
+        info_label.setAlignment(QtCore.Qt.AlignCenter)
+
+        head_label = QtWidgets.QLabel("表头信息")
+        head_label.setAlignment(QtCore.Qt.AlignCenter)
+
+        format_label = QtWidgets.QLabel("格式信息")
+        format_label.setAlignment(QtCore.Qt.AlignCenter)
+
+        form = QtWidgets.QFormLayout()
+        form.addRow(file_button, self.file_edit)
+        form.addRow(QtWidgets.QLabel())
+        form.addRow(info_label)
+        form.addRow("代码", self.symbol_edit)
+        form.addRow("交易所", self.exchange_combo)
+        form.addRow("周期", self.interval_combo)
+        form.addRow(QtWidgets.QLabel())
+        form.addRow(head_label)
+        form.addRow("时间戳", self.datetime_edit)
+        form.addRow("开盘价", self.open_edit)
+        form.addRow("最高价", self.high_edit)
+        form.addRow("最低价", self.low_edit)
+        form.addRow("收盘价", self.close_edit)
+        form.addRow("成交量", self.volume_edit)
+        form.addRow(QtWidgets.QLabel())
+        form.addRow(format_label)
+        form.addRow("时间格式", self.format_edit)
+        form.addRow(QtWidgets.QLabel())
+        form.addRow(load_button)
+
+        self.setLayout(form)
+
+    def select_file(self):
+        """"""
+        result: str = QtWidgets.QFileDialog.getOpenFileName(
+            self, filter="CSV (*.csv)")
+        filename = result[0]
+        if filename:
+            self.file_edit.setText(filename)
+
+    def load_data(self):
+        """"""
+        file_path = self.file_edit.text()
+        symbol = self.symbol_edit.text()
+        exchange = self.exchange_combo.currentData()
+        interval = self.interval_combo.currentData()
+        datetime_head = self.datetime_edit.text()
+        open_head = self.open_edit.text()
+        low_head = self.low_edit.text()
+        high_head = self.high_edit.text()
+        close_head = self.close_edit.text()
+        volume_head = self.volume_edit.text()
+        datetime_format = self.format_edit.text()
+
+        start, end, count = self.load(
+            file_path,
+            symbol,
+            exchange,
+            interval,
+            datetime_head,
+            open_head,
+            high_head,
+            low_head,
+            close_head,
+            volume_head,
+            datetime_format
+        )
+
+        msg = f"\
+        CSV载入成功\n\
+        代码：{symbol}\n\
+        交易所：{exchange.value}\n\
+        周期：{interval.value}\n\
+        起始：{start}\n\
+        结束：{end}\n\
+        总数量：{count}\n\
+        "
+        QtWidgets.QMessageBox.information(self, "载入成功！", msg)
+
+    def load_by_handle(
+        self,
+        f: TextIO,
+        symbol: str,
+        exchange: Exchange,
+        interval: Interval,
+        datetime_head: str,
+        open_head: str,
+        high_head: str,
+        low_head: str,
+        close_head: str,
+        volume_head: str,
+        datetime_format: str,
+    ):
+        """
+        load by text mode file handle
+        """
+        reader = csv.DictReader(f)
+
+        bars = []
+        start = None
+        count = 0
+        for item in reader:
+            if datetime_format:
+                dt = datetime.strptime(item[datetime_head], datetime_format)
+            else:
+                dt = datetime.fromisoformat(item[datetime_head])
+
+            bar = BarData(
+                symbol=symbol,
+                exchange=exchange,
+                datetime=dt,
+                interval=interval,
+                volume=item[volume_head],
+                open_price=item[open_head],
+                high_price=item[high_head],
+                low_price=item[low_head],
+                close_price=item[close_head],
+                gateway_name="DB",
+            )
+
+            bars.append(bar)
+
+            # do some statistics
+            count += 1
+            if not start:
+                start = bar.datetime
+        end = bar.datetime
+
+        # insert into database
+        database_manager.save_bar_data(bars)
+        return start, end, count
+
+    def load(
+        self,
+        file_path: str,
+        symbol: str,
+        exchange: Exchange,
+        interval: Interval,
+        datetime_head: str,
+        open_head: str,
+        high_head: str,
+        low_head: str,
+        close_head: str,
+        volume_head: str,
+        datetime_format: str,
+    ):
+        """
+        load by filename
+        """
+        with open(file_path, "rt") as f:
+            return self.load_by_handle(
+                f,
+                symbol=symbol,
+                exchange=exchange,
+                interval=interval,
+                datetime_head=datetime_head,
+                open_head=open_head,
+                high_head=high_head,
+                low_head=low_head,
+                close_head=close_head,
+                volume_head=volume_head,
+                datetime_format=datetime_format,
+            )
+
+
+
+
+
+
+
+
+
+
 
 
 class AboutWidget(QtWidgets.QDialog):

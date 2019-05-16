@@ -70,7 +70,7 @@ class MarketWindow(QtWidgets.QTableWidget):
         tick = tickevent.data
         if tick.full_symbol in self._symbols:
             row = self._symbols.index(tick.full_symbol)
-            timestr = tick.timestamp.strftime("%Y-%m-%d %H:%M:%S.%f")
+            timestr = tick.timestamp.strftime("%Y-%m-%d %H:%M:%S")
             if (tick.last_price > 0.0):
                 try:
                 #timestr = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tick.timestamp))
@@ -103,6 +103,6 @@ class MarketWindow(QtWidgets.QTableWidget):
                 self.item(0, 9).setText(str(tick.gateway_name))
             except:
                 pass
-        self.resizeRowsToContents()
+        # self.horizontalHeader().resizeSections(QtWidgets.QHeaderView.ResizeToContents)
 
 

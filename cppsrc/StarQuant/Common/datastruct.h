@@ -401,7 +401,9 @@ class DLL_EXPORT_IMPORT Security{
     string localName_;	// Unicode; e.g., in Chinese or French
     string currency_;
     double ticksize_ = 0.0;
-    double margin_ = 0.0;		
+    double longMarginRatio_ = 0.0;		
+    double shortMarginRatio_ = 0.0;
+    char postype_ = '2';
 
     // Options
     string underlyingSymbol_;
@@ -663,7 +665,7 @@ public:
     int freezedSize_ = 0;
     double openpl_ = 0;			// unrealized pnl
     double closedpl_ = 0;		// realized pnl
-    char type_ ='a';             // used in tap event: n :new postion; c:closepostion ;u: postionprofit update;a:ctp postion
+    char type_ ='1';             // direction
     string posNo_ = "";
     string openapi_ = "";
     string openOrderNo_ = "";

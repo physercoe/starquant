@@ -9,6 +9,7 @@ from logging import INFO
 from typing import Any, Callable
 
 from .constant import *
+from ..api.ctp_constant import THOST_FTDC_PT_Net
 from .utility import generate_full_symbol,extract_full_symbol,generate_vt_symbol
 
 def retrieve_multiplier_from_full_symbol(symbol = ""):
@@ -528,16 +529,15 @@ class PositionData(BaseData):
             self.full_symbol = v[3]
             self.symbol,self.exchange = extract_full_symbol(self.full_symbol)
             self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
-            self.price = float(v[4])
-            tq = int(v[5]) + int(v[6])
-            self.direction = Direction.LONG if tq >0 else Direction.SHORT
+            self.direction = DIRECTION_CTP2VT[v[4]]
+            self.price = float(v[5])
             self.vt_positionid = f"{self.vt_symbol}.{self.direction}"
-            self.volume = abs(int(v[5]))
-            self.yd_volume = abs(int(v[6]))
-            self.freezed_size = abs(int(v[7]))
-            self.realized_pnl = float(v[8])
-            self.pnl = float(v[9])
-            self.timestamp = v[10]
+            self.volume = abs(int(v[6]))
+            self.yd_volume = abs(int(v[7]))
+            self.freezed_size = abs(int(v[8]))
+            self.realized_pnl = float(v[9])
+            self.pnl = float(v[10])
+            self.timestamp = v[11]
         except:
             pass
 
@@ -631,7 +631,8 @@ class ContractData(BaseData):
 
     # StarQuant field
     full_symbol : str = ""
-
+    long_margin_ratio :float = 0
+    short_margin_ratio:float = 0
 
     def __post_init__(self):
         """"""
@@ -649,11 +650,15 @@ class ContractData(BaseData):
             self.full_symbol = generate_full_symbol(self.exchange,self.symbol,st)
             self.size = int(v[4])
             self.pricetick = float(v[5])
+            if v[6] == THOST_FTDC_PT_Net:
+                self.net_position = True
+            self.long_margin_ratio = float(v[7])
+            self.short_margin_ratio = float(v[8]) 
             if  self.product == Product.OPTION:
-                self.option_underlying = v[6]
-                self.option_type = OPTIONTYPE_CTP2VT.get(v[7], None)
-                self.option_strike = float(v[8])
-                self.option_expiry = datetime.strptime(v[9],"%Y%m%d")
+                self.option_underlying = v[9]
+                self.option_type = OPTIONTYPE_CTP2VT.get(v[10], None)
+                self.option_strike = float(v[11])
+                self.option_expiry = datetime.strptime(v[12],"%Y%m%d")
         except:
             pass
 

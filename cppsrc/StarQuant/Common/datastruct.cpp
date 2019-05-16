@@ -68,6 +68,9 @@ string SecurityMsg::serialize(){
         + SERIALIZATION_SEPARATOR +	data_.securityType_
         + SERIALIZATION_SEPARATOR + to_string(data_.multiplier_)
         + SERIALIZATION_SEPARATOR + to_string(data_.ticksize_)
+        + SERIALIZATION_SEPARATOR + data_.postype_
+        + SERIALIZATION_SEPARATOR + to_string(data_.longMarginRatio_)
+        + SERIALIZATION_SEPARATOR + to_string(data_.shortMarginRatio_)
         + SERIALIZATION_SEPARATOR + data_.underlyingSymbol_
         + SERIALIZATION_SEPARATOR + data_.optionType_
         + SERIALIZATION_SEPARATOR + to_string(data_.strikePrice_)
@@ -387,7 +390,8 @@ string PosMsg::serialize(){
         + SERIALIZATION_SEPARATOR + data_.key_
         + SERIALIZATION_SEPARATOR + data_.account_
         + SERIALIZATION_SEPARATOR + data_.api_
-        + SERIALIZATION_SEPARATOR + data_.fullSymbol_							
+        + SERIALIZATION_SEPARATOR + data_.fullSymbol_
+        + SERIALIZATION_SEPARATOR + data_.type_							
         + SERIALIZATION_SEPARATOR + std::to_string(data_.avgPrice_)
         + SERIALIZATION_SEPARATOR + std::to_string(data_.size_)
         + SERIALIZATION_SEPARATOR + std::to_string(data_.preSize_)

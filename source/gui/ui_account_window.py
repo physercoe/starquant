@@ -18,7 +18,7 @@ class AccountWindow(QtWidgets.QTableWidget):
                        'Margin',
                        'Closed_PnL',
                        'Open_PnL',
-                       'API',
+                       'GateWay',
                        'Time']
 
         self.init_table()
@@ -73,4 +73,4 @@ class AccountWindow(QtWidgets.QTableWidget):
             self.setItem(0, 9, QtWidgets.QTableWidgetItem(accdata.gateway_name))
             self.setItem(0, 10, QtWidgets.QTableWidgetItem(accdata.timestamp))
         
-        self.resizeRowsToContents()
+        self.horizontalHeader().resizeSections(QtWidgets.QHeaderView.ResizeToContents)

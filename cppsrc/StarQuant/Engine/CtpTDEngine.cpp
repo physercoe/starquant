@@ -838,60 +838,45 @@ namespace StarQuant
 				pos->key_ = key;
 				pos->account_ = ctpacc_.userid;
 				pos->fullSymbol_ = fullsym;
-				pos->api_ = name_;
+				pos->api_ = "CTP";
 				posbuffer_[key] = pos;
 			}else
 			{
 				pos = posbuffer_[key];
 			}
-			int dirsign =  pInvestorPosition->PosiDirection == THOST_FTDC_PD_Short ? -1 : 1;
+			pos->type_ = pInvestorPosition->PosiDirection;
+			// int dirsign =  pInvestorPosition->PosiDirection == THOST_FTDC_PD_Short ? -1 : 1;
 			if (exchid == "SHFE"){
 				if ((pInvestorPosition->YdPosition != 0 ) && (pInvestorPosition->TodayPosition == 0))
-					pos->preSize_ = dirsign * pInvestorPosition->Position;
+					pos->preSize_ =  pInvestorPosition->Position;
 			}else{
-				pos->preSize_ = dirsign *(pInvestorPosition->Position - pInvestorPosition->TodayPosition);
+				pos->preSize_ = (pInvestorPosition->Position - pInvestorPosition->TodayPosition);
 			}
 			int multiples  = DataManager::instance().securityDetails_[pInvestorPosition->InstrumentID].multiplier_;
 
-			double cost = pos->avgPrice_ * abs(pos->size_) * multiples;
-			pos->size_ += dirsign * pInvestorPosition->Position;
+			double cost = pos->avgPrice_ * pos->size_ * multiples;
+			pos->size_ +=  pInvestorPosition->Position;
 			pos->openpl_ += pInvestorPosition->PositionProfit;
 			if (pos->size_ != 0 && multiples ){
 				cost += pInvestorPosition->PositionCost;
-				pos->avgPrice_ = cost /(abs(pos->size_)*multiples);
+				pos->avgPrice_ = cost /(pos->size_ * multiples);
 			}
-			if (pos->size_ > 0){
-				pos->freezedSize_ -= pInvestorPosition->ShortFrozen;
+			if (pos->type_ == THOST_FTDC_PD_Long){
+				pos->freezedSize_ += pInvestorPosition->ShortFrozen;
 			}
 			else{
 				pos->freezedSize_ += pInvestorPosition->LongFrozen;
 			}
 			pos->closedpl_ += pInvestorPosition->CloseProfit;
 			if (bIsLast){
-				auto pmsg = make_shared<PosMsg>(DESTINATION_ALL,name_);
-				pmsg->set(pos);				
-				messenger_->send(pmsg);
-				PortfolioManager::instance().Add(pos);
-				posbuffer_.erase(key);
+				for (auto iter = posbuffer_.begin();iter != posbuffer_.end(); ++ iter){
+					auto pmsg = make_shared<PosMsg>(DESTINATION_ALL,name_);
+					pmsg->set(iter->second);				
+					messenger_->send(pmsg);
+					PortfolioManager::instance().Add(iter->second);
+				}
+				posbuffer_.clear();				
 			}
-			// if ((pInvestorPosition->Position != 0.0) && (pInvestorPosition->YdPosition != 0.0)){
-			// 	auto pmsg = make_shared<PosMsg>();
-			// 	pmsg->destination_ = DESTINATION_ALL;
-			// 	pmsg->source_ = name_;
-			// 	// pmsg->data_.posNo_ = to_string(pInvestorPosition->SettlementID);
-			// 	pmsg->data_.type_ = 'a';
-			// 	pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pInvestorPosition->InstrumentID);
-			// 	pmsg->data_.size_ = (pInvestorPosition->PosiDirection == THOST_FTDC_PD_Long ? 1 : -1) * pInvestorPosition->Position;
-			// 	pmsg->data_.avgPrice_ = pInvestorPosition->PositionCost / pInvestorPosition->Position;
-			// 	pmsg->data_.openpl_ = pInvestorPosition->PositionProfit;
-			// 	pmsg->data_.closedpl_ = pInvestorPosition->CloseProfit;
-			// 	pmsg->data_.account_ = ctpacc_.userid;
-			// 	pmsg->data_.preSize_ = pInvestorPosition->YdPosition;
-			// 	pmsg->data_.freezedSize_ = (pInvestorPosition->PosiDirection == THOST_FTDC_PD_Long ? pInvestorPosition->LongFrozen : pInvestorPosition->ShortFrozen);
-			// 	pmsg->data_.api_ = "CTP";				
-			// 	messenger_->send(pmsg);
-			// 	PortfolioManager::instance().Add(pmsg->toPos());
-			// }
 			LOG_INFO(logger,name_ <<" OnRspQryInvestorPosition:"
 				<<" InstrumentID="<<pInvestorPosition->InstrumentID
 				<<" InvestorID="<<pInvestorPosition->InvestorID
@@ -1034,7 +1019,11 @@ namespace StarQuant
 			pmsg->data_.securityType_ = pInstrument->ProductClass ;
 			pmsg->data_.multiplier_ = pInstrument->VolumeMultiple;
 			pmsg->data_.localName_ = GBKToUTF8(pInstrument->InstrumentName);
-			pmsg->data_.ticksize_ = pInstrument->PriceTick;			
+			pmsg->data_.ticksize_ = pInstrument->PriceTick;	
+			pmsg->data_.postype_ = pInstrument->PositionType;
+			pmsg->data_.longMarginRatio_ = pInstrument->LongMarginRatio;
+			pmsg->data_.shortMarginRatio_ = pInstrument->ShortMarginRatio;
+
 			if (pInstrument->ProductClass == THOST_FTDC_PC_Options ){
 				pmsg->data_.underlyingSymbol_ = pInstrument->UnderlyingInstrID ;
 				pmsg->data_.optionType_ = pInstrument->OptionsType;

@@ -59,6 +59,9 @@ namespace StarQuant {
 			securities[sym]["size"] = sec.multiplier_;
 			securities[sym]["name"] = sec.localName_;
 			securities[sym]["pricetick"] = sec.ticksize_;
+			securities[sym]["positiontype"] = sec.postype_;
+			securities[sym]["long_margin_ratio"] = sec.longMarginRatio_;
+			securities[sym]["short_margin_ratio"] = sec.shortMarginRatio_;
 			securities[sym]["option_underlying"] = sec.underlyingSymbol_;
 			securities[sym]["option_type"] = sec.optionType_;
 			securities[sym]["option_strike"] = sec.strikePrice_;

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from enum import Enum
-
+from ..api.ctp_constant import THOST_FTDC_D_Buy,THOST_FTDC_D_Sell,THOST_FTDC_PD_Long,THOST_FTDC_PD_Short,THOST_FTDC_PD_Net
 
 
 # ################        Begin consts  # ################  
@@ -275,6 +275,15 @@ class Direction(Enum):
     LONG = "多"
     SHORT = "空"
     NET = "净"
+
+DIRECTION_VT2CTP = {
+    Direction.LONG: THOST_FTDC_D_Buy, 
+    Direction.SHORT: THOST_FTDC_D_Sell,
+    Direction.NET: THOST_FTDC_PD_Net
+}
+DIRECTION_CTP2VT = {v: k for k, v in DIRECTION_VT2CTP.items()}
+DIRECTION_CTP2VT[THOST_FTDC_PD_Long] = Direction.LONG
+DIRECTION_CTP2VT[THOST_FTDC_PD_Short] = Direction.SHORT
 
 
 class Offset(Enum):

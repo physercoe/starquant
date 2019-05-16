@@ -13,9 +13,9 @@ class PositionWindow(QtWidgets.QTableWidget):
         self.header = ['Account',
                        'FullSymbol',
                        'Direction',
-                       'Avg_Price',
-                       'Quantity',
-                       'Yesterday_Q',
+                       'Price',
+                       'Volume',
+                       'Yd_volume',
                        'Freezed',
                        'Open_PnL',
                        'Closed_PnL',
@@ -46,25 +46,22 @@ class PositionWindow(QtWidgets.QTableWidget):
             return
         if position.key in self._poskey:
             row = self._poskey.index(position.key)
-            if (position.volume == 0) and (position.yd_volume == 0):
-                self.removeRow(row)
-            else:
-                self.setItem(0, 3, QtWidgets.QTableWidgetItem(str(position.price)))
-                self.setItem(0, 4, QtWidgets.QTableWidgetItem(str(abs(position.volume))))
-                self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(position.yd_volume)))
-                self.setItem(0, 6, QtWidgets.QTableWidgetItem(str(position.frozen)))
-                self.setItem(0, 7, QtWidgets.QTableWidgetItem(str(position.pnl)))
-                self.setItem(0, 8, QtWidgets.QTableWidgetItem(str(position.realized_pnl)))
-                self.setItem(0, 9, QtWidgets.QTableWidgetItem(position.api))
-                self.setItem(0, 10, QtWidgets.QTableWidgetItem(position.timestamp))
+            self.setItem(row, 3, QtWidgets.QTableWidgetItem(str(position.price)))
+            self.setItem(row, 4, QtWidgets.QTableWidgetItem(str(position.volume)))
+            self.setItem(row, 5, QtWidgets.QTableWidgetItem(str(position.yd_volume)))
+            self.setItem(row, 6, QtWidgets.QTableWidgetItem(str(position.frozen)))
+            self.setItem(row, 7, QtWidgets.QTableWidgetItem(str(position.pnl)))
+            self.setItem(row, 8, QtWidgets.QTableWidgetItem(str(position.realized_pnl)))
+            self.setItem(row, 9, QtWidgets.QTableWidgetItem(position.api))
+            self.setItem(row, 10, QtWidgets.QTableWidgetItem(position.timestamp))
         else:
             self._poskey.insert(0, position.key)
             self.insertRow(0)
             self.setItem(0, 0, QtWidgets.QTableWidgetItem(position.account))
             self.setItem(0, 1, QtWidgets.QTableWidgetItem(position.full_symbol))
-            self.setItem(0, 2, QtWidgets.QTableWidgetItem(str(self._lang_dict['Long'] if position.volume > 0 else self._lang_dict['Short'])))
+            self.setItem(0, 2, QtWidgets.QTableWidgetItem(position.direction.name))
             self.setItem(0, 3, QtWidgets.QTableWidgetItem(str(position.price)))
-            self.setItem(0, 4, QtWidgets.QTableWidgetItem(str(abs(position.volume))))
+            self.setItem(0, 4, QtWidgets.QTableWidgetItem(str(position.volume)))
             self.setItem(0, 5, QtWidgets.QTableWidgetItem(str(position.yd_volume)))
             self.setItem(0, 6, QtWidgets.QTableWidgetItem(str(position.frozen)))
             self.setItem(0, 7, QtWidgets.QTableWidgetItem(str(position.pnl)))
@@ -73,7 +70,7 @@ class PositionWindow(QtWidgets.QTableWidget):
             self.setItem(0, 10, QtWidgets.QTableWidgetItem(position.timestamp))
 
         
-        self.resizeRowsToContents()
+        self.horizontalHeader().resizeSections(QtWidgets.QHeaderView.ResizeToContents)
 
     def on_fill(self, fill_evnet):
         pass

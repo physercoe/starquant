@@ -119,7 +119,7 @@ class ManualWindow(QtWidgets.QFrame):
             m.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
             m.source = '0'  
             o = OrderData()
-            o.api = m.destination #self.api_type.currentText() 
+            o.api = self.api_type.currentText() 
             o.account = self.accounts.currentText()
             o.clientID = 0
             o.client_order_id = self.manualorderid
@@ -138,7 +138,7 @@ class ManualWindow(QtWidgets.QFrame):
             m.destination = self.api_type.currentText() + '.TD'
             m.source = '0'
             o = OrderData()
-            o.api = m.destination #self.api_type.currentText() 
+            o.api = self.api_type.currentText() 
             o.account = self.accounts.currentText()
             o.clientID = 0
             o.client_order_id = self.manualorderid
@@ -350,10 +350,10 @@ class CtpApiWindow(QtWidgets.QFrame):
 
         self.order_quantity = QtWidgets.QLineEdit()
         self.order_quantity.setValidator(QtGui.QIntValidator())
-        self.order_quantity.setText('0')
+        self.order_quantity.setText('1')
         self.order_minquantity = QtWidgets.QLineEdit()
         self.order_minquantity.setValidator(QtGui.QIntValidator())
-        self.order_minquantity.setText('0')
+        self.order_minquantity.setText('1')
         ctphboxlayout6 = QtWidgets.QHBoxLayout()
         ctphboxlayout6.addWidget(QtWidgets.QLabel('Volume'))
         ctphboxlayout6.addWidget(self.order_quantity)

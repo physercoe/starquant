@@ -13,6 +13,7 @@ import importlib
 from typing import Any, Callable
 from pathlib import Path
 
+from ..api.ctp_constant import THOST_FTDC_PT_Net
 from ..common.datastruct import *
 from ..common.utility import *
 from ..strategy.strategy_base import StrategyBase
@@ -123,6 +124,9 @@ class StrategyEngine(BaseEngine):
                 product=PRODUCT_CTP2VT[str(data["product"])],
                 size=data["size"],
                 pricetick=data["pricetick"],
+                net_position = True if str(data["positiontype"]) == THOST_FTDC_PT_Net else False,
+                long_margin_ratio = data["long_margin_ratio"],
+                short_margin_ratio = data["short_margin_ratio"],
                 full_symbol = data["full_symbol"]
             )            
             # For option only

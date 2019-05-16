@@ -58,6 +58,7 @@ class OrderWindow(QtWidgets.QTableWidget):
                 self.item(row, 6).setText(orderstatus.order_status.name)
                 self.item(row, 8).setText(orderstatus.update_time)
                 self.item(row, 9).setText(orderstatus.tag)
+                self.item(row, 13).setText(orderstatus.orderNo)
             else:  # including empty
                 self._orderids.insert(0, orderstatus.server_order_id)
                 self.insertRow(0)
@@ -75,7 +76,7 @@ class OrderWindow(QtWidgets.QTableWidget):
                 self.setItem(0, 11, QtWidgets.QTableWidgetItem(str(orderstatus.client_order_id)))
                 self.setItem(0, 12, QtWidgets.QTableWidgetItem(str(orderstatus.server_order_id)))
                 self.setItem(0, 13, QtWidgets.QTableWidgetItem(orderstatus.orderNo))
-        self.resizeRowsToContents()
+        self.horizontalHeader().resizeSections(QtWidgets.QHeaderView.ResizeToContents)
 
     def cancel_order(self,mi):
         row = mi.row()
