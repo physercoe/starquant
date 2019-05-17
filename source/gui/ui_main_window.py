@@ -504,7 +504,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 #--------------------mainwindow----------------------
-        manualwidget = ManualWindow(self._config_server['apis'],self._config_server['accounts'])
+        manualwidget = ManualWindow(self._config_server['gateway'])
         manualwidget.order_signal.connect(self._outgoing_order_request_handler)
         manualwidget.qryacc_signal.connect(self._outgoing_account_request_handler)
         manualwidget.qrypos_signal.connect(self._outgoing_position_request_handler)

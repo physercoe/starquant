@@ -16,7 +16,7 @@ namespace StarQuant
 {
 	//extern std::atomic<bool> gShutdown;
 
-	CtpTDEngine::CtpTDEngine(const string& acc) 
+	CtpTDEngine::CtpTDEngine(const string& gw) 
 		: needauthentication_(false)
 		, needsettlementconfirm_(true)
 		, issettleconfirmed_(false)
@@ -31,7 +31,7 @@ namespace StarQuant
 		, autoqry_(false)
 		, timercount_(0)
 	{
-		name_ = string("CTP") + DESTINATION_SEPARATOR + "TD" + DESTINATION_SEPARATOR + acc;
+		name_ = gw;
 		init();
 	}
 
@@ -67,7 +67,7 @@ namespace StarQuant
 			msleep(100);
 		}
 		string acc = accAddress(name_);	
-		ctpacc_ = CConfig::instance()._accmap[acc];
+		ctpacc_ = CConfig::instance()._gatewaymap[name_];
 		string path = CConfig::instance().logDir() + "/ctp/td/" + acc;
 		boost::filesystem::path dir(path.c_str());
 		boost::filesystem::create_directory(dir);
@@ -234,6 +234,18 @@ namespace StarQuant
 		inconnectaction_ = true;
 		THOST_TE_RESUME_TYPE privatetype = THOST_TERT_QUICK;// THOST_TERT_RESTART，THOST_TERT_RESUME, THOST_TERT_QUICK
 		THOST_TE_RESUME_TYPE publictype = THOST_TERT_QUICK;// THOST_TERT_RESTART，THOST_TERT_RESUME, THOST_TERT_QUICK
+		if (ctpacc_.publicstream == "restart"){
+			publictype = THOST_TERT_RESTART;
+		}
+		else if  (ctpacc_.publicstream == "resume"){
+			publictype = THOST_TERT_RESUME;
+		}
+		if (ctpacc_.privatestream == "restart"){
+			privatetype = THOST_TERT_RESTART;
+		}
+		else if  (ctpacc_.privatestream == "resume"){
+			privatetype = THOST_TERT_RESUME;
+		}		
 		int error;
 		int count = 0;// count numbers of tries, two many tries ends
 		string ctp_td_address = ctpacc_.td_ip + ":" + to_string(ctpacc_.td_port);	
@@ -390,13 +402,10 @@ namespace StarQuant
 		strcpy(pmsg->data_.orderField_.InvestorID, ctpacc_.userid.c_str());
 		strcpy(pmsg->data_.orderField_.UserID, ctpacc_.userid.c_str());
 		strcpy(pmsg->data_.orderField_.BrokerID, ctpacc_.brokerid.c_str());
-		int error = api_->ReqOrderInsert(&(pmsg->data_.orderField_), reqId_++);
-		lock_guard<mutex> gs(orderStatus_mtx);
-		pmsg->data_.orderStatus_ = OrderStatus::OS_Submitted;
 		lock_guard<mutex> g(oid_mtx);
 		pmsg->data_.serverOrderID_ = m_serverOrderId++;
 		pmsg->data_.brokerOrderID_ = m_brokerOrderId_++;
-		pmsg->data_.localNo_ = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + to_string(orderRef_++) ;
+		pmsg->data_.localNo_ = to_string(frontID_) + "." + to_string(sessionID_) + "." + to_string(orderRef_++) ;
 		pmsg->data_.createTime_ = ymdhmsf();			
 		//pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pmsg->data_.orderField_.InstrumentID);
 		pmsg->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pmsg->data_.orderField_.InstrumentID];
@@ -409,10 +418,13 @@ namespace StarQuant
 			+ "p" + pmsg->data_.orderField_.OrderPriceType
 			+ "c" + pmsg->data_.orderField_.ContingentCondition + "-" + to_string(pmsg->data_.orderField_.StopPrice)
 			+ "t" + pmsg->data_.orderField_.TimeCondition
-			+ "v" + pmsg->data_.orderField_.VolumeCondition;
-		LOG_INFO(logger, name_<<"Insert Order: clientorderid ="<<pmsg->data_.clientOrderID_<<" FullSymbol = "<<pmsg->data_.fullSymbol_);				
+			+ "v" + pmsg->data_.orderField_.VolumeCondition;		
 		std::shared_ptr<Order> o = pmsg->toPOrder();
-		OrderManager::instance().trackOrder(o);		
+		OrderManager::instance().trackOrder(o);	
+		lock_guard<mutex> gs(orderStatus_mtx);
+		pmsg->data_.orderStatus_ = OrderStatus::OS_Submitted;
+		int error = api_->ReqOrderInsert(&(pmsg->data_.orderField_), reqId_++);
+		LOG_INFO(logger, name_<<"Insert Order: clientorderid ="<<pmsg->data_.clientOrderID_<<" FullSymbol = "<<pmsg->data_.fullSymbol_);					
 		if (error != 0){
 			o->orderStatus_ = OrderStatus::OS_Error;
 			pmsg->data_.orderStatus_ = OrderStatus::OS_Error;
@@ -476,7 +488,7 @@ namespace StarQuant
 			o = OrderManager::instance().retrieveOrderFromServerOrderId(pmsg->data_.serverOrderID_);
 		}
 		if (o != nullptr){
-			vector<string> locno = stringsplit(o->localNo_,'-');
+			vector<string> locno = stringsplit(o->localNo_,'.');
 			ofront = stoi(locno[0]);
 			osess = stoi(locno[1]);
 			oref = locno[2];
@@ -746,8 +758,8 @@ namespace StarQuant
 		{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			string oref = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + pInputOrder->OrderRef;
-			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,oref);
+			string oref = to_string(frontID_) + "." + to_string(sessionID_) + "." + pInputOrder->OrderRef;
+			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.userid,oref);
 			if (o != nullptr) {
 				lock_guard<mutex> g(orderStatus_mtx);
 				o->orderStatus_ = OS_Error;
@@ -789,10 +801,10 @@ namespace StarQuant
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
 
 			long oid = std::stol(pInputOrderAction->OrderRef);
-			string localno = to_string(pInputOrderAction->FrontID) + "-" + to_string(pInputOrderAction->SessionID)
-				+ "-" + pInputOrderAction->OrderRef;
+			string localno = to_string(pInputOrderAction->FrontID) + "." + to_string(pInputOrderAction->SessionID)
+				+ "." + pInputOrderAction->OrderRef;
 			//std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromServerOrderId(oid);
-			auto o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,localno);
+			auto o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.userid,localno);
 			if (o != nullptr) {
 				auto pmsgout = make_shared<ErrorMsg>(to_string(o->clientID_), name_,
 					MSG_TYPE_ERROR_CANCELORDER,
@@ -838,7 +850,7 @@ namespace StarQuant
 				pos->key_ = key;
 				pos->account_ = ctpacc_.userid;
 				pos->fullSymbol_ = fullsym;
-				pos->api_ = "CTP";
+				pos->api_ = "CTP.TD";
 				posbuffer_[key] = pos;
 			}else
 			{
@@ -1077,15 +1089,14 @@ namespace StarQuant
 			LOG_INFO(logger,name_ <<" onRtnOrder return nullptr");
 			return;
 		}
-		string localno = to_string(pOrder->FrontID) + "-" + to_string(pOrder->SessionID) + "-" + pOrder->OrderRef ;
+		string localno = to_string(pOrder->FrontID) + "." + to_string(pOrder->SessionID) + "." + pOrder->OrderRef ;
 		//long nOrderref = std::stol(pOrder->OrderRef);
 		//bool isotherorder = (pOrder->FrontID != frontID_) || (pOrder->SessionID != sessionID_) ; 
-		shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,localno);
+		shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.userid,localno);
 		if ( o == nullptr) {			// create an order
-			lock_guard<mutex> g(oid_mtx);
 			o = make_shared<Order>();
-			o->api_ = "UNKNOWN";
-			o->account_ = ctpacc_.id;    
+			o->api_ = "CTP.TD";
+			o->account_ = ctpacc_.userid;    
 			// o->fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pOrder->InstrumentID);
 			o->fullSymbol_ = DataManager::instance().ctp2Full_[pOrder->InstrumentID];
 			o->price_ = pOrder->LimitPrice;
@@ -1099,11 +1110,12 @@ namespace StarQuant
 				+ "c" + pOrder->ContingentCondition + "-" + to_string(pOrder->StopPrice)
 				+ "t" + pOrder->TimeCondition
 				+ "v" + pOrder->VolumeCondition;
+			lock_guard<mutex> g(oid_mtx);
 			o->serverOrderID_ = m_serverOrderId++;
 			o->brokerOrderID_ = m_brokerOrderId_++;
 			o->orderNo_ = pOrder->OrderSysID;
 			o->localNo_ = localno;
-			o->createTime_ = string(pOrder->InsertDate) + string(pOrder->InsertTime);
+			o->createTime_ = string(pOrder->InsertDate) + " " + string(pOrder->InsertTime);
 			o->updateTime_ = ymdhmsf();
 			o->orderStatus_ =CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
 			OrderManager::instance().trackOrder(o);
@@ -1165,8 +1177,8 @@ namespace StarQuant
 		pmsg->data_.fillFlag_ = CtpComboOffsetFlagToOrderFlag(pTrade->OffsetFlag);
 		//auto o = OrderManager::instance().retrieveOrderFromServerOrderId(std::stol(pTrade->OrderRef));
 
-		string localno = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + pTrade->OrderRef;		
-		auto o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,localno);
+		string localno = to_string(frontID_) + "." + to_string(sessionID_) + "." + pTrade->OrderRef;		
+		auto o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.userid,localno);
 		auto o2 = OrderManager::instance().retrieveOrderFromOrderNo(pTrade->OrderSysID);
 		//bool islocalorder = ( (o != nullptr) && !(o2 != nullptr && o2->localNo_ != localno) );
 		if (o2 != nullptr) {
@@ -1200,7 +1212,7 @@ namespace StarQuant
 			messenger_->send(pmsgos);		
 		}
 		else {
-			pmsg->data_.api_ = "UNKONWN";
+			pmsg->data_.api_ = "CTP.TD";
 			pmsg->data_.account_ = ctpacc_.userid;
 			messenger_->send(pmsg);
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
@@ -1231,8 +1243,8 @@ namespace StarQuant
 			}			
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			string localno = to_string(frontID_) + "-" + to_string(sessionID_) + "-" + pInputOrder->OrderRef;
-			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,localno);
+			string localno = to_string(frontID_) + "." + to_string(sessionID_) + "." + pInputOrder->OrderRef;
+			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.userid,localno);
 			if (o != nullptr) {
 				lock_guard<mutex> g(orderStatus_mtx);
 				o->orderStatus_ = OS_Error;			// rejected
@@ -1276,8 +1288,8 @@ namespace StarQuant
 		if(bResult){
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			string localno = to_string(pOrderAction->FrontID) + "-" + to_string(pOrderAction->SessionID) + "-" + pOrderAction->OrderRef;
-			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.id,localno);
+			string localno = to_string(pOrderAction->FrontID) + "." + to_string(pOrderAction->SessionID) + "." + pOrderAction->OrderRef;
+			std::shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.userid,localno);
 			if (o != nullptr) {
 				auto pmsgout = make_shared<ErrorMsg>(to_string(o->clientID_), name_,
 					MSG_TYPE_ERROR_CANCELORDER,

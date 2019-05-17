@@ -30,14 +30,13 @@ class ManualWindow(QtWidgets.QFrame):
     qrypos_signal = QtCore.pyqtSignal(Event)    
     qrycontract_signal = QtCore.pyqtSignal(Event) 
     manual_req = QtCore.pyqtSignal(str)
-    def __init__(self, apilist, acclist):
+    def __init__(self, apilist):
         super(ManualWindow, self).__init__()
 
         ## member variables
         self._current_time = None
-        self._apilist = apilist
-        self._acclist = acclist
-        self._apistatusdict = {}
+        self._gwlist = apilist
+        self._gwstatusdict = {}
         self._widget_dict = {}
 
         self.manualorderid = 0
@@ -56,18 +55,15 @@ class ManualWindow(QtWidgets.QFrame):
             self.manual_req.emit(req)
 
     def updatestatus(self,index=0):
-        key = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
-        apistatus = str(self._apistatusdict[key].name)
-        self.apistatus.setText(apistatus)
+        key = self.gateway.currentText()        
+        gwstatus = str(self._gwstatusdict[key].name)
+        self.gwstatus.setText(gwstatus)
         
     def updateapistatusdict(self,info_event):
         key = info_event.source
-        if key.endswith('.MD'):
-            key = key.replace('.MD','.TD.')
-        self._apistatusdict[key] = ESTATE(int(info_event.data.msg))
-        # print(self._apistatusdict[key].name)
+        self._gwstatusdict[key] = ESTATE(int(info_event.data.msg))
         self.updatestatus()
-        pass
+
 
     def refresh(self):
         msg2 = '*' \
@@ -75,29 +71,19 @@ class ManualWindow(QtWidgets.QFrame):
         self.manual_req.emit(msg2)
 
     def connect(self):
-        msg = self.api_type.currentText() + '.TD.' + self.accounts.currentText() \
+        msg = self.gateway.currentText() \
             + '|' + '0' + '|' + str(MSG_TYPE.MSG_TYPE_ENGINE_CONNECT.value)
         self.manual_req.emit(msg)
-        msg2 = self.api_type.currentText() + '.MD' \
-            + '|' + '0' + '|' + str(MSG_TYPE.MSG_TYPE_ENGINE_CONNECT.value)
-        self.manual_req.emit(msg2)
 
     def disconnect(self):
-        msg = self.api_type.currentText() + '.TD.' + self.accounts.currentText() \
+        msg = self.gateway.currentText() \
             + '|' + '0' + '|' + str(MSG_TYPE.MSG_TYPE_ENGINE_DISCONNECT.value)
         self.manual_req.emit(msg)
-        msg2 = self.api_type.currentText() + '.MD' \
-            + '|' + '0' + '|' + str(MSG_TYPE.MSG_TYPE_ENGINE_DISCONNECT.value)
-        self.manual_req.emit(msg2)
 
     def reset(self):
-        msg = self.api_type.currentText() + '.TD.' + self.accounts.currentText() \
+        msg = self.gateway.currentText() \
             + '|' + '0' + '|' + str(MSG_TYPE.MSG_TYPE_ENGINE_RESET.value)
         self.manual_req.emit(msg)
-        msg2 = self.api_type.currentText() + '.MD' \
-            + '|' + '0' + '|' + str(MSG_TYPE.MSG_TYPE_ENGINE_RESET.value)
-        self.manual_req.emit(msg2)
-
 
     def send_cmd(self):
         try:
@@ -107,7 +93,7 @@ class ManualWindow(QtWidgets.QFrame):
             print('send cmd error')
 
     def subsrcibe(self,ss):
-        ss.destination = self.api_type.currentText() + '.MD'
+        ss.destination = self.gateway.currentText()
         ss.source = '0'
         self.subscribe_signal.emit(ss)
 
@@ -116,11 +102,11 @@ class ManualWindow(QtWidgets.QFrame):
         try:
             m = Event(EventType.ORDER)
             m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_CTP
-            m.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+            m.destination = self.gateway.currentText() 
             m.source = '0'  
             o = OrderData()
-            o.api = self.api_type.currentText() 
-            o.account = self.accounts.currentText()
+            o.api = "CTP.TD"       #self.gateway.currentText() 
+            o.account = m.destination[7:]
             o.clientID = 0
             o.client_order_id = self.manualorderid
             self.manualorderid = self.manualorderid + 1
@@ -129,17 +115,17 @@ class ManualWindow(QtWidgets.QFrame):
             m.data = o   
             self.order_signal.emit(m)
         except:
-            print('place order error')
+            print('place ctp order error')
 
     def place_order_paper(self,of):
         try:
             m = Event(EventType.ORDER)
             m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_PAPER
-            m.destination = self.api_type.currentText() + '.TD'
+            m.destination = self.gateway.currentText() 
             m.source = '0'
             o = OrderData()
-            o.api = self.api_type.currentText() 
-            o.account = self.accounts.currentText()
+            o.api = "PAPER.TD"#self.api_type.currentText() 
+            o.account = "manual"
             o.clientID = 0
             o.client_order_id = self.manualorderid
             self.manualorderid = self.manualorderid + 1
@@ -147,20 +133,20 @@ class ManualWindow(QtWidgets.QFrame):
             o.orderfield = of
             self.order_signal.emit(o)
         except:
-            print('place order error')
+            print('place paper order error')
 
     def qryacc(self,qa):
-        qa.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+        qa.destination = self.gateway.currentText() 
         qa.source = '0'
         self.qryacc_signal.emit(qa)
 
     def qrypos(self,qp):
-        qp.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+        qp.destination = self.gateway.currentText() 
         qp.source = '0'
         self.qrypos_signal.emit(qp)   
 
     def qrycontract(self,qc):
-        qc.destination = self.api_type.currentText() + '.TD.' + self.accounts.currentText()
+        qc.destination = self.gateway.currentText() 
         qc.source = '0'
         self.qrycontract_signal.emit(qc)          
      
@@ -176,31 +162,24 @@ class ManualWindow(QtWidgets.QFrame):
         manuallayout = QtWidgets.QFormLayout()
         # manuallayout.addRow(QtWidgets.QLabel('Manual Control Center'))
 
-        self.api_type = QtWidgets.QComboBox()
-        self.api_type.addItems([str(element) for element in self._apilist])
-        self.accounts = QtWidgets.QComboBox()
-        al = [str(element) for element in self._acclist]
-        al.insert(0,'')
-        for api in self._apilist:
-            for acc in al:
-                key1 = str(api) + '.TD.' + acc
-                self._apistatusdict[key1] = ESTATE.STOP
-        self.accounts.addItems(al)
-        self.apistatus = QtWidgets.QLineEdit()
-        self.apistatus.setText('STOP')
-        self.apistatus.setReadOnly(True)
-        self.api_type.currentIndexChanged.connect(self.updatestatus)
-        self.accounts.currentIndexChanged.connect(self.updatestatus)
+        self.gateway = QtWidgets.QComboBox()
+        self.gateway.addItems([str(element) for element in self._gwlist])
+        for api in self._gwlist:
+            self._gwstatusdict[str(api)] = ESTATE.STOP
+
+        self.gwstatus = QtWidgets.QLineEdit()
+        self.gwstatus.setText('STOP')
+        self.gwstatus.setReadOnly(True)
+        self.gateway.currentIndexChanged.connect(self.updatestatus)
         self.btn_refresh = QtWidgets.QPushButton('Refresh')
         self.btn_refresh.clicked.connect(self.refresh)
 
         manualhboxlayout1 = QtWidgets.QHBoxLayout()
-        manualhboxlayout1.addWidget(QtWidgets.QLabel('API'))
-        manualhboxlayout1.addWidget(self.api_type)
-        manualhboxlayout1.addWidget(QtWidgets.QLabel('Account'))
-        manualhboxlayout1.addWidget(self.accounts) 
+        manualhboxlayout1.addWidget(QtWidgets.QLabel('Gateway'))
+        manualhboxlayout1.addWidget(self.gateway)
+
         manualhboxlayout1.addWidget(QtWidgets.QLabel('Status'))  
-        manualhboxlayout1.addWidget(self.apistatus)  
+        manualhboxlayout1.addWidget(self.gwstatus)  
         manualhboxlayout1.addWidget(self.btn_refresh)            
         manuallayout.addRow(manualhboxlayout1)   
  
@@ -258,7 +237,7 @@ class ManualWindow(QtWidgets.QFrame):
         self.api_widget.addWidget(ctpapi)
         self.api_widget.addWidget(paperapi)
         self.api_widget.setCurrentIndex(0)
-        self.api_type.currentIndexChanged.connect(self.api_widget.setCurrentIndex)
+        self.gateway.currentIndexChanged.connect(self.set_apiwidget )
         manuallayout.addRow(self.api_widget)  
 
         self.logoutput =  QtWidgets.QTextBrowser()
@@ -266,6 +245,12 @@ class ManualWindow(QtWidgets.QFrame):
         manuallayout.addRow(self.logoutput)  
 
         self.setLayout(manuallayout)
+    def set_apiwidget(self,index = 0):
+        key = self.gateway.currentText()
+        if key.startswith("CTP"):
+            self.api_widget.setCurrentIndex(0)
+        else:
+            self.api_widget.setCurrentIndex(1)
 
 class CtpApiWindow(QtWidgets.QFrame):
     orderfield_signal = QtCore.pyqtSignal(CtpOrderField)
@@ -377,7 +362,7 @@ class CtpApiWindow(QtWidgets.QFrame):
 
 
         self.time_condition_type = QtWidgets.QComboBox()
-        self.time_condition_type.addItems(['IOC','GFS','GFD','GTD','GTC','GFA'])
+        self.time_condition_type.addItems(['立即或取消','GFS','当日有效','GTD','GTC','GFA'])
         self.orderfielddict['timecondition'] = [THOST_FTDC_TC_IOC,THOST_FTDC_TC_GFS,THOST_FTDC_TC_GFD,THOST_FTDC_TC_GTD,THOST_FTDC_TC_GTC,THOST_FTDC_TC_GFA]
         self.time_condition_time = QtWidgets.QLineEdit()
         self.volume_condition_type = QtWidgets.QComboBox()
@@ -497,8 +482,8 @@ class PaperApiWindow(QtWidgets.QFrame):
         self.exchange.addItems(['SHFE','ZCE','DCE','CFFEX','INE'])
         self.orderfielddict['exchange'] = ['SHFE','ZCE','DCE','CFFEX','INE']
         self.sec_type = QtWidgets.QComboBox()
-        self.sec_type.addItems(['F', 'O', 'C','S'])
-        self.orderfielddict['sectype'] = ['F','O','C','S']
+        self.sec_type.addItems(['Future', 'Option', 'Spread','Stock'])
+        self.orderfielddict['sectype'] = ['F','O','S','T']
         paperhboxlayout1 = QtWidgets.QHBoxLayout()
         paperhboxlayout1.addWidget(QtWidgets.QLabel('Exchange'))
         paperhboxlayout1.addWidget(self.exchange)
@@ -600,7 +585,6 @@ class ItchatMsgThread(QtCore.QThread):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     apilist = ['CTP','PAPER']
-    acclist = ['0120000963','99683265']
-    ui = ManualWindow(apilist,acclist)
+    ui = ManualWindow(apilist)
     ui.show()
     app.exec_()

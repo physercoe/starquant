@@ -838,12 +838,12 @@ class StrategyEngine(BaseEngine):
             self.ordercount += 1
             m = Event(type=EventType.ORDER,
                     data=req,
-                    des=req.api + '.TD.' + req.account, 
+                    des=req.api + '.' + req.account, 
                     src=str(self.id)
                 )
-            if req.api == "CTP":
+            if req.api == "CTP.TD":
                 m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_CTP
-            elif req.api == "PAPER":
+            elif req.api == "PAPER.TD":
                 m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_PAPER
             else:
                 print("error:api not support!")
@@ -871,7 +871,7 @@ class StrategyEngine(BaseEngine):
         req = order.create_cancel_request()
         m = Event(type=EventType.CANCEL,            
             data=req,
-            des=order.api + '.TD.'+ order.account,
+            des=order.api + '.'+ order.account,
             src=str(self.id),
             msgtype=MSG_TYPE.MSG_TYPE_ORDER_ACTION
             )

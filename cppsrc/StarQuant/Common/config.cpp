@@ -20,13 +20,6 @@ namespace StarQuant {
 	mutex CConfig::instancelock_;
 
 	CConfig::CConfig() {
-		_loadapi["CTP"] = false;
-		_loadapi["TAP"] = false;
-		_loadapi["IB"] = false;
-		_loadapi["SINA"] = false;
-		_loadapi["GOOGLE"] = false;
-		_loadapi["PAPER"] = false;
-		_loadapi["XTP"] = false;
 		readConfig();
 	}
 
@@ -46,8 +39,7 @@ namespace StarQuant {
 		std::printf("Current path is : %s\n", boost::filesystem::current_path().string().c_str());
 #endif
 //  reset maps
-		_accmap.clear();
-		_loadapi.clear();
+		_gatewaymap.clear();
 
 // 读入合约相关信息数据，TODO:从 md qry得到相关数据
 		std::lock_guard<mutex> g(readlock_);
@@ -99,29 +91,27 @@ namespace StarQuant {
 		SERVERPUB_URL = config["serverpub_url"].as<std::string>();
 		SERVERSUB_URL = config["serversub_url"].as<std::string>();
 		SERVERPULL_URL = config["serverpull_url"].as<std::string>();
-		// read api info
-		const std::vector<string> apis = config["apis"].as<std::vector<string>>();
-		for (auto s : apis){
-			_loadapi[s] = true;
-		}
-		// read account info
-		const std::vector<string> accs = config["accounts"].as<std::vector<string>>();
-		for (auto s : accs){
-			struct Account acc;
-			acc.id = s;
-			acc.apitype = config[s]["api"].as<std::string>();
-			acc.brokerid = config[s]["brokerid"].as<std::string>();
-			acc.md_ip = config[s]["md_ip"].as<std::string>();
-			acc.md_port = config[s]["md_port"].as<uint16_t>();
-			acc.td_ip = config[s]["td_ip"].as<std::string>();
-			acc.td_port = config[s]["td_port"].as<uint16_t>();
-			acc.userid = config[s]["userid"].as<std::string>();
-			acc.password = config[s]["password"].as<std::string>();
-			acc.auth_code = config[s]["auth_code"].as<std::string>();
-			acc.productinfo = config[s]["user_prod_info"].as<std::string>();
-			acc.intid = config[s]["intid"].as<int>();
-			acc.appid = config[s]["appid"].as<std::string>();
-			_accmap[s] = acc;
+
+		// read gateway info
+		const std::vector<string> gws = config["gateway"].as<std::vector<string>>();
+		for (auto s : gws){
+			struct Gateway gw;
+			gw.id = s;
+			gw.intid = config[s]["intid"].as<int>();
+			gw.api = config[s]["api"].as<std::string>();
+			gw.brokerid = config[s]["brokerid"].as<std::string>();
+			gw.md_ip = config[s]["md_ip"].as<std::string>();
+			gw.md_port = config[s]["md_port"].as<uint16_t>();
+			gw.td_ip = config[s]["td_ip"].as<std::string>();
+			gw.td_port = config[s]["td_port"].as<uint16_t>();
+			gw.userid = config[s]["userid"].as<std::string>();
+			gw.password = config[s]["password"].as<std::string>();
+			gw.auth_code = config[s]["auth_code"].as<std::string>();
+			gw.productinfo = config[s]["user_prod_info"].as<std::string>();
+			gw.appid = config[s]["appid"].as<std::string>();
+			gw.publicstream = config[s]["publicstream"].as<std::string>();
+			gw.privatestream = config[s]["privatestream"].as<std::string>();
+			_gatewaymap[s] = gw;
 		}		
 
 		// read risk info

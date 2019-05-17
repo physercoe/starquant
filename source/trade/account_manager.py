@@ -12,10 +12,10 @@ class AccountManager(object):
     def reset(self):
         self._account_dict.clear()
         # initialize accounts from server_config.yaml
-        for a in self._config_server['accounts']:
+        for a in self._config_server['gateway']:
             account = AccountData()
             account.accountid = self._config_server[a]['userid']
-            account.gateway_name = self._config_server[a]['api']
+            account.gateway_name = str(a)
             self._account_dict[account.accountid] = account
 
     def on_account(self, account_event):

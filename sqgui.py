@@ -38,7 +38,7 @@ def main():
     try:
         path = os.path.abspath(os.path.dirname(__file__))
         config_file = os.path.join(path, 'source/gui/language/en/live_text.yaml')
-        font = QtGui.QFont('Microsoft Sans Serif', 10)
+        font = QtGui.QFont('Microsoft Sans Serif', 12)
         if config_client['language'] == 'cn':
             config_file = os.path.join(path, 'source/gui/language/cn/live_text.yaml')
             font = QtGui.QFont(u'微软雅黑', 10)

@@ -18,7 +18,7 @@ namespace StarQuant
 class TapMDEngine : public IEngine, ITapQuoteAPINotify {
 public:
 	string name_;
-	Account tapacc_;
+	Gateway tapacc_;
 	TapMDEngine();
 	~TapMDEngine();
 

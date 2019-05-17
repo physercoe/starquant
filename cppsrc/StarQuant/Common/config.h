@@ -59,7 +59,7 @@ namespace StarQuant {
 		int _tickinterval =0;
 		int _brokerdelay = 0;
 		static CConfig& instance();
-		map<string,Account> _accmap;
+		map<string,Gateway> _gatewaymap;
 
 		mutex readlock_;
 		void readConfig();
@@ -71,9 +71,6 @@ namespace StarQuant {
 		string logDir();
 		string dataDir();
 		string logconfigfile_;
-
-		map<string,bool> _loadapi;
-
 
 
 		/****************************************Securities List *************************************/

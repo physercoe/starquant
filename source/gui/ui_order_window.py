@@ -85,7 +85,7 @@ class OrderWindow(QtWidgets.QTableWidget):
         order_acc = self.item(row,0).text()
         order_client = self.item(row,1).text()
         order_cid = self.item(row,11).text()
-        msg = order_api + '.TD.' + order_acc + '|0|' + str(MSG_TYPE.MSG_TYPE_CANCEL_ORDER.value) \
+        msg = order_api + '.' + order_acc + '|0|' + str(MSG_TYPE.MSG_TYPE_CANCEL_ORDER.value) \
              + '|' + order_client + '|' + order_cid + '|' + order_id
         self._outgoingqueue.put(msg)
 

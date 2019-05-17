@@ -24,9 +24,9 @@ namespace StarQuant
 		bool needsettlementconfirm_;
 		bool issettleconfirmed_;
 		int m_brokerOrderId_;
-		Account ctpacc_;
+		Gateway ctpacc_;
 
-		CtpTDEngine(const string& acc );
+		CtpTDEngine(const string& gw );
 		~CtpTDEngine();
 
 		virtual void init();

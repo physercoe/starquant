@@ -21,7 +21,7 @@ namespace StarQuant
 	class TapTDEngine : public IEngine, ITapTradeAPINotify {
 	public:
 		string name_;
-		Account tapacc_;
+		Gateway tapacc_;
 		
 
 		TapTDEngine();

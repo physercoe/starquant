@@ -170,33 +170,32 @@ namespace StarQuant
 			else if (mode == RUN_MODE::TRADE_MODE) {
 				LOG_INFO(logger,"TRADE_MODE");
 					//threads_.push_back(new thread(TickRecordingService));
-				if (CConfig::instance()._loadapi["CTP"]){
-					std::shared_ptr<IEngine> ctpmdengine = make_shared<CtpMDEngine>();
-					pengines_.push_back(ctpmdengine);
-					threads_.push_back(new std::thread(startengine,ctpmdengine));
-					for (auto iter = CConfig::instance()._accmap.begin(); iter != CConfig::instance()._accmap.end(); iter++){
-						if (iter->second.apitype == "CTP"){
-							std::shared_ptr<IEngine> ctptdengine = make_shared<CtpTDEngine>(iter->first);
-							threads_.push_back(new std::thread(startengine,ctptdengine));
-							pengines_.push_back(ctptdengine);						
-						}
+				for (auto iter = CConfig::instance()._gatewaymap.begin(); iter != CConfig::instance()._gatewaymap.end(); iter++){
+					if (iter->second.api == "CTP.TD"){
+						std::shared_ptr<IEngine> ctptdengine = make_shared<CtpTDEngine>(iter->first);
+						threads_.push_back(new std::thread(startengine,ctptdengine));
+						pengines_.push_back(ctptdengine);						
 					}
+					else if (iter->second.api == "CTP.MD"){
+						std::shared_ptr<IEngine> ctpmdengine = make_shared<CtpMDEngine>();
+						pengines_.push_back(ctpmdengine);
+						threads_.push_back(new std::thread(startengine,ctpmdengine));					
+					}
+					else if (iter->second.api == "PAPER.TD"){
+						std::shared_ptr<IEngine> papertdengine = make_shared<PaperTDEngine>();
+						threads_.push_back(new std::thread(startengine,papertdengine));
+						pengines_.push_back(papertdengine);				
+					}
+					else if (iter->second.api == "TAP.TD"){
+						//  TODO: finish later
+					}					
+					else if (iter->second.api == "TAP.MD"){
+						//  TODO: finish later
+					}
+					else{
+						LOG_INFO(logger,"API not supported ,ignore it!");
+					}	
 				}
-				if (CConfig::instance()._loadapi["TAP"]){
-					// std::shared_ptr<IEngine> tapmdengine = make_shared<TapMDEngine>();
-					// std::shared_ptr<IEngine> taptdengine = make_shared<TapTDEngine>();
-					// threads_.push_back(new std::thread(startengine,tapmdengine));
-					// threads_.push_back(new std::thread(startengine,taptdengine));
-					// pengines_.push_back(tapmdengine);
-					// pengines_.push_back(taptdengine);		
-				}
-				if (CConfig::instance()._loadapi["XTP"]){
-				}
-				if (CConfig::instance()._loadapi["PAPER"]){
-					std::shared_ptr<IEngine> papertdengine = make_shared<PaperTDEngine>();
-					threads_.push_back(new std::thread(startengine,papertdengine));
-					pengines_.push_back(papertdengine);
-				}				
 			}
 			else {
 				LOG_ERROR(logger,"Mode doesn't exist,exit.");				

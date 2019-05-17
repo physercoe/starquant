@@ -55,7 +55,7 @@ namespace StarQuant
 		releaseapi();
 		CConfig::instance().readConfig();
 		init();	
-		LOG_DEBUG(logger,"CTP.MD reset");	
+		LOG_DEBUG(logger,name_<<" reset");	
 	}	
 
 	void CtpMDEngine::init(){
@@ -72,30 +72,21 @@ namespace StarQuant
 			messenger_ = std::make_unique<CMsgqEMessenger>(name_, CConfig::instance().SERVERSUB_URL);	
 			msleep(100);
 		}
-		for (auto iter = CConfig::instance()._accmap.begin(); iter != CConfig::instance()._accmap.end(); iter++){
-			if (iter->second.apitype == "CTP"){
-			//目前只采用第一个ctp账号的行情地址 
-			ctpacc_ = iter->second;
-			string path = CConfig::instance().logDir() + "/ctp/md";
-			boost::filesystem::path dir(path.c_str());
-			boost::filesystem::create_directory(dir);
-			// 创建API对象
-			this->api_ = CThostFtdcMdApi::CreateFtdcMdApi(path.c_str());
-			this->api_->RegisterSpi(this);
-
-			estate_ = DISCONNECTED;
-			auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
-						to_string(estate_));
-			messenger_->send(pmsgs);
-			apiinited_ = false;
-			autoconnect_ = CConfig::instance().autoconnect;
-
-			LOG_DEBUG(logger,name_ <<" inited, api version:"<<this->api_->GetApiVersion());
-			break;
-			}				
-		}
-
+		ctpacc_ = CConfig::instance()._gatewaymap[name_];
+		string path = CConfig::instance().logDir() + "/ctp/md";
+		boost::filesystem::path dir(path.c_str());
+		boost::filesystem::create_directory(dir);
+		// 创建API对象
+		this->api_ = CThostFtdcMdApi::CreateFtdcMdApi(path.c_str());
+		this->api_->RegisterSpi(this);
+		estate_ = DISCONNECTED;
+		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+					MSG_TYPE_INFO_ENGINE_STATUS,
+					to_string(estate_));
+		messenger_->send(pmsgs);
+		apiinited_ = false;
+		autoconnect_ = CConfig::instance().autoconnect;
+		LOG_DEBUG(logger,name_ <<" inited, api version:"<<this->api_->GetApiVersion());
 	}
 
 	void CtpMDEngine::stop(){

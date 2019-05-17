@@ -29,7 +29,7 @@ namespace StarQuant
 	}
 
 	void PaperTDEngine::init(){
-		name_ = "PAPER.TD.";
+		name_ = "PAPER.TD";
 		if(logger == nullptr){
 			logger = SQLogger::getLogger("TDEngine.Paper");
 		}
@@ -66,7 +66,7 @@ namespace StarQuant
 					case MSG_TYPE_ENGINE_CONNECT:
 						if (connect()){
 							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
-								MSG_TYPE_INFO_ENGINE_TDCONNECTED,"PAPER Connected.");
+								MSG_TYPE_INFO_ENGINE_TDCONNECTED,"PAPER TD Connected.");
 							messenger_->send(pmsgout,1);
 							
 						}
@@ -188,7 +188,7 @@ namespace StarQuant
 		lock_guard<mutex> g(oid_mtx);
 		pmsg->data_.serverOrderID_ = m_serverOrderId++;
 		pmsg->data_.brokerOrderID_ = m_brokerOrderId_++;
-		pmsg->data_.orderNo_ = string("PAPER-") + to_string(pmsg->data_.brokerOrderID_);
+		pmsg->data_.orderNo_ = string("PAPER.TD-") + to_string(pmsg->data_.brokerOrderID_);
 		pmsg->data_.localNo_ = pmsg->data_.orderNo_;
 		pmsg->data_.createTime_ = ymdhmsf();
 		pmsg->data_.orderStatus_ = OrderStatus::OS_Submitted;

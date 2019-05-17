@@ -16,7 +16,7 @@ namespace StarQuant
 	class CtpMDEngine : public IEngine, CThostFtdcMdSpi {
 	public:
 		string name_;
-		Account ctpacc_;
+		Gateway ctpacc_;
 
 		CtpMDEngine();
 		~CtpMDEngine();

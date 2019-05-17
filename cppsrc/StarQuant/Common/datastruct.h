@@ -161,7 +161,7 @@ enum class MSGQ_PROTOCOL : uint8_t {
 };
 // -----------------------------msg type for interprocess communication-----------------
 enum MSG_TYPE : int32_t {
-//  10* datatype same as ticktype 
+  //  10* datatype same as ticktype 
     // furtures
     MSG_TYPE_TICK = 1000,
     MSG_TYPE_TICK_L1 = 1001,
@@ -197,7 +197,7 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_Volume = 1074,
     MSG_TYPE_OpenInterest = 1075,
     MSG_TYPE_Hist =1076,
-// 	11* sys control
+  // 	11* sys control
     MSG_TYPE_ENGINE_STATUS = 1101,
     MSG_TYPE_ENGINE_START = 1111,
     MSG_TYPE_ENGINE_STOP = 1112,
@@ -205,7 +205,7 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_ENGINE_CONNECT = 1120,
     MSG_TYPE_ENGINE_DISCONNECT = 1121,
     MSG_TYPE_SWITCH_TRADING_DAY = 1141,
-//  12* strategy
+  //  12* strategy
     MSG_TYPE_STRATEGY_STATUS = 1200,
     MSG_TYPE_STRATEGY_ADD = 1210,
     MSG_TYPE_STRATEGY_INIT = 1211,
@@ -226,11 +226,11 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_STRATEGY_RTN_CLASS_PARAMETERS = 1235,
     MSG_TYPE_STRATEGY_GET_PARAMETERS = 1234,
     MSG_TYPE_STRATEGY_RTN_PARAMETERS = 1235,   
-//  13*  task 
+  //  13*  task 
     MSG_TYPE_TIMER = 1301,
     MSG_TYPE_TASK_START = 1310,
     MSG_TYPE_TASK_STOP = 1311,
-//  20* engine requests
+  //  20* engine requests
     // md request
     MSG_TYPE_SUBSCRIBE_MARKET_DATA = 2001,
     MSG_TYPE_SUBSCRIBE_L2_MD = 2002,
@@ -254,7 +254,7 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_ORDER_ACTION_CTP = 2043,
     MSG_TYPE_ORDER_ACTION_TAP = 2044,
     MSG_TYPE_ORDER_ACTION_XTP =2045,
-// 25* engine callback    
+  // 25* engine callback    
     //call back
     MSG_TYPE_RSP_POS       = 2500,
     MSG_TYPE_RTN_ORDER     = 2510, //order status
@@ -269,7 +269,7 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_RSP_CONTRACT   = 2540,
     MSG_TYPE_RSP_COMMODITY   = 2541,
 
-//	31*: info class msg, mainly about sys
+  //	31*: info class msg, mainly about sys
     MSG_TYPE_INFO   = 3100,
     MSG_TYPE_INFO_ENGINE_MDCONNECTED = 3101,
     MSG_TYPE_INFO_ENGINE_MDDISCONNECTED = 3102,
@@ -277,7 +277,7 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_INFO_ENGINE_TDDISCONNECTED = 3104,
     MSG_TYPE_INFO_HEARTBEAT_WARNING = 3105,
     MSG_TYPE_INFO_ENGINE_STATUS = 3106,
-//	34*:error class msg
+  //	34*:error class msg
     MSG_TYPE_ERROR = 3400,
     MSG_TYPE_ERROR_ENGINENOTCONNECTED = 3401,
     MSG_TYPE_ERROR_SUBSCRIBE = 3402,
@@ -290,41 +290,43 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_ERROR_CONNECT = 3409,  //login fail
     MSG_TYPE_ERROR_DISCONNECT = 3410,
     MSG_TYPE_ERROR_NOACCOUNT = 3411,
-//  40*: test class msg
+  //  40*: test class msg
     MSG_TYPE_TEST = 4000,
 
-//  9* base/header
+  //  9* base/header
     MSG_TYPE_BASE = 9
 };
 
-	MSG_TYPE MsgType(const string& str);
-    string accAddress(const string& str);
+MSG_TYPE MsgType(const string& str);
+string accAddress(const string& str);
 
-	enum class RUN_MODE :uint8_t {
-		TRADE_MODE = 0, RECORD_MODE, REPLAY_MODE
-	};
+enum class RUN_MODE :uint8_t {
+    TRADE_MODE = 0, RECORD_MODE, REPLAY_MODE
+};
 
-	enum class BROKERS : uint8_t {
-		IB = 0, CTP, GOOGLE, SINA, PAPER,TAP
-	};
+enum class BROKERS : uint8_t {
+    IB = 0, CTP, GOOGLE, SINA, PAPER,TAP
+};
 
 
 
-	struct Account{
-		string id;
-		int32_t intid;
-		string brokerid;
-		string userid;
-		string password;
-		string auth_code;
-		string productinfo;
-		string md_ip;
-		uint16_t md_port;
-		string td_ip;
-		uint16_t td_port;
-		string apitype;
-        string appid;
-	};
+struct Gateway{
+    string id;
+    string api;
+    int32_t intid;
+    string brokerid;
+    string userid;
+    string password;
+    string auth_code;
+    string productinfo;
+    string md_ip;
+    uint16_t md_port;
+    string td_ip;
+    uint16_t td_port;
+    string appid;
+    string publicstream;
+    string privatestream;
+};
 
 class MsgHeader{
     public:
