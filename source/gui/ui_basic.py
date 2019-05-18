@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Any
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+import pyqtgraph as pg
 
 from ..common.datastruct import Event
 from ..engine.iengine import EventEngine
@@ -227,6 +228,10 @@ class BaseMonitor(QtWidgets.QTableWidget):
         save_action.triggered.connect(self.save_csv)
         self.menu.addAction(save_action)
 
+        del_action = QtWidgets.QAction("删除数据", self)
+        del_action.triggered.connect(self.deleterows)           
+        self.menu.addAction(del_action)
+
     def register_event(self):
         """
         Register event handler into event engine.
@@ -322,6 +327,27 @@ class BaseMonitor(QtWidgets.QTableWidget):
                         row_data.append("")
                 writer.writerow(row_data)
 
+    def deleterows(self):
+        rr = QtWidgets.QMessageBox.warning(self, "注意", "删除无法恢复！",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, 
+            QtWidgets.QMessageBox.No)
+        if rr == QtWidgets.QMessageBox.Yes:
+            curow = self.currentRow()            
+            selections = self.selectionModel()
+            selectedsList = selections.selectedRows()
+            rows = []
+            for r in selectedsList:
+                rows.append(r.row())
+            if len(rows) == 0 and curow >= 0:
+                rows.append(curow)
+            rows.reverse()
+            for i in rows:
+                cell = self.item(i,0)
+                data = cell.get_data()
+                key = data[self.data_key]
+                self.removeRow(i)
+                del self.cells[key]        
+    
     def contextMenuEvent(self, event):
         """
         Show menu with right click.
@@ -329,4 +355,45 @@ class BaseMonitor(QtWidgets.QTableWidget):
         self.menu.popup(QtGui.QCursor.pos())
 
 
+class CandlestickItem(pg.GraphicsObject):
+    def __init__(self, data):
+        pg.GraphicsObject.__init__(self)
+        self.data = data
+        self.generatePicture()
 
+    def generatePicture(self):
+        self.picture = QtGui.QPicture()
+        p = QtGui.QPainter(self.picture)
+        p.setPen(pg.mkPen('w'))
+        w = (self.data[1][0] - self.data[0][0]) / 3.
+        for (t, open, close, low, high, volume) in self.data:
+            if open < close:
+                p.setPen(pg.mkPen('g'))
+                p.setBrush(pg.mkBrush('g'))
+            else:
+                p.setPen(pg.mkPen('r'))
+                p.setBrush(pg.mkBrush('r'))
+            p.drawLine(QtCore.QPointF(t, low), QtCore.QPointF(t, high))
+            p.drawRect(QtCore.QRectF(t - w, open, w * 2, close - open))
+            # if prema5 != 0:
+            #     p.setPen(pg.mkPen('w'))
+            #     p.setBrush(pg.mkBrush('w'))
+            #     p.drawLine(QtCore.QPointF(t-1, prema5), QtCore.QPointF(t, ma5))
+            # prema5 = ma5
+            # if prema10 != 0:
+            #     p.setPen(pg.mkPen('c'))
+            #     p.setBrush(pg.mkBrush('c'))
+            #     p.drawLine(QtCore.QPointF(t-1, prema10), QtCore.QPointF(t, ma10))
+            # prema10 = ma10
+            # if prema20 != 0:
+            #     p.setPen(pg.mkPen('m'))
+            #     p.setBrush(pg.mkBrush('m'))
+            #     p.drawLine(QtCore.QPointF(t-1, prema20), QtCore.QPointF(t, ma20))
+            # prema20 = ma20
+        p.end()
+
+    def paint(self, p, *args):
+        p.drawPicture(0, 0, self.picture)
+
+    def boundingRect(self):
+        return QtCore.QRectF(self.picture.boundingRect())

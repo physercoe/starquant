@@ -14,6 +14,7 @@ import pyqtgraph as pg
 
 sys.path.insert(0,"../..")
 
+from .ui_basic import CandlestickItem
 from source.common.datastruct import Event, TickData
 
 

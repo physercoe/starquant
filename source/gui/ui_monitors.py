@@ -128,7 +128,7 @@ class OrderMonitor(BaseMonitor):
             QtWidgets.QMessageBox().information(None, 'Error','Order not active!',QtWidgets.QMessageBox.Ok)
             return
         req = order.create_cancel_request()
-        dest = order.api + '.' + order.account
+        dest = order.api + '.' + order.account  # gateway_name
         m = Event(type=EventType.GENERAL_REQ,data=req,des=dest,src='0',msgtype=MSG_TYPE.MSG_TYPE_CANCEL_ORDER)
         self.event_engine.put(m)
 
