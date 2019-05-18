@@ -1,5 +1,5 @@
 """
-Basic widgets for VN Trader.
+Basic widgets for SQ main window.
 """
 
 import csv
@@ -12,9 +12,12 @@ from ..common.datastruct import Event
 from ..engine.iengine import EventEngine
 from ..common.constant import Direction, Exchange, Offset, OrderType
 
-
+from ..common.constant import EventType
 from ..common.datastruct import OrderRequest, SubscribeRequest
 from ..common.utility import load_json, save_json
+from ..common.config import SETTING_FILENAME, SETTINGS
+
+
 
 COLOR_LONG = QtGui.QColor("red")
 COLOR_SHORT = QtGui.QColor("green")
@@ -173,7 +176,7 @@ class BaseMonitor(QtWidgets.QTableWidget):
     Monitor data update in VN Trader.
     """
 
-    event_type = ""
+    event_type : EventType = EventType.HEADER
     data_key = ""
     sorting = False
     headers = {}
@@ -324,7 +327,6 @@ class BaseMonitor(QtWidgets.QTableWidget):
         Show menu with right click.
         """
         self.menu.popup(QtGui.QCursor.pos())
-
 
 
 

@@ -26,9 +26,7 @@ def print_content(msg):
 class ManualWindow(QtWidgets.QFrame):
     order_signal = QtCore.pyqtSignal(Event)
     subscribe_signal = QtCore.pyqtSignal(Event)
-    qryacc_signal = QtCore.pyqtSignal(Event) 
-    qrypos_signal = QtCore.pyqtSignal(Event)    
-    qrycontract_signal = QtCore.pyqtSignal(Event) 
+    qry_signal = QtCore.pyqtSignal(Event) 
     manual_req = QtCore.pyqtSignal(str)
     def __init__(self, apilist):
         super(ManualWindow, self).__init__()
@@ -135,21 +133,11 @@ class ManualWindow(QtWidgets.QFrame):
         except:
             print('place paper order error')
 
-    def qryacc(self,qa):
+    def qry(self,qa):
         qa.destination = self.gateway.currentText() 
         qa.source = '0'
-        self.qryacc_signal.emit(qa)
-
-    def qrypos(self,qp):
-        qp.destination = self.gateway.currentText() 
-        qp.source = '0'
-        self.qrypos_signal.emit(qp)   
-
-    def qrycontract(self,qc):
-        qc.destination = self.gateway.currentText() 
-        qc.source = '0'
-        self.qrycontract_signal.emit(qc)          
-     
+        self.qry_signal.emit(qa)
+        
 
     def init_wxcmd(self):
         self.wechatmsg = ItchatMsgThread()
@@ -226,9 +214,7 @@ class ManualWindow(QtWidgets.QFrame):
 
         ctpapi = CtpApiWindow()
         ctpapi.subscribe_signal.connect(self.subsrcibe)
-        ctpapi.qryacc_signal.connect(self.qryacc)
-        ctpapi.qrypos_signal.connect(self.qrypos)
-        ctpapi.qrycontract_signal.connect(self.qrycontract)
+        ctpapi.qry_signal.connect(self.qry)
         ctpapi.orderfield_signal.connect(self.place_order_ctp)
 
         paperapi = PaperApiWindow()
@@ -255,9 +241,8 @@ class ManualWindow(QtWidgets.QFrame):
 class CtpApiWindow(QtWidgets.QFrame):
     orderfield_signal = QtCore.pyqtSignal(CtpOrderField)
     subscribe_signal = QtCore.pyqtSignal(Event)
-    qryacc_signal = QtCore.pyqtSignal(Event) 
-    qrypos_signal = QtCore.pyqtSignal(Event)    
-    qrycontract_signal = QtCore.pyqtSignal(Event) 
+    qry_signal = QtCore.pyqtSignal(Event) 
+
     def __init__(self):
         super(CtpApiWindow, self).__init__()
         self.orderfielddict = {}
@@ -279,7 +264,7 @@ class CtpApiWindow(QtWidgets.QFrame):
         # ctpapilayout.addRow(ctphboxlayout1)       
  
         self.qry_type = QtWidgets.QComboBox()
-        self.qry_type.addItems(['Account','Position','Contract'])
+        self.qry_type.addItems(['Account','Position','Order','Trade','PositionDetail', 'Contract'])
         self.qry_content =  QtWidgets.QLineEdit()
         self.btn_qry = QtWidgets.QPushButton('QUERY')
         self.btn_qry.clicked.connect(self.qry)
@@ -293,16 +278,18 @@ class CtpApiWindow(QtWidgets.QFrame):
         self.sym = QtWidgets.QLineEdit()
         self.sym.returnPressed.connect(self.subscribe)  # subscribe market data
         self.order_ref = QtWidgets.QLineEdit()
-        ctphboxlayout3 = QtWidgets.QHBoxLayout()
-        ctphboxlayout3.addWidget(QtWidgets.QLabel('InstrumentID'))
-        ctphboxlayout3.addWidget(self.sym)
-        ctphboxlayout3.addWidget(QtWidgets.QLabel('OrderRef'))
-        ctphboxlayout3.addWidget(self.order_ref) 
-        ctpapilayout.addRow(ctphboxlayout3)       
-
         self.hedge_type = QtWidgets.QComboBox()
         self.hedge_type.addItems(['Speculation','Arbitrage','Hedge','MarketMaker','SpecHedge','HedgeSpec'])
         self.orderfielddict['hedge'] = [THOST_FTDC_HF_Speculation,THOST_FTDC_HF_Arbitrage,THOST_FTDC_HF_Hedge,THOST_FTDC_HF_MarketMaker,THOST_FTDC_HF_SpecHedge,THOST_FTDC_HF_HedgeSpec]
+        ctphboxlayout3 = QtWidgets.QHBoxLayout()
+        ctphboxlayout3.addWidget(QtWidgets.QLabel('InstrumentID'))
+        ctphboxlayout3.addWidget(self.sym)
+        ctphboxlayout3.addWidget(QtWidgets.QLabel('Hedge'))
+        ctphboxlayout3.addWidget(self.hedge_type)   
+        # ctphboxlayout3.addWidget(QtWidgets.QLabel('OrderRef'))
+        # ctphboxlayout3.addWidget(self.order_ref) 
+        ctpapilayout.addRow(ctphboxlayout3)       
+
         self.direction_type = QtWidgets.QComboBox()
         self.direction_type.addItems(['Buy','Sell'])
         self.orderfielddict['direction'] = [THOST_FTDC_D_Buy,THOST_FTDC_D_Sell]
@@ -310,8 +297,6 @@ class CtpApiWindow(QtWidgets.QFrame):
         self.order_flag_type.addItems(['Open', 'Close', 'Force_Close','Close_Today','Close_Yesterday', 'Force_Off','Local_Forceclose'])
         self.orderfielddict['orderflag'] = [THOST_FTDC_OF_Open,THOST_FTDC_OF_Close,THOST_FTDC_OF_ForceClose,THOST_FTDC_OF_CloseToday,THOST_FTDC_OF_CloseYesterday,THOST_FTDC_OF_ForceOff,THOST_FTDC_OF_LocalForceClose]
         ctphboxlayout4 = QtWidgets.QHBoxLayout()
-        ctphboxlayout4.addWidget(QtWidgets.QLabel('Hedge'))
-        ctphboxlayout4.addWidget(self.hedge_type)         
         ctphboxlayout4.addWidget(QtWidgets.QLabel('Direction'))
         ctphboxlayout4.addWidget(self.direction_type)
         ctphboxlayout4.addWidget(QtWidgets.QLabel('OrderFlag'))
@@ -385,7 +370,23 @@ class CtpApiWindow(QtWidgets.QFrame):
 
         # ctpapilayout.addRow(self.btn_request)
         self.request_type = QtWidgets.QComboBox()
-        self.request_type.addItems(['Order','ParkedOrder','OrderAction','ParkedOrderAction','ExecOrder','ExecOrderAction','ForQuote','Quote','QuoteAction','OptionSelfClose','OptionSelfCloseAction','CombActionInsert'])
+        # self.request_type.addItems(['Order','ParkedOrder',
+        #     'OrderAction',
+        #     'ParkedOrderAction',
+        #     'ExecOrder',
+        #     'ExecOrderAction',
+        #     'ForQuote',
+        #     'Quote',
+        #     'QuoteAction',
+        #     'OptionSelfClose',
+        #     'OptionSelfCloseAction',
+        #     'CombActionInsert']
+        #     )
+        self.request_type.addItems(['Order',
+            'LocalOrder',
+            'ParkedOrder',
+            'Option']
+            )
         self.algo_type = QtWidgets.QComboBox()
         self.algo_type.addItems(['None','TWAP','Iceberg','Sniper'])
 
@@ -409,25 +410,26 @@ class CtpApiWindow(QtWidgets.QFrame):
         self.setLayout(ctpapilayout)
 
     def qry(self):
+        qry = Event(EventType.QRY)
         if(self.qry_type.currentText() == 'Account'):
-            qa = Event(EventType.QRY_ACCOUNT)
-            qa.msg_type = MSG_TYPE.MSG_TYPE_QRY_ACCOUNT
-            self.qryacc_signal.emit(qa)
-            return
+            qry.msg_type = MSG_TYPE.MSG_TYPE_QRY_ACCOUNT
         if (self.qry_type.currentText() == 'Position'):
-            qp = Event(EventType.QRY_POS)
-            qp.msg_type = MSG_TYPE.MSG_TYPE_QRY_POS
-            self.qrypos_signal.emit(qp)
-            return
+            qry.msg_type = MSG_TYPE.MSG_TYPE_QRY_POS
         if (self.qry_type.currentText() == 'Contract'):
             qc = QryContractRequest()
             qc.sym_type = SYMBOL_TYPE.CTP
             qc.content = self.qry_content.text()
-            m = Event(EventType.QRY_CONTRACT)
-            m.msg_type = MSG_TYPE.MSG_TYPE_QRY_CONTRACT
-            m.data = qc
-            self.qrycontract_signal.emit(m)
-            return
+            qry.msg_type = MSG_TYPE.MSG_TYPE_QRY_CONTRACT
+            qry.data = qc
+        if (self.qry_type.currentText() == 'Order'):
+            qry.msg_type = MSG_TYPE.MSG_TYPE_QRY_ORDER
+        if (self.qry_type.currentText() == 'Trade'):
+            qry.msg_type = MSG_TYPE.MSG_TYPE_QRY_TRADE
+        if (self.qry_type.currentText() == 'PositionDetail'):
+            qry.msg_type = MSG_TYPE.MSG_TYPE_QRY_POSDETAIL
+        self.qry_signal.emit(qry)
+
+
 
     def generate_request(self):
         print("ctp request at ", datetime.now())

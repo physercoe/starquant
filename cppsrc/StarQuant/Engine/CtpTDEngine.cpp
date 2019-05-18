@@ -1,6 +1,7 @@
 ﻿#include <mutex>
 #include <boost/locale.hpp>
 #include <boost/algorithm/algorithm.hpp>
+#include <limits>
 
 #include <Common/datastruct.h>
 #include <Common/logger.h>
@@ -191,7 +192,49 @@ namespace StarQuant
 								name_ + " is not connected,can not qry contract!");
 							messenger_->send(pmsgout);
 						}
-						break;				
+						break;
+					case MSG_TYPE_QRY_ORDER:
+						if (pmsgin->destination_ != name_)
+							break;				
+						if (estate_ == LOGIN_ACK){
+							queryOrder(pmsgin);
+						}
+						else{
+							LOG_DEBUG(logger,name_ <<" is not connected,can not qry order!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								name_ + " is not connected,can not qry order!");
+							messenger_->send(pmsgout);
+						}
+						break;	
+					case MSG_TYPE_QRY_TRADE:
+						if (pmsgin->destination_ != name_)
+							break;				
+						if (estate_ == LOGIN_ACK){
+							queryTrade(pmsgin);
+						}
+						else{
+							LOG_DEBUG(logger,name_ <<" is not connected,can not qry trade!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								name_ + " is not connected,can not qry trade!");
+							messenger_->send(pmsgout);
+						}
+						break;	
+					case MSG_TYPE_QRY_POSDETAIL:
+						if (pmsgin->destination_ != name_)
+							break;				
+						if (estate_ == LOGIN_ACK){
+							queryPositionDetail(pmsgin);
+						}
+						else{
+							LOG_DEBUG(logger,name_ <<" is not connected,can not qry posdetail!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								name_ + " is not connected,can not qry posdetail!");
+							messenger_->send(pmsgout);
+						}
+						break;	
 					case MSG_TYPE_ENGINE_STATUS:
 						{
 							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
@@ -439,37 +482,6 @@ namespace StarQuant
 		auto pmsgout = make_shared<OrderStatusMsg>(pmsg->source_,name_);
 		pmsgout->set(o);
 		messenger_->send(pmsgout);
-
-		//CThostFtdcInputOrderField orderfield = {}
-		//memcpy(&orderfield,&pmsg->orderField_,sizeof(CThostFtdcInputOrderField));
-		//CThostFtdcInputOrderField();
-
-		// string ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(pmsg->data_.fullSymbol_);
-		// strcpy(orderfield.InstrumentID, ctpsym.c_str());
-		// orderfield.VolumeTotalOriginal = std::abs(pmsg->data_.orderSize_);
-		// orderfield.OrderPriceType = pmsg->data_.orderType_ == OrderType::OT_Market ? THOST_FTDC_OPT_AnyPrice : THOST_FTDC_OPT_LimitPrice;
-		// orderfield.LimitPrice = pmsg->data_.orderType_ == OrderType::OT_Market ? 0.0 : pmsg->data_.limitPrice_;
-		// orderfield.Direction = pmsg->data_.orderSize_ > 0 ? THOST_FTDC_D_Buy : THOST_FTDC_D_Sell;
-		// orderfield.CombOffsetFlag[0] = OrderFlagToCtpComboOffsetFlag(pmsg->data_.orderFlag_);
-		// strcpy(orderfield.OrderRef, to_string(pmsg->data_.serverOrderID_).c_str());
-		// strcpy(orderfield.InvestorID, ctpacc_.userid.c_str());
-		// strcpy(orderfield.UserID, ctpacc_.userid.c_str());
-		// strcpy(orderfield.BrokerID, ctpacc_.brokerid.c_str());
-		// orderfield.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;			// 投机单
-		// orderfield.ContingentCondition = THOST_FTDC_CC_Immediately;		// 立即发单
-		// orderfield.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;		// 非强平
-		// orderfield.IsAutoSuspend = 0;									// 非自动挂起
-		// orderfield.UserForceClose = 0;									// 非用户强平
-		// orderfield.TimeCondition = THOST_FTDC_TC_GFD;					// 今日有效
-		// orderfield.VolumeCondition = THOST_FTDC_VC_AV;					// 任意成交量
-		// orderfield.MinVolume = 1;										// 最小成交量为1
-		// // TODO: 判断FAK和FOK
-		// //orderfield.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
-		// //orderfield.TimeCondition = THOST_FTDC_TC_IOC;
-		// //orderfield.VolumeCondition = THOST_FTDC_VC_CV;				// FAK; FOK uses THOST_FTDC_VC_AV
-
-
-
 	}
 
 	void CtpTDEngine::cancelOrder(shared_ptr<OrderActionMsg> pmsg){
@@ -537,7 +549,7 @@ namespace StarQuant
 		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
 		int error = api_->ReqQryTradingAccount(&myreq, reqId_++);
-		LOG_INFO(logger,name_ <<" requests account information");			
+		LOG_INFO(logger,name_ <<" qry account information");			
 		if (error != 0){
 			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
 				MSG_TYPE_ERROR_QRY_ACC,
@@ -552,7 +564,7 @@ namespace StarQuant
 		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
 		int error = this->api_->ReqQryInvestorPosition(&myreq, reqId_++);
-		LOG_INFO(logger,name_ <<" requests positions");		
+		LOG_INFO(logger,name_ <<" qry positions");		
 		if (error != 0){
 			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
 				MSG_TYPE_ERROR_QRY_POS,
@@ -579,6 +591,56 @@ namespace StarQuant
 			LOG_ERROR(logger,name_ <<" qry pos contract "<<error);
 		}
 	}	
+
+	/// 查询order
+	void CtpTDEngine::queryOrder(shared_ptr<MsgHeader> pmsg) {
+		CThostFtdcQryOrderField myreq = {0};
+		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
+		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
+		int error = this->api_->ReqQryOrder(&myreq, reqId_++);
+		LOG_INFO(logger,name_ <<" qry order");		
+		if (error != 0){
+			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+				MSG_TYPE_ERROR_QRY_POS,
+				"Ctp td qry order error");
+			messenger_->send(pmsgout);
+			LOG_ERROR(logger,name_ <<" qry  order error "<<error);
+		}
+	}
+
+	/// 查询trade
+	void CtpTDEngine::queryTrade(shared_ptr<MsgHeader> pmsg) {
+		CThostFtdcQryTradeField myreq = {0};
+		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
+		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
+		int error = this->api_->ReqQryTrade(&myreq, reqId_++);
+		LOG_INFO(logger,name_ <<" Qry Trade");		
+		if (error != 0){
+			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+				MSG_TYPE_ERROR_QRY_POS,
+				"Ctp td qry trade error");
+			messenger_->send(pmsgout);
+			LOG_ERROR(logger,name_ <<" qry  trade error "<<error);
+		}
+	}
+
+	void CtpTDEngine::queryPositionDetail(shared_ptr<MsgHeader> pmsg) {
+		CThostFtdcQryInvestorPositionDetailField myreq = {0};
+		strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
+		strcpy(myreq.BrokerID, ctpacc_.brokerid.c_str());
+		int error = this->api_->ReqQryInvestorPositionDetail(&myreq, reqId_++);
+		LOG_INFO(logger,name_ <<" Qry PosDetail");		
+		if (error != 0){
+			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+				MSG_TYPE_ERROR_QRY_POS,
+				"Ctp td qry posdetail error");
+			messenger_->send(pmsgout);
+			LOG_ERROR(logger,name_ <<" qry  posdetail error "<<error);
+		}
+	}
+
+
+
 	////////////////////////////////////////////////////// begin callback/incoming function ///////////////////////////////////////
 	///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
 	void CtpTDEngine::OnFrontConnected() {
@@ -830,6 +892,219 @@ namespace StarQuant
 		{
 		}
 	}
+
+	void CtpTDEngine::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){
+		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
+		if (!bResult){
+			if(pOrder == nullptr){
+				LOG_INFO(logger,name_ <<" onQryOrder return nullptr");
+				return;
+			}
+			string localno = to_string(pOrder->FrontID) + "." + to_string(pOrder->SessionID) + "." + pOrder->OrderRef ;
+			shared_ptr<Order> o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.userid,localno);
+			if ( o == nullptr) {			// create an order
+				o = make_shared<Order>();
+				o->api_ = "CTP.TD";
+				o->account_ = ctpacc_.userid;    
+				// o->fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pOrder->InstrumentID);
+				o->fullSymbol_ = DataManager::instance().ctp2Full_[pOrder->InstrumentID];
+				o->price_ = pOrder->LimitPrice;
+				int dir_ = pOrder->Direction != THOST_FTDC_D_Sell ? 1:-1 ;
+				o->quantity_ = dir_ * pOrder->VolumeTotalOriginal ;
+				o->tradedvol_ = dir_ * pOrder->VolumeTraded ;
+				o->flag_ = CtpComboOffsetFlagToOrderFlag(pOrder->CombOffsetFlag[0]);
+				o->tag_ = string("") 
+					+ "h" + pOrder->CombHedgeFlag
+					+ "p" + pOrder->OrderPriceType
+					+ "c" + pOrder->ContingentCondition + "-" + to_string(pOrder->StopPrice)
+					+ "t" + pOrder->TimeCondition
+					+ "v" + pOrder->VolumeCondition;
+				lock_guard<mutex> g(oid_mtx);
+				o->serverOrderID_ = m_serverOrderId++;
+				o->brokerOrderID_ = m_brokerOrderId_++;
+				o->orderNo_ = pOrder->OrderSysID;
+				o->localNo_ = localno;
+				o->createTime_ = string(pOrder->InsertDate) + " " + string(pOrder->InsertTime);
+				o->updateTime_ = ymdhmsf();
+				o->orderStatus_ =CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
+				OrderManager::instance().trackOrder(o);
+				auto pmsgout = make_shared<OrderStatusMsg>(DESTINATION_ALL,name_);
+				pmsgout->set(o);
+				messenger_->send(pmsgout);	
+				auto pmsgout2 = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
+					MSG_TYPE_ERROR_ORGANORDER,
+					localno + ": OM don't record this order. ");
+				messenger_->send(pmsgout2);
+				LOG_INFO(logger,name_ <<" OnQryOrder details:"
+				<<" InstrumentID="<<pOrder->InstrumentID
+				<<" OrderRef="<<pOrder->OrderRef
+				<<" ExchangeID="<<pOrder->ExchangeID
+				<<" InsertTime="<<pOrder->InsertTime
+				<<" CancelTime="<<pOrder->CancelTime
+				<<" FrontID="<<pOrder->FrontID
+				<<" SessionID="<<pOrder->SessionID
+				<<" Direction="<<pOrder->Direction
+				<<" CombOffsetFlag="<<pOrder->CombOffsetFlag
+				<<" OrderStatus="<<pOrder->OrderStatus
+				<<" OrderSubmitStatus="<<pOrder->OrderSubmitStatus
+				<<" StatusMsg="<<GBKToUTF8(pOrder->StatusMsg)
+				<<" LimitPrice="<<pOrder->LimitPrice
+				<<" VolumeTotalOriginal="<<pOrder->VolumeTotalOriginal
+				<<" VolumeTraded="<<pOrder->VolumeTraded
+				<<" OrderSysID="<<pOrder->OrderSysID
+				<<" SequenceNo="<<pOrder->SequenceNo
+				);	
+			}
+			else {
+				o->orderStatus_ = CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
+				o->orderNo_ = pOrder->OrderSysID;
+				o->updateTime_ = ymdhmsf();
+				auto pmsgout = make_shared<OrderStatusMsg>(to_string(o->clientID_),name_);
+				pmsgout->set(o);
+				messenger_->send(pmsgout);
+			}
+		}
+		else{
+			string errormsgutf8;
+			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+			string sout("Ctp Td Qry order error, errorID=");
+			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;			
+			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
+				MSG_TYPE_ERROR_QRY_POS,
+				sout);
+			messenger_->send(pmsgout);
+			LOG_ERROR(logger,name_ <<" Qry order error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
+			
+		}
+	}
+	///请求查询成交响应
+	void CtpTDEngine::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){
+		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
+		if (!bResult){
+			if(pTrade == nullptr){
+				LOG_INFO(logger,name_ <<" onQrytrade return nullptr");
+				return;
+			}
+			auto pmsg = make_shared<FillMsg>();
+			pmsg->destination_ = DESTINATION_ALL;
+			pmsg->source_ = name_;
+			// pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pTrade->InstrumentID);
+			pmsg->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pTrade->InstrumentID];
+			pmsg->data_.tradeTime_ = pTrade->TradeTime;
+			//pmsg->data_.serverOrderID_ = std::stol(pTrade->OrderRef);
+			pmsg->data_.orderNo_ = pTrade->OrderSysID;
+			//pmsg->data_.tradeId = std::stoi(pTrade->TraderID);
+			pmsg->data_.tradeNo_ = pTrade->TradeID;
+			pmsg->data_.tradePrice_ = pTrade->Price;
+			pmsg->data_.tradeSize_ = (pTrade->Direction == THOST_FTDC_D_Buy ? 1 : -1)*pTrade->Volume;
+			pmsg->data_.fillFlag_ = CtpComboOffsetFlagToOrderFlag(pTrade->OffsetFlag);
+			string localno = to_string(frontID_) + "." + to_string(sessionID_) + "." + pTrade->OrderRef;		
+			auto o = OrderManager::instance().retrieveOrderFromAccAndLocalNo(ctpacc_.userid,localno);
+			auto o2 = OrderManager::instance().retrieveOrderFromOrderNo(pTrade->OrderSysID);
+			//bool islocalorder = ( (o != nullptr) && !(o2 != nullptr && o2->localNo_ != localno) );
+			if (o2 != nullptr) {
+				pmsg->data_.serverOrderID_ = o2->serverOrderID_;
+				pmsg->data_.clientOrderID_ = o2->clientOrderID_;
+				pmsg->data_.brokerOrderID_ = o2->brokerOrderID_;
+				pmsg->data_.localNo_ = o2->localNo_;
+				pmsg->data_.account_ = o2->account_;
+				pmsg->data_.clientID_ = o2->clientID_;
+				pmsg->data_.api_ = o2->api_;
+				//o->fillNo_ = pTrade->TradeID;
+				OrderManager::instance().gotFill(pmsg->data_);
+				messenger_->send(pmsg);
+				auto pmsgos = make_shared<OrderStatusMsg>(to_string(o2->clientID_),name_);
+				pmsgos->set(o2);
+				messenger_->send(pmsgos);				
+			}
+			else if (o != nullptr) {
+				pmsg->data_.serverOrderID_ = o->serverOrderID_;
+				pmsg->data_.clientOrderID_ = o->clientOrderID_;
+				pmsg->data_.brokerOrderID_ = o->brokerOrderID_;
+				pmsg->data_.localNo_ = localno;
+				pmsg->data_.account_ = o->account_;
+				pmsg->data_.clientID_ = o->clientID_;
+				pmsg->data_.api_ = o->api_;
+				//o->fillNo_ = pTrade->TradeID;
+				OrderManager::instance().gotFill(pmsg->data_);
+				messenger_->send(pmsg);	
+				auto pmsgos = make_shared<OrderStatusMsg>(to_string(o->clientID_),name_);
+				pmsgos->set(o);
+				messenger_->send(pmsgos);		
+			}
+			else {
+				pmsg->data_.api_ = "CTP.TD";
+				pmsg->data_.account_ = ctpacc_.userid;
+				messenger_->send(pmsg);
+				auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
+					MSG_TYPE_ERROR_ORGANORDER,
+					string(pTrade->OrderSysID) + ":OM dont record this order.");
+				messenger_->send(pmsgout);			
+				LOG_INFO(logger,name_ <<" OnQryTrade details:"
+				<<" TradeID="<<pTrade->TradeID
+				<<" OrderRef="<<pTrade->OrderRef
+				<<" InstrumentID="<<pTrade->InstrumentID
+				<<" ExchangeID="<<pTrade->ExchangeID
+				<<" TradeTime="<<pTrade->TradeTime
+				<<" OffsetFlag="<<pTrade->OffsetFlag
+				<<" Direction="<<pTrade->Direction
+				<<" Price="<<pTrade->Price
+				<<" Volume="<<pTrade->Volume
+				);	
+			}
+		}	
+		else
+		{
+			string errormsgutf8;
+			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+			string sout("Ctp Td Qry order error, errorID=");
+			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;			
+			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
+				MSG_TYPE_ERROR_QRY_POS,
+				sout);
+			messenger_->send(pmsgout);
+			LOG_ERROR(logger,name_ <<" Qry order error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
+		}
+		
+	}
+
+	void CtpTDEngine::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){
+		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
+		if (!bResult){
+			if(pInvestorPositionDetail == nullptr){
+				LOG_DEBUG(logger,name_ <<" onRspQryposdetail return nullptr.");
+				return;
+			}			
+			LOG_INFO(logger,name_ <<" OnRspQryInvestorPositionDetail:"
+				<<" InstrumentID="<<pInvestorPositionDetail->InstrumentID
+				<<" Position="<<pInvestorPositionDetail->Direction
+				<<" OpenDate="<<pInvestorPositionDetail->OpenDate
+				<<" Volume="<<pInvestorPositionDetail->Volume
+				<<" OpenPirce="<<pInvestorPositionDetail->OpenPrice
+				<<" Margin="<<pInvestorPositionDetail->Margin
+				<<" MarginRateByMoney="<<pInvestorPositionDetail->MarginRateByMoney
+				<<" CloseVolume="<<pInvestorPositionDetail->CloseVolume
+				<<" CloseProfitByTrade="<<pInvestorPositionDetail->CloseProfitByTrade
+				<<" PositionProfitByTrade="<<pInvestorPositionDetail->PositionProfitByTrade
+				<<" islast="<<bIsLast		
+			);
+		}	
+		else{
+			string errormsgutf8;
+			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
+			string sout("Ctp Td Qry posdetail error, errorID=");
+			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;			
+			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
+				MSG_TYPE_ERROR_QRY_POS,
+				sout);
+			messenger_->send(pmsgout);
+			LOG_ERROR(logger,name_ <<" Qry posdetail error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
+
+		}
+	}
+
+
+
 	///请求查询投资者持仓响应
 	void CtpTDEngine::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
@@ -1033,8 +1308,8 @@ namespace StarQuant
 			pmsg->data_.localName_ = GBKToUTF8(pInstrument->InstrumentName);
 			pmsg->data_.ticksize_ = pInstrument->PriceTick;	
 			pmsg->data_.postype_ = pInstrument->PositionType;
-			pmsg->data_.longMarginRatio_ = pInstrument->LongMarginRatio;
-			pmsg->data_.shortMarginRatio_ = pInstrument->ShortMarginRatio;
+			pmsg->data_.longMarginRatio_ = pInstrument->LongMarginRatio == numeric_limits<double>::max()? 0.0: pInstrument->LongMarginRatio;
+			pmsg->data_.shortMarginRatio_ = pInstrument->ShortMarginRatio == numeric_limits<double>::max()? 0.0: pInstrument->ShortMarginRatio;
 
 			if (pInstrument->ProductClass == THOST_FTDC_PC_Options ){
 				pmsg->data_.underlyingSymbol_ = pInstrument->UnderlyingInstrID ;

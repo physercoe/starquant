@@ -45,6 +45,9 @@ namespace StarQuant
 		void queryAccount(shared_ptr<MsgHeader> pmsg);
 		void queryPosition(shared_ptr<MsgHeader> pmsg);
 		void queryContract(shared_ptr<QryContractMsg> pmsg);
+		void queryOrder(shared_ptr<MsgHeader> pmsg);
+		void queryTrade(shared_ptr<MsgHeader> pmsg);
+		void queryPositionDetail(shared_ptr<MsgHeader> pmsg);
 
 	public:
 		virtual void OnFrontConnected();
@@ -97,10 +100,10 @@ namespace StarQuant
 		virtual void OnRspCombActionInsert(CThostFtdcInputCombActionField *pInputCombAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
 
 		///请求查询报单响应
-		virtual void OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
+		virtual void OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) ;
 
 		///请求查询成交响应
-		virtual void OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
+		virtual void OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) ;
 
 		///请求查询投资者持仓响应
 		virtual void OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
@@ -139,7 +142,7 @@ namespace StarQuant
 		virtual void OnRspQryTransferBank(CThostFtdcTransferBankField *pTransferBank, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
 
 		///请求查询投资者持仓明细响应
-		virtual void OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
+		virtual void OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
 
 		///请求查询客户通知响应
 		virtual void OnRspQryNotice(CThostFtdcNoticeField *pNotice, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};

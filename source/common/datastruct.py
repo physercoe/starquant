@@ -272,7 +272,7 @@ class OrderData(BaseData):
     orderid: str = ""
 
     type: OrderType = OrderType.LMT
-    direction: Direction = ""
+    direction: Direction = Direction.LONG
     offset: Offset = Offset.NONE
     price: float = 0
     volume: float = 0
@@ -334,7 +334,10 @@ class OrderData(BaseData):
             self.vt_symbol = generate_vt_symbol(self.symbol,self.exchange)
             self.price = float(v[6])
             self.volume = int(v[7])
-            self.traded = int(v[8])
+            if self.volume <0:
+                self.direction = Direction.SHORT
+                self.volume = -1 * self.volume
+            self.traded = abs(int(v[8]))
             self.flag = OrderFlag(int(v[9]))
             self.offset = ORDERFALG_2VT[self.flag]
             self.server_order_id = int(v[10])
@@ -1356,27 +1359,27 @@ class GeneralReqEvent(Event):
     def deserialize(self,msg):
         self.req = msg
 
-class QryAccEvent(Event):
-    """
-    qry acc
-    """
-    def __init__(self):
-        self.event_type = EventType.QRY_ACCOUNT
+# class QryAccEvent(Event):
+#     """
+#     qry acc
+#     """
+#     def __init__(self):
+#         self.event_type = EventType.QRY_ACCOUNT
 
-    def serialize(self):
-        msg = self.destination + '|' + self.source + '|' + str(MSG_TYPE.MSG_TYPE_QRY_ACCOUNT.value)
-        return msg
+#     def serialize(self):
+#         msg = self.destination + '|' + self.source + '|' + str(MSG_TYPE.MSG_TYPE_QRY_ACCOUNT.value)
+#         return msg
 
-class QryPosEvent(Event):
-    """
-    qry pos
-    """
-    def __init__(self):
-        self.event_type = EventType.QRY_POS
+# class QryPosEvent(Event):
+#     """
+#     qry pos
+#     """
+#     def __init__(self):
+#         self.event_type = EventType.QRY_POS
 
-    def serialize(self):
-        msg = self.destination + '|' + self.source + '|' + str(MSG_TYPE.MSG_TYPE_QRY_POS.value)
-        return msg
+#     def serialize(self):
+#         msg = self.destination + '|' + self.source + '|' + str(MSG_TYPE.MSG_TYPE_QRY_POS.value)
+#         return msg
 
 
 

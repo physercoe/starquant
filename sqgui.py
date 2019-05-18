@@ -59,15 +59,6 @@ def main():
 
     sys.exit(app.exec_())
 
-def start_server():
-    print('Running python server.')
-    server = tradingengine_()
-    server.run()
-
-def stop_server():
-    global server_process
-    kill(server_process.pid, SIGINT)
-
 server_process = None
 
 

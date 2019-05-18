@@ -416,12 +416,6 @@ void PosMsg::set(std::shared_ptr<Position> pp){
     data_.closedpl_ = pp->closedpl_;
     data_.type_ = pp->type_;
     data_.posNo_ = pp->posNo_;
-    data_.openapi_ = pp->openapi_;
-    data_.openOrderNo_ = pp->openOrderNo_;
-    data_.openClientID_ = pp->openClientID_;
-    data_.closeapi_ = pp->closeapi_;
-    data_.closeOrderNo_ = pp->closeOrderNo_;
-    data_.closeClientID_ = pp->closeClientID_;
 }
 
 

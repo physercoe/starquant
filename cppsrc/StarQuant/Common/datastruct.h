@@ -242,6 +242,9 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_QRY_CONTRACT   = 2022,
     MSG_TYPE_QRY_POS       = 2023,
     MSG_TYPE_QRY_ACCOUNT   = 2024,
+    MSG_TYPE_QRY_ORDER   = 2025,
+    MSG_TYPE_QRY_TRADE   = 2026,
+    MSG_TYPE_QRY_POSDETAIL   = 2027,
     MSG_TYPE_ORDER         = 2030,  //insert order
     MSG_TYPE_ORDER_PAPER = 2031,
     MSG_TYPE_ORDER_CTP = 2032,
@@ -669,12 +672,6 @@ public:
     double closedpl_ = 0;		// realized pnl
     char type_ ='1';             // direction
     string posNo_ = "";
-    string openapi_ = "";
-    string openOrderNo_ = "";
-    int openClientID_ = -1;
-    string closeapi_ = "";
-    string closeOrderNo_ = "";
-    int closeClientID_ = -1;		
 };
 
 class DLL_EXPORT_IMPORT PosMsg: public MsgHeader{
@@ -690,6 +687,48 @@ public:
     // virtual void deserialize(const string& msgin);
     void set(std::shared_ptr<Position>);
 };
+
+
+class DLL_EXPORT_IMPORT PositionDetail {
+public:
+    PositionDetail(){}
+    ~PositionDetail(){}
+
+    string key_ = "";
+    string account_ = "";
+    string api_ = "";
+    string fullSymbol_ = "";
+    double avgPrice_ = 0;
+    int size_ = 0;
+    int preSize_ = 0;
+    int freezedSize_ = 0;
+    double openpl_ = 0;			// unrealized pnl
+    double closedpl_ = 0;		// realized pnl
+    char type_ ='1';             // direction
+    string posNo_ = "";
+    string openapi_ = "";
+    string openOrderNo_ = "";
+    int openClientID_ = -1;
+    string closeapi_ = "";
+    string closeOrderNo_ = "";
+    int closeClientID_ = -1;		
+};
+
+class DLL_EXPORT_IMPORT PosDetailMsg: public MsgHeader{
+public:
+    PosDetailMsg(string des,string src): MsgHeader(des,src,MSG_TYPE_RSP_POS),data_()
+    {
+    }
+    ~PosDetailMsg() {}
+
+    PositionDetail data_;
+
+    virtual string serialize(){};
+    // virtual void deserialize(const string& msgin);
+    void set(std::shared_ptr<PositionDetail>){};
+};
+
+
 
 
 class OrderAction {
