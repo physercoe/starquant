@@ -39,7 +39,7 @@ namespace StarQuant
 		}	
 		estate_ = DISCONNECTED;		
 		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 		messenger_->send(pmsgs);
 		LOG_DEBUG(logger,"Paper TD inited");
@@ -47,7 +47,7 @@ namespace StarQuant
 	void PaperTDEngine::stop(){
 		estate_  = EState::STOP;
 		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 		messenger_->send(pmsgs);
 		LOG_DEBUG(logger,"Paper TD stoped");	
@@ -128,7 +128,7 @@ namespace StarQuant
 					case MSG_TYPE_ENGINE_STATUS:
 						{
 							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
-								MSG_TYPE_INFO_ENGINE_STATUS,
+								MSG_TYPE_ENGINE_STATUS,
 								to_string(estate_));
 							messenger_->send(pmsgout);
 						}
@@ -167,7 +167,7 @@ namespace StarQuant
 		msleep(1000);
 		estate_ = LOGIN_ACK;
 		auto pmsg = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-							MSG_TYPE_INFO_ENGINE_STATUS,
+							MSG_TYPE_ENGINE_STATUS,
 							to_string(estate_));
 		messenger_->send(pmsg);
 		return true;
@@ -177,7 +177,7 @@ namespace StarQuant
 		msleep(1000);
 		estate_ = DISCONNECTED;
 		auto pmsg = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 		messenger_->send(pmsg);
 		return true;

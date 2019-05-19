@@ -82,7 +82,7 @@ namespace StarQuant
 		}
 		estate_ = DISCONNECTED;
 		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 		messenger_->send(pmsgs);
 		apiinited_ = false;
@@ -94,7 +94,7 @@ namespace StarQuant
 		int tmp = disconnect();
 		estate_  = EState::STOP;
 		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 		messenger_->send(pmsgs);
 		LOG_DEBUG(logger, name_ <<" stoped");	
@@ -238,7 +238,7 @@ namespace StarQuant
 					case MSG_TYPE_ENGINE_STATUS:
 						{
 							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
-								MSG_TYPE_INFO_ENGINE_STATUS,
+								MSG_TYPE_ENGINE_STATUS,
 								to_string(estate_));
 							messenger_->send(pmsgout);
 						}
@@ -305,7 +305,7 @@ namespace StarQuant
 					}
 					estate_ = CONNECTING;
 					{auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 					messenger_->send(pmsgs);}
 					LOG_INFO(logger,name_ <<" api inited, connect Front!");
@@ -341,7 +341,7 @@ namespace StarQuant
 						estate_ = AUTHENTICATE_ACK;
 					}
 					{auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 					messenger_->send(pmsgs);}
 					break;
@@ -364,7 +364,7 @@ namespace StarQuant
 						msleep(1000);
 					}
 					{auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-								MSG_TYPE_INFO_ENGINE_STATUS,
+								MSG_TYPE_ENGINE_STATUS,
 								to_string(estate_));
 					messenger_->send(pmsgs);}
 					break;
@@ -648,7 +648,7 @@ namespace StarQuant
 		estate_ = CONNECT_ACK;
 		reqId_ = 0;
 		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 		messenger_->send(pmsgs);
 		//autologin
@@ -665,7 +665,7 @@ namespace StarQuant
 		// every 1 min login once
 		if (reqId_ % 4000 == 0){
 			auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 			messenger_->send(pmsgs);
 			reqId_ = 1;
@@ -703,7 +703,7 @@ namespace StarQuant
 		else{
 			estate_ = AUTHENTICATE_ACK;
 			auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 			messenger_->send(pmsgs);
 			LOG_INFO(logger,name_ <<" authenticated.");			
@@ -752,7 +752,7 @@ namespace StarQuant
 			else{
 				estate_ = LOGIN_ACK;
 				auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 				messenger_->send(pmsgs);
 			}
@@ -774,7 +774,7 @@ namespace StarQuant
 		else{
 			estate_ = LOGIN_ACK;
 			auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 			messenger_->send(pmsgs);
 			//  qry instrument only at first login everyday(same as seetlementconfirm)
@@ -806,7 +806,7 @@ namespace StarQuant
 			messenger_->send(pmsgout);
 			estate_ = CONNECTING;
 			auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_INFO_ENGINE_STATUS,
+						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 			messenger_->send(pmsgs);
 			LOG_INFO(logger,name_ <<" Logout,BrokerID="<<pUserLogout->BrokerID<<" UserID="<<pUserLogout->UserID);

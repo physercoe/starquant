@@ -39,7 +39,8 @@ from .ui_monitors import (
     OrderMonitor,
     TradeMonitor,
     PositionMonitor,
-    AccountMonitor
+    AccountMonitor,
+    LogMonitor
 )
 #from .ui_market_window import MarketWindow
 #from .ui_order_window import OrderWindow
@@ -47,14 +48,15 @@ from .ui_monitors import (
 #from .ui_position_window import PositionWindow
 #from .ui_closeposition_window import ClosePositionWindow
 #from .ui_account_window import AccountWindow
+#from .ui_log_window import LogWindow
 
 from .ui_strategy_window import CtaManager
-from .ui_log_window import LogWindow
+from .ui_manual_window import ManualWindow 
+
 from .ui_bt_dataview import BtDataViewWidget,BtDataPGChart
 from .ui_bt_resultsoverview import BtResultViewWidget
 from .ui_bt_posview import BtPosViewWidget
 from .ui_bt_txnview import BtTxnViewWidget
-from .ui_manual_window import ManualWindow 
 from .ui_bt_setting import BtSettingWindow
 from .ui_dataview import MarketDataView
 
@@ -122,7 +124,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._events_engine.register(EventType.CONTRACT, self._contract_event_handler)
         self._events_engine.register(EventType.HISTORICAL, self._historical_event_handler)
         self._events_engine.register(EventType.INFO, self._info_event_handler)
-        self._events_engine.register(EventType.STRATEGY_CONTROL, self.ctastrategywindow.signal_strategy_in.emit)
+        self._events_engine.register(EventType.STRATEGY_CONTROL, self._strategy_control_event_handler)
+        self._events_engine.register(EventType.ENGINE_CONTROL, self._engine_control_event_handler)
         self._events_engine.register(EventType.ORDER, self._outgoing_order_request_handler)
         self._events_engine.register(EventType.QRY, self._outgoing_qry_request_handler)
         self._events_engine.register(EventType.SUBSCRIBE, self._outgoing_general_request_handler)
@@ -164,14 +167,18 @@ class MainWindow(QtWidgets.QMainWindow):
         pass
         # print(historical_event)
 
-    def _info_event_handler(self,info_event):
-        if(info_event.msg_type == MSG_TYPE.MSG_TYPE_INFO_ENGINE_STATUS):
-            self.manual_widget.updateapistatusdict(info_event)
-        else:
-            self.log_window.msg_signal.emit(info_event)
+    def _strategy_control_event_handler(self,sc_event):
+        self.ctastrategywindow.signal_strategy_in.emit(sc_event)
 
-    def _general_event_handler(self, general_event):
+
+    def _engine_control_event_handler(self,ec_event):
+        self.manual_widget.updateapistatusdict(ec_event)
+
+
+    def _info_event_handler(self,info_event):
         pass
+            # self.log_window.msg_signal.emit(info_event)
+
 #----------------------------------------outgoing event ------------------------------------
     def _outgoing_order_request_handler(self, o):
         """
@@ -337,7 +344,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # bottomleft.addTab(tab5, self._lang_dict['ClosePosition'])
         bottomleft.addTab(tab6, self._lang_dict['Account'])
 
-        self.log_window = LogWindow(self._lang_dict)
+        # self.log_window = LogWindow(self._lang_dict)
+        self.log_window = LogMonitor(self._events_engine)
         tab1_layout = QtWidgets.QVBoxLayout()
         tab1_layout.addWidget(self.log_window)
         tab1.setLayout(tab1_layout)

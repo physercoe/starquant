@@ -216,7 +216,7 @@ class LogMonitor(BaseMonitor):
     sorting = False
 
     headers = {
-        "time": {"display": "时间", "cell": TimeCell, "update": False},
+        "timestamp": {"display": "时间", "cell": BaseCell, "update": False},
         "msg": {"display": "信息", "cell": MsgCell, "update": False},
         "gateway_name": {"display": "接口", "cell": BaseCell, "update": False},
     }

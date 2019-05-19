@@ -84,16 +84,21 @@ class Event(object):
                 self.event_type = EventType.CONTRACT
                 self.data = ContractData(gateway_name = self.source)
                 self.data.deserialize(v[3])
-            elif v[2].startswith('3') :           #msg2type == MSG_TYPE.MSG_TYPE_INFO:
-                self.event_type = EventType.INFO
+            elif v[2].startswith('11'):
+                self.event_type = EventType.ENGINE_CONTROL
                 self.msg_type = msg2type
-                self.data = LogData(gateway_name = self.source)
-                self.data.deserialize(v[3])
+                if len(v) > 3:
+                    self.data = v[3]
             elif v[2].startswith('12'):
                 self.event_type = EventType.STRATEGY_CONTROL
                 self.msg_type = msg2type
                 if len(v) > 3:
                     self.data = v[3]
+            elif v[2].startswith('3') :           #msg2type == MSG_TYPE.MSG_TYPE_INFO:
+                self.event_type = EventType.INFO
+                self.msg_type = msg2type
+                self.data = LogData(gateway_name = self.source)
+                self.data.deserialize(v[3])                    
             else:
                 self.event_type = EventType.HEADER
                 self.msg_type = msg2type
