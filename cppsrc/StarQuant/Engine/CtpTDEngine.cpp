@@ -578,8 +578,10 @@ namespace StarQuant
 	void CtpTDEngine::queryContract(shared_ptr<QryContractMsg> pmsg){
 		CThostFtdcQryInstrumentField req = {0};
 		string ctpsym = pmsg->data_;
+		if (ctpsym.back() == '\0') 
+			ctpsym.pop_back();
 		if (pmsg->symtype_ == ST_Full) 
-			ctpsym = DataManager::instance().full2Ctp_[pmsg->data_];
+			ctpsym = DataManager::instance().full2Ctp_[ctpsym];
 			// ctpsym = CConfig::instance().SecurityFullNameToCtpSymbol(pmsg->data_);
 		strcpy(req.InstrumentID, ctpsym.c_str());
 		int error = this->api_->ReqQryInstrument(&req,reqId_++);

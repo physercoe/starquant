@@ -11,16 +11,11 @@ from datetime import datetime
 import requests
 import itchat
 
-
-
-
 from source.common.datastruct import * 
 from mystrategy import strategy_list
 from source.data.data_board import DataBoard
-
 from source.trade.order_manager import OrderManager
 from source.trade.risk_manager import PassThroughRiskManager
-
 from source.engine.iengine import EventEngine
 from source.common.client_mq import ClientMq
 

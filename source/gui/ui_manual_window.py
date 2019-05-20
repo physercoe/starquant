@@ -59,7 +59,8 @@ class ManualWindow(QtWidgets.QFrame):
         
     def updateapistatusdict(self,info_event):
         key = info_event.source
-        self._gwstatusdict[key] = ESTATE(int(info_event.data.msg))
+        state = info_event.data.split('|')[0]
+        self._gwstatusdict[key] = ESTATE(int(state))
         self.updatestatus()
 
 

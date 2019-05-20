@@ -276,10 +276,11 @@ namespace StarQuant
     	for (int i = 0; i < nCount; i++)
 		{
 			string ctpticker = symbol[i];
-			if (st == ST_Full )
-				ctpticker = DataManager::instance().full2Ctp_[symbol[i]];
-				// string ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
-			
+			if (st == ST_Full ){
+				if (ctpticker.back() == '\0') 
+					ctpticker.pop_back();
+				ctpticker = DataManager::instance().full2Ctp_[ctpticker];	
+			}
 			insts[i] = (char*)ctpticker.c_str();
 			sout += insts[i] +string("|");
 			lastsubs_.push_back(ctpticker);	
@@ -303,9 +304,12 @@ namespace StarQuant
     	for (int i = 0; i < nCount; i++)
 		{
 			string ctpticker = symbol[i];
-			if (st == ST_Full)
-				ctpticker = DataManager::instance().full2Ctp_[symbol[i]];
-				// ctpticker = CConfig::instance().SecurityFullNameToCtpSymbol(symbol[i]);
+			if (st == ST_Full){
+				if (ctpticker.back() == '\0') 
+					ctpticker.pop_back();
+				ctpticker = DataManager::instance().full2Ctp_[ctpticker];
+			}
+
 			insts[i] = (char*)ctpticker.c_str();
 			sout += insts[i] +string("|");
 			for(auto it = lastsubs_.begin();it != lastsubs_.end();){

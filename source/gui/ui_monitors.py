@@ -59,7 +59,7 @@ class MarketMonitor(BaseMonitor):
 
     def show_detail(self,cell):
         data = cell.get_data()
-        symbol = data["full_symbol"]
+        symbol = data.__getattribute__(self.data_key)
         self.symbol_signal.emit(symbol)
 
 
@@ -77,7 +77,7 @@ class OrderMonitor(BaseMonitor):
     headers = {
         "account": {"display": "账号", "cell": BaseCell, "update": False},
         "clientID": {"display": "下单客户", "cell": BaseCell, "update": False},
-        "full_symbol": {"display": "代码全称", "cell": EnumCell, "update": False},
+        "full_symbol": {"display": "代码全称", "cell": BaseCell, "update": False},
         "type": {"display": "类型", "cell": EnumCell, "update": False},
         "direction": {"display": "方向", "cell": DirectionCell, "update": False},
         "offset": {"display": "开平", "cell": EnumCell, "update": False},

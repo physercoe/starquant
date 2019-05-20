@@ -3,7 +3,7 @@ import random
 import pandas as pd
 import datetime
 import numpy as np
-from PyQt5 import QtCore,QtWidgets
+from PyQt5 import QtCore,QtWidgets,QtGui
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QSizePolicy, QWidget
 import matplotlib as mpl
 mpl_agg = 'Qt5Agg'
@@ -207,8 +207,101 @@ class DateAxis(pg.AxisItem):
             strings.append(str(dt))
         return strings
 
+class PriceAxis(pg.AxisItem):
+    def __init__(self):
+        super().__init__(orientation='right')
+        self.style.update({'textFillLimits': [(0, 0.8)]})
+
+    def tickStrings(self, vals, scale, spacing):
+        digts = max(0, np.ceil(-np.log10(spacing * scale)))
+        return [
+            ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
+        ]
 
 
+
+class QuotesChart(QtGui.QWidget):
+
+    long_pen = pg.mkPen('#006000')
+    long_brush = pg.mkBrush('#00ff00')
+    short_pen = pg.mkPen('#600000')
+    short_brush = pg.mkBrush('#ff0000')
+
+    zoomIsDisabled = QtCore.pyqtSignal(bool)
+
+    def __init__(self,data):
+        super().__init__()
+        self.data = data
+        self.xaxis = DateAxis(orientation='bottom')
+        self.xaxis.setStyle(
+            tickTextOffset=7, textFillLimits=[(0, 0.80)], showValues=False
+        )
+
+        self.layout = QtGui.QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+
+        self.splitter = QtGui.QSplitter(QtCore.Qt.Vertical)
+        self.splitter.setHandleWidth(4)
+
+        self.layout.addWidget(self.splitter)
+
+
+
+    def _update_quotes_chart(self):
+        self.chart.hideAxis('left')
+        self.chart.showAxis('right')
+        self.chart.addItem()
+        self.chart.setLimits(
+            xMin=Quotes[0].id,
+            xMax=Quotes[-1].id,
+            minXRange=60,
+            yMin=Quotes.low.min() * 0.98,
+            yMax=Quotes.high.max() * 1.02,
+        )
+        self.chart.showGrid(x=True, y=True)
+        self.chart.setCursor(QtCore.Qt.BlankCursor)
+        self.chart.sigXRangeChanged.connect(self._update_yrange_limits)
+
+    def _update_sizes(self):
+        min_h_ind = int(self.height() * 0.3 / len(self.indicators))
+        sizes = [int(self.height() * 0.7)]
+        sizes.extend([min_h_ind] * len(self.indicators))
+        self.splitter.setSizes(sizes)  # , int(self.height()*0.2)
+
+    def _update_yrange_limits(self):
+        vr = self.chart.viewRect()
+        lbar, rbar = int(vr.left()), int(vr.right())
+        if self.signals_visible:
+            self._show_text_signals(lbar, rbar)
+        bars = Quotes[lbar:rbar]
+        ylow = bars.low.min() * 0.98
+        yhigh = bars.high.max() * 1.02
+
+        std = np.std(bars.close)
+        self.chart.setLimits(yMin=ylow, yMax=yhigh, minYRange=std)
+        self.chart.setYRange(ylow, yhigh)
+        for i, d in self.indicators:
+            # ydata = i.plotItem.items[0].getData()[1]
+            ydata = d[lbar:rbar]
+            ylow = ydata.min() * 0.98
+            yhigh = ydata.max() * 1.02
+            std = np.std(ydata)
+            i.setLimits(yMin=ylow, yMax=yhigh, minYRange=std)
+            i.setYRange(ylow, yhigh)
+
+    def plot(self, symbol):
+        self.digits = symbol.digits
+        self.chart = pg.PlotWidget(
+            parent=self.splitter,
+            axisItems={'bottom': self.xaxis, 'right': PriceAxis()},
+            enableMenu=False,
+        )
+        self.chart.getPlotItem().setContentsMargins(*CHART_MARGINS)
+        self.chart.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
+
+
+        self._update_quotes_chart()
+        self._update_sizes()
 
 
 
