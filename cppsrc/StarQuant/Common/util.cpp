@@ -87,7 +87,9 @@ namespace StarQuant {
 		while (getline(ss, item, delim)) {
 			elems.push_back(item);
 		}
-
+		string& last = elems.back();
+		if (last.back() == '\0')
+			last.pop_back();
 		return elems;
 	}
 

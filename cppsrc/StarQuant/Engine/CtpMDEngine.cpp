@@ -277,8 +277,8 @@ namespace StarQuant
 		{
 			string ctpticker = symbol[i];
 			if (st == ST_Full ){
-				if (ctpticker.back() == '\0') 
-					ctpticker.pop_back();
+				// if (ctpticker.back() == '\0') 
+				// 	ctpticker.pop_back();
 				ctpticker = DataManager::instance().full2Ctp_[ctpticker];	
 			}
 			insts[i] = (char*)ctpticker.c_str();
@@ -305,8 +305,8 @@ namespace StarQuant
 		{
 			string ctpticker = symbol[i];
 			if (st == ST_Full){
-				if (ctpticker.back() == '\0') 
-					ctpticker.pop_back();
+				// if (ctpticker.back() == '\0') 
+				// 	ctpticker.pop_back();
 				ctpticker = DataManager::instance().full2Ctp_[ctpticker];
 			}
 
