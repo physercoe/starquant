@@ -367,14 +367,14 @@ class CandlestickItem(pg.GraphicsObject):
 
     def __init__(self, data):
         pg.GraphicsObject.__init__(self)
-        self.data = data
+        self.data = data        
         self.generatePicture()
 
     def generatePicture(self):
-        self.picture = QtGui.QPicture()
+        self.picture = QtGui.QPicture()        
         p = QtGui.QPainter(self.picture)
-        for bar in self.data:
-            t = 60*(bar.datetime.hour - 9) + bar.datetime.minute
+        for t, bar in enumerate(self.data):
+            # t = 60*(bar.datetime.hour - 9) + bar.datetime.minute
             if bar.open_price < bar.close_price:
                 p.setPen(self.bull_pen)
                 p.setBrush(self.bull_brush)
@@ -384,11 +384,13 @@ class CandlestickItem(pg.GraphicsObject):
             p.drawLine(QtCore.QPointF(t, bar.low_price), QtCore.QPointF(t, bar.high_price))
             p.drawRect(QtCore.QRectF(t - self.w, bar.open_price, self.w * 2, bar.close_price - bar.open_price))
         p.end()
+        self.update()
+
 
     def on_bar(self,bar):
-        self.data.append(bar)
+        # self.data.append(bar)
         self.generatePicture()
-        # p = QtGui.QPainter(self.picture)
+        # p = self.p
         # t = 60*(bar.datetime.hour - 9) + bar.datetime.minute
         # if bar.open_price < bar.close_price:
         #     p.setPen(self.bull_pen)
@@ -398,7 +400,8 @@ class CandlestickItem(pg.GraphicsObject):
         #     p.setBrush(self.bear_brush)
         # p.drawLine(QtCore.QPointF(t, bar.low_price), QtCore.QPointF(t, bar.high_price))
         # p.drawRect(QtCore.QRectF(t - self.w, bar.open_price, self.w * 2, bar.close_price - bar.open_price))
-        # p.end()        
+        # p.end()
+        # self.update()       
 
     def paint(self, p, *args):
         p.drawPicture(0, 0, self.picture)
@@ -422,19 +425,22 @@ class VolumeItem(pg.GraphicsObject):
     def generatePicture(self):
         self.picture = QtGui.QPicture()
         p = QtGui.QPainter(self.picture)
-        for bar in self.data:
-            t = 60*(bar.datetime.hour - 9) + bar.datetime.minute
+        for t, bar in enumerate(self.data):
+            # t = 60*(bar.datetime.hour - 9) + bar.datetime.minute
+            sign = 1
             if bar.open_price < bar.close_price:
                 p.setPen(self.bull_pen)
                 p.setBrush(self.bull_brush)
             else:
                 p.setPen(self.bear_pen)
-                p.setBrush(self.bear_brush)            
-            p.drawRect(QtCore.QRectF(t - self.w, 0, self.w * 2, bar.volume))
+                p.setBrush(self.bear_brush) 
+                sign = -1           
+            p.drawRect(QtCore.QRectF(t - self.w, 0, self.w * 2, sign*bar.volume))
         p.end()
+        self.update()
 
     def on_bar(self,bar):
-        self.data.append(bar)
+        # self.data.append(bar)
         self.generatePicture()    
 
     def paint(self, p, *args):

@@ -390,7 +390,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.dataviewindow = MarketDataView()
         self.market_window.symbol_signal.connect(self.dataviewindow.symbol_signal.emit)
-
         splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         splitter1.addWidget(topleft)
         splitter1.addWidget(bottomleft)
@@ -399,7 +398,7 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         splitter2.addWidget(self.dataviewindow)
         splitter2.addWidget(bottomright)
-        splitter2.setSizes([400, 400])
+        splitter2.setSizes([500, 500])
 
         splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter3.addWidget(splitter1)
