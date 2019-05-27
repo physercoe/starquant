@@ -339,7 +339,7 @@ ORDERSTATUS_2VT = {
     OrderStatus.ERROR: Status.REJECTED
 }
 
-ACTIVE_STATUSES = set([Status.SUBMITTING, Status.NOTTRADED, Status.PARTTRADED])
+ACTIVE_STATUSES = set([Status.UNKNOWN,Status.SUBMITTING, Status.NOTTRADED, Status.PARTTRADED])
 class Product(Enum):
     """
     Product class.

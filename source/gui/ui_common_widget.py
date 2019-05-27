@@ -294,7 +294,7 @@ class ContractManager(QtWidgets.QWidget):
         super(ContractManager, self).__init__()
 
         self.contracts = {}
-        # self.load_contract()
+        self.load_contract()
 
 
         self.init_ui()

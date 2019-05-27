@@ -169,7 +169,7 @@ class StrategyEngine(BaseEngine):
     def process_orderstatus_event(self, event: Event):
         """"""
         order = event.data
-        
+
         self.offset_converter.update_order(order)
 
         if order.clientID != self.id:
@@ -178,6 +178,7 @@ class StrategyEngine(BaseEngine):
         self.orders[order.client_order_id] = order
         # If order is active, then update data in dict.
         if order.is_active():
+            print('order is active')
             self.active_orders[order.client_order_id] = order
         # Otherwise, pop inactive order from in dict
         elif order.client_order_id in self.active_orders:
@@ -185,11 +186,13 @@ class StrategyEngine(BaseEngine):
 
         strategy = self.orderid_strategy_map.get(order.client_order_id, None)
         if not strategy:
+            print(order.client_order_id, 'dont find strategy')
             return
 
         # Remove client_order_id if order is no longer active.
         client_order_ids = self.strategy_orderid_map[strategy.strategy_name]
-        if order.client_order_id in client_order_ids and not order.is_active():
+        if (order.client_order_id in client_order_ids) and (not order.is_active()):
+            print('rm inactive order in strategy order map')
             client_order_ids.remove(order.client_order_id)
 
         # For server stop order, call strategy on_stop_order function
@@ -234,7 +237,12 @@ class StrategyEngine(BaseEngine):
         self.put_strategy_event(strategy)
 
         self.trades[trade.vt_tradeid] = trade
-
+        #send qry pos to update position
+        m = Event(type=EventType.QRY,
+            des=event.source,
+            src=str(self.id),
+            msgtype=MSG_TYPE.MSG_TYPE_QRY_POS)
+        self.put(m)
 
     def process_position_event(self, event: Event):
         """"""
@@ -413,6 +421,12 @@ class StrategyEngine(BaseEngine):
                 self._send_sock.send(m.serialize())
             else:
                 self.write_log(f"行情订阅失败，找不到合约{strategy.full_symbol}", strategy)
+
+            # qry pos and acc
+            m = Event(type=EventType.QRY,msgtype=MSG_TYPE.MSG_TYPE_QRY_POS)
+            m.destination = strategy.api + '.' + strategy.account
+            m.source = str(self.id)
+            self._send_sock.send(m.serialize())
 
             # Put event to update init completed status.
             strategy.inited = True
@@ -885,9 +899,11 @@ class StrategyEngine(BaseEngine):
         """
         orderids = self.strategy_orderid_map[strategy.strategy_name]
         if not orderids:
+            print(strategy.strategy_name,'has no active order')
             return
 
         for orderid in copy(orderids):
+            print('cancel oid:',orderid)
             self.cancel_order(strategy, orderid)
 
 

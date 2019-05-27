@@ -252,7 +252,10 @@ class QuotesChart(QtGui.QWidget):
         symbol, exchange = extract_full_symbol(self.full_symbol)
         end = datetime.now()
         start = end - timedelta(days)
-
+        if start > end:
+            tmp = end
+            end = start
+            start = tmp 
         bars = database_manager.load_bar_data(
             symbol=symbol,
             exchange=exchange,
@@ -547,7 +550,7 @@ class OrderBookWidget(QtWidgets.QWidget):
             self.symbol_signal.emit(sym)
     def process_days(self):
         days = int(self.histbar_day.text())
-        if days != self.last_days and days >0 :
+        if days != self.last_days :
             self.last_days = days
             self.day_signal.emit(days)
 
