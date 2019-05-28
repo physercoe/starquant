@@ -104,24 +104,28 @@ class OrderMonitor(BaseMonitor):
 
     def init_ui(self):
         super(OrderMonitor, self).init_ui()
-        self.setToolTip("双击单元格撤单")
+        self.setToolTip("双击订单状态单元格撤单")
         self.itemDoubleClicked.connect(self.cancel_order)
 
     def hide_orders(self):
         for row in range(self.rowCount()):
-            cell = self.item(row,0)
+            cell = self.item(row,9)
             order = cell.get_data()
             if order.status not in ACTIVE_STATUSES:
                 self.hideRow(row)
     def show_orders(self):
         for row in range(self.rowCount()):
-            cell = self.item(row,0)
+            cell = self.item(row,9)
             order = cell.get_data()
             if order.status not in ACTIVE_STATUSES:
                 self.showRow(row)
 
     def cancel_order(self,cell):
-        order = cell.get_data()
+        data = cell.get_data()
+        oid = data.__getattribute__(self.data_key)
+        row_cells = self.cells[oid]
+        cell2 = row_cells['status']
+        order = cell2.get_data()
         if not order:
             return
         if order.status not in ACTIVE_STATUSES:

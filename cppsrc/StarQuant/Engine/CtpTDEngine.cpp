@@ -1379,7 +1379,7 @@ namespace StarQuant
 			o->price_ = pOrder->LimitPrice;
 			int dir_ = pOrder->Direction != THOST_FTDC_D_Sell ? 1:-1 ;
 			o->quantity_ = dir_ * pOrder->VolumeTotalOriginal ;
-			o->tradedvol_ = dir_ * pOrder->VolumeTraded ;
+			o->tradedvol_ = dir_ * pOrder->VolumeTraded ;//pOrder->VolumeTotalOriginal - pOrder->VolumeTotal
 			o->flag_ = CtpComboOffsetFlagToOrderFlag(pOrder->CombOffsetFlag[0]);
 			o->tag_ = string("") 
 				+ "h" + pOrder->CombHedgeFlag
@@ -1429,6 +1429,7 @@ namespace StarQuant
 			<<" LimitPrice="<<pOrder->LimitPrice
 			<<" VolumeTotalOriginal="<<pOrder->VolumeTotalOriginal
 			<<" VolumeTraded="<<pOrder->VolumeTraded
+			<<" VolumeTotal"<<pOrder->VolumeTotal
 			<<" OrderSysID="<<pOrder->OrderSysID
 			<<" SequenceNo="<<pOrder->SequenceNo
 		);		

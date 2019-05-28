@@ -495,11 +495,11 @@ namespace StarQuant
 		char b[9];
 		strcpy(a,pDepthMarketData->ActionDay);
 		strcpy(b,pDepthMarketData->UpdateTime);
-        std::sprintf(buf, "%c%c%c%c-%c%c-%c%c %c%c:%c%c:%c%c.%.3d", a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],b[0],b[1],b[3],b[4],b[6],b[7],pDepthMarketData->UpdateMillisec );
-
+        // std::sprintf(buf, "%c%c%c%c-%c%c-%c%c %c%c:%c%c:%c%c.%.3d", a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],b[0],b[1],b[3],b[4],b[6],b[7],pDepthMarketData->UpdateMillisec );
+		std::sprintf(buf, " %c%c:%c%c:%c%c.%.3d", b[0],b[1],b[3],b[4],b[6],b[7],pDepthMarketData->UpdateMillisec );
 		pk->destination_ = DESTINATION_ALL;
 		pk->source_ = name_;
-		pk->data_.time_ = buf;
+		pk->data_.time_ = ymd() + buf;
 		// pk->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pDepthMarketData->InstrumentID);
 		pk->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pDepthMarketData->InstrumentID];		
 		pk->data_.price_ = pDepthMarketData->LastPrice;

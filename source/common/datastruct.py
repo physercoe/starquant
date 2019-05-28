@@ -280,8 +280,8 @@ class OrderData(BaseData):
     direction: Direction = Direction.LONG
     offset: Offset = Offset.NONE
     price: float = 0
-    volume: float = 0
-    traded: float = 0
+    volume: int = 0
+    traded: int = 0
     status: Status = Status.SUBMITTING
     time: str = ""
 
