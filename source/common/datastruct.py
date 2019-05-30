@@ -342,7 +342,7 @@ class OrderData(BaseData):
             if self.volume <0:
                 self.direction = Direction.SHORT
                 self.volume = -1 * self.volume
-            self.traded = abs(int(v[8]))
+            self.traded = abs(int(v[8]))            
             self.flag = OrderFlag(int(v[9]))
             self.offset = ORDERFALG_2VT[self.flag]
             self.server_order_id = int(v[10])

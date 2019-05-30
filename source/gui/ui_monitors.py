@@ -104,7 +104,7 @@ class OrderMonitor(BaseMonitor):
 
     def init_ui(self):
         super(OrderMonitor, self).init_ui()
-        self.setToolTip("双击订单状态单元格撤单")
+        self.setToolTip("双击单元格撤单")
         self.itemDoubleClicked.connect(self.cancel_order)
 
     def hide_orders(self):

@@ -1409,6 +1409,7 @@ namespace StarQuant
 			o->orderStatus_ = CtpOrderStatusToOrderStatus(pOrder->OrderStatus);
 			o->orderNo_ = pOrder->OrderSysID;
 			o->updateTime_ = ymdhmsf();
+			o->tradedvol_ = pOrder->VolumeTraded;
 			auto pmsgout = make_shared<OrderStatusMsg>(to_string(o->clientID_),name_);
 			pmsgout->set(o);
 			messenger_->send(pmsgout);
