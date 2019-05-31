@@ -219,6 +219,7 @@ class OffsetConverter:
     def convert_order_request(self, req: OrderRequest, lock: bool):
         """"""
         if not self.is_convert_required(req.full_symbol):
+            # print('--------------------not convert------------------')
             return [req]
 
         holding = self.get_position_holding(req.account,req.full_symbol)
@@ -228,6 +229,7 @@ class OffsetConverter:
         elif req.exchange == Exchange.SHFE:
             return holding.convert_order_request_shfe(req)
         else:
+            # print('--------------------not convert------------------')
             return [req]
 
     @lru_cache()
@@ -450,13 +452,13 @@ class PositionHolding:
         else:
             pos_available = self.long_pos - self.long_pos_frozen
             td_available = self.long_td - self.long_td_frozen
-
+        # print('-------------posholding:',pos_available,td_available)
         if req.volume > pos_available:
             return [req]
         elif req.volume <= td_available:
             req_td = copy(req)            
             req_td.offset = Offset.CLOSETODAY
-            if req_td.api == "CTP":
+            if req_td.api == "CTP.TD":
                 req_td.orderfield.CombOffsetFlag = THOST_FTDC_OF_CloseToday
             return [req_td]
         else:
@@ -466,7 +468,7 @@ class PositionHolding:
                 req_td = copy(req)
                 req_td.offset = Offset.CLOSETODAY             
                 req_td.volume = td_available
-                if req_td.api == "CTP":
+                if req_td.api == "CTP.TD":
                     req_td.orderfield.CombOffsetFlag = THOST_FTDC_OF_CloseToday 
                     req_td.orderfield.VolumeTotalOriginal = td_available            
                 req_list.append(req_td)
@@ -474,7 +476,7 @@ class PositionHolding:
             req_yd = copy(req)
             req_yd.offset = Offset.CLOSEYESTERDAY
             req_yd.volume = req.volume - td_available
-            if req_yd.api == "CTP":
+            if req_yd.api == "CTP.TD":
                 req_yd.orderfield.CombOffsetFlag = THOST_FTDC_OF_CloseYesterday 
                 req_yd.orderfield.VolumeTotalOriginal = req_yd.volume               
             req_list.append(req_yd)
@@ -505,11 +507,11 @@ class PositionHolding:
                 req_yd = copy(req)
                 if self.exchange == Exchange.SHFE:
                     req_yd.offset = Offset.CLOSEYESTERDAY
-                    if req_yd.api == "CTP":
+                    if req_yd.api == "CTP.TD":
                         req_yd.orderfield.CombOffsetFlag = THOST_FTDC_OF_CloseYesterday
                 else:
                     req_yd.offset = Offset.CLOSE
-                    if req_yd.api == "CTP":
+                    if req_yd.api == "CTP.TD":
                         req_yd.orderfield.CombOffsetFlag = THOST_FTDC_OF_Close  
                 req_list.append(req_yd)
 
@@ -517,7 +519,7 @@ class PositionHolding:
                 req_open = copy(req)
                 req_open.offset = Offset.OPEN
                 req_open.volume = open_volume
-                if req_open.api == "CTP":
+                if req_open.api == "CTP.TD":
                     req_open.orderfield.CombOffsetFlag = THOST_FTDC_OF_Open 
                     req_open.orderfield.VolumeTotalOriginal = req_open.volume 
                 req_list.append(req_open)

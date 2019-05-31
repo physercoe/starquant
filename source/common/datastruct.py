@@ -94,6 +94,11 @@ class Event(object):
                 self.msg_type = msg2type
                 if len(v) > 3:
                     self.data = v[3]
+            elif v[2].startswith('14'):
+                self.event_type = EventType.RECORDER_CONTROL
+                self.msg_type = msg2type
+                if len(v) > 3:
+                    self.data = v[3]
             elif v[2].startswith('3') :           #msg2type == MSG_TYPE.MSG_TYPE_INFO:
                 self.event_type = EventType.INFO
                 self.msg_type = msg2type
