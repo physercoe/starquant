@@ -87,7 +87,9 @@ enum OrderType {
     OT_OptAbandon,
     OT_Reqquot,
     OT_Rspquot,
-    OT_Swap
+    OT_Swap,
+    OT_FAK,
+    OT_FOK
 };
 
 enum OrderStatus {

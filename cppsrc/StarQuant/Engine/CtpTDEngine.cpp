@@ -457,11 +457,11 @@ namespace StarQuant
 		pmsg->data_.quantity_ = dir_ * pmsg->data_.orderField_.VolumeTotalOriginal;
 		pmsg->data_.flag_ = CtpComboOffsetFlagToOrderFlag(pmsg->data_.orderField_.CombOffsetFlag[0]);
 		pmsg->data_.tag_ = pmsg->data_.tag_ 
-			+ "h" + pmsg->data_.orderField_.CombHedgeFlag
-			+ "p" + pmsg->data_.orderField_.OrderPriceType
-			+ "c" + pmsg->data_.orderField_.ContingentCondition + "-" + to_string(pmsg->data_.orderField_.StopPrice)
-			+ "t" + pmsg->data_.orderField_.TimeCondition
-			+ "v" + pmsg->data_.orderField_.VolumeCondition;		
+			+ ":h" + pmsg->data_.orderField_.CombHedgeFlag
+			+ ":p" + pmsg->data_.orderField_.OrderPriceType
+			+ ":c" + pmsg->data_.orderField_.ContingentCondition + ":" + to_string(pmsg->data_.orderField_.StopPrice)
+			+ ":t" + pmsg->data_.orderField_.TimeCondition
+			+ ":v" + pmsg->data_.orderField_.VolumeCondition;		
 		std::shared_ptr<Order> o = pmsg->toPOrder();
 		OrderManager::instance().trackOrder(o);	
 		lock_guard<mutex> gs(orderStatus_mtx);
@@ -915,12 +915,12 @@ namespace StarQuant
 				o->quantity_ = dir_ * pOrder->VolumeTotalOriginal ;
 				o->tradedvol_ = dir_ * pOrder->VolumeTraded ;
 				o->flag_ = CtpComboOffsetFlagToOrderFlag(pOrder->CombOffsetFlag[0]);
-				o->tag_ = string("") 
-					+ "h" + pOrder->CombHedgeFlag
-					+ "p" + pOrder->OrderPriceType
-					+ "c" + pOrder->ContingentCondition + "-" + to_string(pOrder->StopPrice)
-					+ "t" + pOrder->TimeCondition
-					+ "v" + pOrder->VolumeCondition;
+				o->tag_ = string("14") 
+					+ ":h" + pOrder->CombHedgeFlag
+					+ ":p" + pOrder->OrderPriceType
+					+ ":c" + pOrder->ContingentCondition + ":" + to_string(pOrder->StopPrice)
+					+ ":t" + pOrder->TimeCondition
+					+ ":v" + pOrder->VolumeCondition;
 				lock_guard<mutex> g(oid_mtx);
 				o->serverOrderID_ = m_serverOrderId++;
 				o->brokerOrderID_ = m_brokerOrderId_++;
@@ -1381,12 +1381,12 @@ namespace StarQuant
 			o->quantity_ = dir_ * pOrder->VolumeTotalOriginal ;
 			o->tradedvol_ = dir_ * pOrder->VolumeTraded ;//pOrder->VolumeTotalOriginal - pOrder->VolumeTotal
 			o->flag_ = CtpComboOffsetFlagToOrderFlag(pOrder->CombOffsetFlag[0]);
-			o->tag_ = string("") 
-				+ "h" + pOrder->CombHedgeFlag
-				+ "p" + pOrder->OrderPriceType
-				+ "c" + pOrder->ContingentCondition + "-" + to_string(pOrder->StopPrice)
-				+ "t" + pOrder->TimeCondition
-				+ "v" + pOrder->VolumeCondition;
+			o->tag_ = string("14") 
+				+ ":h" + pOrder->CombHedgeFlag
+				+ ":p" + pOrder->OrderPriceType
+				+ ":c" + pOrder->ContingentCondition + ":" + to_string(pOrder->StopPrice)
+				+ ":t" + pOrder->TimeCondition
+				+ ":v" + pOrder->VolumeCondition;
 			lock_guard<mutex> g(oid_mtx);
 			o->serverOrderID_ = m_serverOrderId++;
 			o->brokerOrderID_ = m_brokerOrderId_++;

@@ -305,8 +305,12 @@ class OrderData(BaseData):
 
     def __post_init__(self):
         """"""
+        if self.full_symbol:
+            self.symbol,self.exchange = extract_full_symbol(self.full_symbol)
         self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
         self.vt_orderid = f"{self.gateway_name}.{self.orderid}"
+        self.tag = str(self.type.value)
+        
 
     def is_active(self):
         """
@@ -333,7 +337,7 @@ class OrderData(BaseData):
             self.clientID = int(v[2])
             self.client_order_id = int(v[3])
             self.tag = v[4]             
-
+            self.type = OrderType(int(v[4].split(':')[0]))
             self.full_symbol =  v[5]
             self.symbol,self.exchange = extract_full_symbol(self.full_symbol)
             self.vt_symbol = generate_vt_symbol(self.symbol,self.exchange)

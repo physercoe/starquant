@@ -78,7 +78,7 @@ class OrderMonitor(BaseMonitor):
         "account": {"display": "账号", "cell": BaseCell, "update": False},
         "clientID": {"display": "下单客户", "cell": BaseCell, "update": False},
         "full_symbol": {"display": "代码全称", "cell": BaseCell, "update": False},
-        "type": {"display": "类型", "cell": EnumCell, "update": False},
+        "type": {"display": "类型", "cell": BaseCell, "update": False},
         "direction": {"display": "方向", "cell": DirectionCell, "update": False},
         "offset": {"display": "开平", "cell": EnumCell, "update": False},
         "price": {"display": "价格", "cell": BaseCell, "update": False},

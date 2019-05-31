@@ -184,7 +184,7 @@ class OrderFlag(Enum):
     FORCEOFF = 5
     LOCALFORCECLOSE = 6        # in use
 
-class OrderType(Enum):
+class OrderType(Enum):    
     MKT = 0
     MKTC = 1    #market on close
     LMT = 2     #limit

@@ -103,16 +103,36 @@ class ManualWindow(QtWidgets.QFrame):
             m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_CTP
             m.destination = self.gateway.currentText() 
             m.source = '0'  
-            o = OrderData()
-            o.api = "CTP.TD"       #self.gateway.currentText() 
-            o.account = m.destination[7:]
-            o.clientID = 0
-            o.client_order_id = self.manualorderid
-            self.manualorderid = self.manualorderid + 1
-            # o.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
-            o.orderfield = of
+            ot = OrderType.DEFAULT
+            if (of.OrderPriceType == THOST_FTDC_OPT_AnyPrice) and (of.ContingentCondition in [THOST_FTDC_CC_Touch,THOST_FTDC_CC_TouchProfit]):
+                ot = OrderType.STP
+            elif (of.OrderPriceType == THOST_FTDC_OPT_LimitPrice) and (of.ContingentCondition in [THOST_FTDC_CC_Touch,THOST_FTDC_CC_TouchProfit]):
+                ot = OrderType.STPLMT
+            elif (of.OrderPriceType == THOST_FTDC_OPT_AnyPrice) and (of.ContingentCondition == THOST_FTDC_CC_Immediately) and (of.TimeCondition == THOST_FTDC_TC_GFD):
+                ot = OrderType.MKT
+            elif (of.OrderPriceType == THOST_FTDC_OPT_LimitPrice) and (of.ContingentCondition == THOST_FTDC_CC_Immediately) and (of.TimeCondition == THOST_FTDC_TC_GFD):
+                ot = OrderType.LMT                
+            elif (of.ContingentCondition == THOST_FTDC_CC_Immediately) and (of.TimeCondition == THOST_FTDC_TC_IOC) and (of.VolumeCondition == THOST_FTDC_VC_AV):
+                ot = OrderType.FAK
+            elif (of.ContingentCondition == THOST_FTDC_CC_Immediately) and (of.TimeCondition == THOST_FTDC_TC_IOC) and (of.VolumeCondition == THOST_FTDC_VC_CV):
+                ot = OrderType.FOK
+            o = OrderData(
+                api = "CTP.TD" ,
+                account = m.destination[7:],
+                clientID = 0,
+                client_order_id = self.manualorderid,
+                type = ot,
+                orderfield = of
+            )
+            # o.api = "CTP.TD"       #self.gateway.currentText() 
+            # o.account = m.destination[7:]
+            # o.clientID = 0
+            # o.client_order_id = self.manualorderid
+            # # o.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+            # o.orderfield = of
             m.data = o   
             self.order_signal.emit(m)
+            self.manualorderid = self.manualorderid + 1
         except:
             print('place ctp order error')
 
