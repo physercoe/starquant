@@ -115,7 +115,7 @@ class StrategyEngine(BaseEngine):
         contractfile = Path.cwd().joinpath("etc/ctpcontract.yaml")
         with open(contractfile, encoding='utf8') as fc: 
             contracts = yaml.load(fc)
-        print(len(contracts))
+        print('loading contracts, total number:',len(contracts))
         for sym, data in contracts.items():
             contract = ContractData(
                 symbol=data["symbol"],
@@ -274,8 +274,8 @@ class StrategyEngine(BaseEngine):
                 msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STATUS
                 )
             self._send_sock.send(m.serialize())
-        elif (event.destination not in deslist ) :
-            return
+        # elif (event.destination not in deslist ) :
+        #     return
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_ADD):
             v = event.data.split('|')
             classname = v[0]

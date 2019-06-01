@@ -26,7 +26,7 @@ class ClientMq(object):
                 msgin = self._recv_sock.recv(flags=0)
                 msgin = msgin.decode("utf-8")
                 if msgin is not None and msgin.index('|') > 0:
-                    print('client rec broker msg:',msgin,'at ', datetime.now())
+                    # print('client rec broker msg:',msgin,'at ', datetime.now())
                     if msgin[-1] == '\0':
                         msgin = msgin[:-1]
                     if msgin[-1] == '\x00':
@@ -34,41 +34,6 @@ class ClientMq(object):
                     m = Event()
                     m.deserialize(msgin)
                     self._ui_event_engine.put(m)
-                    # v = msgin.split('|')
-                    # msg2type = MSG_TYPE(int(v[2]))
-                    # if msg2type == MSG_TYPE.MSG_TYPE_TICK_L1:
-                    #     m = TickEvent()
-                    #     m.deserialize(msgin)
-                    #     self._ui_event_engine.put(m)    
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_RTN_ORDER:
-                    #    m = OrderStatusEvent()
-                    #    m.deserialize(msgin)
-                    #    self._ui_event_engine.put(m)
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_RTN_TRADE:
-                    #     m = FillEvent()
-                    #     m.deserialize(msgin)
-                    #     self._ui_event_engine.put(m)
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_RSP_POS:
-                    #     m = PositionEvent()
-                    #     m.deserialize(msgin)
-                    #     self._ui_event_engine.put(m)
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_Hist:
-                    #     m = HistoricalEvent()
-                    #     m.deserialize(msgin)
-                    #     self._ui_event_engine.put(m)
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_RSP_ACCOUNT:
-                    #     m = AccountEvent()
-                    #     m.deserialize(msgin)
-                    #     self._ui_event_engine.put(m)
-                    # elif msg2type == MSG_TYPE.MSG_TYPE_RSP_CONTRACT:
-                    #     m = ContractEvent()
-                    #     m.deserialize(msgin)
-                    #     self._ui_event_engine.put(m)
-                    # elif v[2].startswith('3') :           #msg2type == MSG_TYPE.MSG_TYPE_INFO:
-                    #     m = InfoEvent()
-                    #     m.deserialize(msgin)
-                    #     self._ui_event_engine.put(m)
-                    #     pass
             except Exception as e:               
                 pass
             try:

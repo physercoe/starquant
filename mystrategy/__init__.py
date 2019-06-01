@@ -19,7 +19,7 @@ from source.engine.strategy_engine import StrategyEngine
 strategy_list = {}
 strategy_id = {}
 path = os.path.abspath(os.path.dirname(__file__))
-print(path)
+
 # loop over all the files in the path
 for root, subdirs, files in os.walk(path):
     for name in files:
