@@ -224,6 +224,15 @@ class OrderType(Enum):
     FAK = 23
     FOK = 24
 
+OT2STR = {
+    OrderType.MKT:'市价',
+    OrderType.LMT:'限价',
+    OrderType.STP:'市价止损',
+    OrderType.STPLMT:'限价止损',
+    OrderType.FAK:'FAK',
+    OrderType.FOK:'FOK',
+    OrderType.DEFAULT:'未知'
+}
 class OrderStatus(Enum):
     UNKNOWN = 0
     NEWBORN = 1              # in use

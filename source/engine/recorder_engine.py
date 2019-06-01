@@ -61,8 +61,8 @@ class RecorderEngine(BaseEngine):
         self.load_contract()
         self.load_setting()
         self.register_event()
-        self.init_subcribe()
         self.put_event()
+        self.init_subcribe()
         self.start()
 
     def init_nng(self):
@@ -161,6 +161,7 @@ class RecorderEngine(BaseEngine):
                 msgtype=MSG_TYPE.MSG_TYPE_RECORDER_STATUS
                 )
             self._send_sock.send(m.serialize())
+            self.put_event()
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_ADD_TICK):
             full_symbol = event.data
             self.add_tick_recording(full_symbol)

@@ -20,6 +20,7 @@ from source.engine.iengine import EventEngine
 from source.common.client_mq import ClientMq
 
 from .ui_common_widget import (
+    RecorderManager,
     ContractManager,
     StatusThread, 
     CsvLoaderWidget, 
@@ -98,7 +99,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # 7 portfolio manager and position manager        
         self.contract_manager = ContractManager()
-
+        self.recorder_manager = RecorderManager(contracts= self.contract_manager.contracts)
+        self.recorder_manager.signal_recorder_out.connect(self._outgoing_general_request_handler)
         ## 8. client mq
         self._client_mq = ClientMq(self._config_server,self._events_engine, self._outgoing_queue)
         
@@ -121,6 +123,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._events_engine.register(EventType.INFO, self._info_event_handler)
         self._events_engine.register(EventType.STRATEGY_CONTROL, self._strategy_control_event_handler)
         self._events_engine.register(EventType.ENGINE_CONTROL, self._engine_control_event_handler)
+        self._events_engine.register(EventType.RECORDER_CONTROL,self._recorder_control_event_handler)
         self._events_engine.register(EventType.ORDER, self._outgoing_order_request_handler)
         self._events_engine.register(EventType.QRY, self._outgoing_qry_request_handler)
         self._events_engine.register(EventType.SUBSCRIBE, self._outgoing_general_request_handler)
@@ -169,6 +172,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def _engine_control_event_handler(self,ec_event):
         self.manual_widget.updateapistatusdict(ec_event)
 
+    def _recorder_control_event_handler(self,rc_event):
+        self.recorder_manager.signal_recorder_update.emit(rc_event)
 
     def _info_event_handler(self,info_event):
         pass
@@ -247,6 +252,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         #tool menu
         toolMenu = menubar.addMenu('Tools')
+
+        tool_recorder = QtWidgets.QAction('Recorder',self)
+        tool_recorder.triggered.connect(self.recorder_manager.show)
+        toolMenu.addAction(tool_recorder)
         tool_csvloader = QtWidgets.QAction('CSV Loader',self)
         tool_csvloader.triggered.connect(self.opencsvloader)
         toolMenu.addAction(tool_csvloader)

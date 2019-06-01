@@ -11,7 +11,7 @@ import yaml
 from typing import TextIO
 from datetime import datetime
 from pathlib import Path
-import csv
+import csv,json
 from copy import copy
 import webbrowser
 
@@ -269,6 +269,255 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 volume_head=volume_head,
                 datetime_format=datetime_format,
             )
+
+
+class RecorderManager(QtWidgets.QWidget):
+    """"""
+
+    signal_log = QtCore.pyqtSignal(Event)
+    signal_recorder_update = QtCore.pyqtSignal(Event)
+    signal_recorder_out = QtCore.pyqtSignal(Event)
+    signal_contract = QtCore.pyqtSignal(Event)
+
+    def __init__(self, contracts: dict = {}):
+        super().__init__()
+        self.full_symbols = [c for c in contracts.keys()]
+        self.init_ui()
+        self.register_event()
+        self.engineid = ''
+
+    def init_ui(self):
+        """"""
+        self.setWindowTitle("行情记录")
+        self.resize(800, 600)
+
+        # Create widgets
+        self.engine_status = QtWidgets.QLineEdit()
+        self.engine_status.setMaximumWidth(100)
+        self.engine_status.setReadOnly(True)
+        self.engine_status.setText('False')
+        self.engine_pid = QtWidgets.QLineEdit()
+        self.engine_pid.setReadOnly(True)
+        self.engine_pid.setMaximumWidth(100)
+        refresh_button = QtWidgets.QPushButton("refresh")
+        refresh_button.clicked.connect(self.refresh_status)
+
+        start_button = QtWidgets.QPushButton("START")
+        start_button.clicked.connect(self.start_engine)
+        stop_button = QtWidgets.QPushButton("STOP")
+        stop_button.clicked.connect(self.stop_engine)
+
+
+        self.symbol_line = QtWidgets.QLineEdit()
+        self.symbol_line.setMaximumWidth(300)
+        # self.symbol_line.setFixedHeight(
+        #     self.symbol_line.sizeHint().height() * 2)
+
+        self.symbol_completer = QtWidgets.QCompleter(self.full_symbols)
+        self.symbol_completer.setFilterMode(QtCore.Qt.MatchContains)
+        self.symbol_completer.setCompletionMode(
+            self.symbol_completer.PopupCompletion)
+        self.symbol_line.setCompleter(self.symbol_completer)
+
+        self.record_choice = QtWidgets.QComboBox()
+        self.record_choice.addItems(['tick', 'bar'])        
+        add_button = QtWidgets.QPushButton("添加")
+        add_button.clicked.connect(self.add_recording)
+
+        remove_button = QtWidgets.QPushButton("移除")
+        remove_button.clicked.connect(self.remove_recording)
+
+        # add_tick_button = QtWidgets.QPushButton("添加")
+        # add_tick_button.clicked.connect(self.add_tick_recording)
+
+        # remove_tick_button = QtWidgets.QPushButton("移除")
+        # remove_tick_button.clicked.connect(self.remove_tick_recording)
+
+        self.bar_recording_edit = QtWidgets.QTextEdit()
+        self.bar_recording_edit.setReadOnly(True)
+
+        self.tick_recording_edit = QtWidgets.QTextEdit()
+        self.tick_recording_edit.setReadOnly(True)
+
+        self.log_edit = QtWidgets.QTextEdit()
+        self.log_edit.setReadOnly(True)
+
+        # Set layout
+        statusbox = QtWidgets.QHBoxLayout()
+        statusbox.addWidget(refresh_button)
+        statusbox.addWidget(QtWidgets.QLabel("Recorder PID"))
+        statusbox.addWidget(self.engine_pid)
+        statusbox.addWidget(QtWidgets.QLabel("Alive"))
+        statusbox.addWidget(self.engine_status)
+        statusbox.addWidget(start_button)
+        statusbox.addWidget(stop_button)
+
+        # grid = QtWidgets.QGridLayout()
+        # grid.addWidget(QtWidgets.QLabel("Bar记录"), 0, 0)
+        # grid.addWidget(add_bar_button, 0, 1)
+        # grid.addWidget(remove_bar_button, 0, 2)
+        # grid.addWidget(QtWidgets.QLabel("Tick记录"), 1, 0)
+        # grid.addWidget(add_tick_button, 1, 1)
+        # grid.addWidget(remove_tick_button, 1, 2)
+
+        hbox = QtWidgets.QHBoxLayout()
+        hbox.addWidget(QtWidgets.QLabel("代码全称"))
+        hbox.addWidget(self.symbol_line)
+        hbox.addWidget(QtWidgets.QLabel("记录选项"))
+        hbox.addWidget(self.record_choice)
+        hbox.addWidget(add_button)
+        hbox.addWidget(remove_button)
+        # hbox.addStretch()
+
+        grid2 = QtWidgets.QGridLayout()
+        grid2.addWidget(QtWidgets.QLabel("Bar记录列表"), 0, 0)
+        grid2.addWidget(QtWidgets.QLabel("Tick记录列表"), 0, 1)
+        grid2.addWidget(self.bar_recording_edit, 1, 0)
+        grid2.addWidget(self.tick_recording_edit, 1, 1)
+        grid2.addWidget(self.log_edit, 2, 0, 1, 2)
+
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.addLayout(statusbox)
+        vbox.addLayout(hbox)
+        vbox.addLayout(grid2)
+        self.setLayout(vbox)
+
+    def register_event(self):
+        """"""
+        self.signal_log.connect(self.process_log_event)
+        self.signal_contract.connect(self.process_contract_event)
+        self.signal_recorder_update.connect(self.process_update_event)
+
+    def start_engine(self):
+        m = Event(type=EventType.RECORDER_CONTROL,
+            des='@' + self.engineid,
+            src='0',            
+            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_START
+        )
+        self.signal_recorder_out.emit(m)
+
+    def stop_engine(self):
+        m = Event(type=EventType.RECORDER_CONTROL,
+            des='@' + self.engineid,
+            src='0',            
+            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_STOP
+        )
+        self.signal_recorder_out.emit(m)
+
+    def refresh_status(self):
+        m = Event(type=EventType.RECORDER_CONTROL,
+            des='@*',
+            src='0',            
+            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_STATUS
+        )
+        self.signal_recorder_out.emit(m)
+
+    def process_log_event(self, event: Event):
+        """"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        msg = f"{timestamp}\t{event.data}"
+        self.log_edit.append(msg)
+
+    def process_update_event(self, event: Event):
+        """"""
+        data = event.data
+        msgtype = event.msg_type
+        if msgtype == MSG_TYPE.MSG_TYPE_RECORDER_STATUS:
+            self.engine_pid.setText(event.source)
+            self.engine_status.setText(data)
+            self.engineid = event.source
+        elif msgtype == MSG_TYPE.MSG_TYPE_RECORDER_RTN_DATA:
+            data = json.loads(data)
+            self.bar_recording_edit.clear()
+            bar_text = "\n".join(data["bar"])
+            self.bar_recording_edit.setText(bar_text)
+
+            self.tick_recording_edit.clear()
+            tick_text = "\n".join(data["tick"])
+            self.tick_recording_edit.setText(tick_text)
+
+    def process_contract_event(self, event: Event):
+        """"""
+        contract = event.data
+        self.full_symbols.append(contract.full_symbol)
+
+        model = self.symbol_completer.model()
+        model.setStringList(self.full_symbols)
+
+    def add_recording(self):
+        if self.record_choice.currentText() == 'tick':
+            self.add_tick_recording()
+        elif self.record_choice.currentText() == 'bar':
+            self.add_bar_recording()
+
+    def remove_recording(self):
+        if self.record_choice.currentText() == 'tick':
+            self.remove_tick_recording()
+        elif self.record_choice.currentText() == 'bar':
+            self.remove_bar_recording()
+
+    def add_bar_recording(self):
+        """"""
+        full_symbol = self.symbol_line.text()
+
+        m = Event(type=EventType.RECORDER_CONTROL,
+            des='@' + self.engineid,
+            src='0',
+            data=full_symbol,            
+            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_ADD_BAR
+        )
+        self.signal_recorder_out.emit(m)
+
+    def add_tick_recording(self):
+        """"""
+        full_symbol = self.symbol_line.text()
+        m = Event(type=EventType.RECORDER_CONTROL,
+            des='@' + self.engineid,
+            src='0', 
+            data=full_symbol,           
+            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_ADD_TICK
+        )
+        self.signal_recorder_out.emit(m)
+
+    def remove_bar_recording(self):
+        """"""
+        full_symbol = self.symbol_line.text()
+        m = Event(type=EventType.RECORDER_CONTROL,
+            des='@' + self.engineid,
+            src='0',
+            data=full_symbol,          
+            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_REMOVE_BAR
+        )
+        self.signal_recorder_out.emit(m)
+
+    def remove_tick_recording(self):
+        """"""
+        full_symbol = self.symbol_line.text()
+        m = Event(type=EventType.RECORDER_CONTROL,
+            des='@' + self.engineid,
+            src='0', 
+            data=full_symbol,           
+            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_REMOVE_TICK
+        )
+        self.signal_recorder_out.emit(m)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class ContractManager(QtWidgets.QWidget):

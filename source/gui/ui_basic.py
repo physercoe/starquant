@@ -13,7 +13,7 @@ from ..common.datastruct import Event
 from ..engine.iengine import EventEngine
 from ..common.constant import Direction, Exchange, Offset, OrderType
 
-from ..common.constant import EventType
+from ..common.constant import EventType, OT2STR
 from ..common.datastruct import OrderRequest, SubscribeRequest
 from ..common.utility import load_json, save_json
 from ..common.config import SETTING_FILENAME, SETTINGS
@@ -67,6 +67,24 @@ class EnumCell(BaseCell):
         """
         if content:
             super(EnumCell, self).set_content(content.value, data)
+
+class OTCell(BaseCell):
+    """
+    Cell used for showing ordertype data.
+    """
+
+    def __init__(self, content: str, data: Any):
+        """"""
+        super(OTCell, self).__init__(content, data)
+
+    def set_content(self, content: Any, data: Any):
+        """
+        Set text using ot2str.
+        """
+        if content:
+            text = OT2STR.get(content,'未知')
+            self.setText(text)
+            self._data = data
 
 
 class DirectionCell(EnumCell):
