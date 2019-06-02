@@ -58,6 +58,7 @@ extra_dump.py
 # user defined 
 *.ipynb
 /test/
+/research/
 *.vscode/
 *.pyc
 *.yaml

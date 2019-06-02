@@ -2,6 +2,8 @@
 #define _StarQuant_Engine_CtpTDEngine_H_
 
 #include <mutex>
+#include <time.h>
+#include <queue>
 
 #include <Common/datastruct.h>
 #include <Common/config.h>
@@ -379,6 +381,8 @@ namespace StarQuant
 		bool autoconnect_;
 		bool autoqry_;
 		map<string, std::shared_ptr<Position> > posbuffer_;   //used for calculate position 
+		std::queue < std::shared_ptr<MsgHeader> > qryBuffer_;   // used for qry queue to keep qry interval < 1s
+		uint64_t lastQryTime_;
 		int timercount_;
 		
 		OrderStatus CtpOrderStatusToOrderStatus(const char status);

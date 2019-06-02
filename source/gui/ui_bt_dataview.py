@@ -198,7 +198,26 @@ class BtDataPGChart(pg.GraphicsWindow):
         x = x[:-1]
         self.distribution_curve.setData(x, hist)
 
+
+
+
 class DateAxis(pg.AxisItem):
+    """Axis for showing date data"""
+
+    def __init__(self, dates: dict, *args, **kwargs):
+        """"""
+        super().__init__(*args, **kwargs)
+        self.dates = dates
+
+    def tickStrings(self, values, scale, spacing):
+        """"""
+        strings = []
+        for v in values:
+            dt = self.dates.get(v, "")
+            strings.append(str(dt))
+        return strings
+
+class DateAxis2(pg.AxisItem):
     """Axis for showing date data"""
 
     def __init__(self, datalist:list, *args, **kwargs):
@@ -218,6 +237,9 @@ class DateAxis(pg.AxisItem):
     def on_bar(self,bar):
         self.data.append(bar)
         self.count += 1
+
+
+
 
 class PriceAxis(pg.AxisItem):
     def __init__(self):
@@ -264,7 +286,7 @@ class QuotesChart(QtGui.QWidget):
 
     def plot(self):
         self.xstart = 60*(self.data[0].datetime.hour - 9) + self.data[0].datetime.minute
-        self.xaxis = DateAxis(self.data, orientation='bottom')
+        self.xaxis = DateAxis2(self.data, orientation='bottom')
         self.xaxis.setStyle(
             tickTextOffset=7, textFillLimits=[(0, 0.80)], showValues=False
         )

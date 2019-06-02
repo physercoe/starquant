@@ -108,6 +108,10 @@ namespace StarQuant
 	// switch day, at 20:30 everyday,  reset td engine, needconfirmation
 			time(&timer);
 			tm_info = *localtime(&timer);
+			// at weekend do nothing
+			if ((tm_info.tm_wday == 5) || (tm_info.tm_wday == 6)){
+				continue;
+			} 
 			if (tm_info.tm_hour == 20 && tm_info.tm_min == 30 && tm_info.tm_sec == 0){
 				std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0",MSG_TYPE_SWITCH_TRADING_DAY);
 				msg_relay_->send(pmsg);
@@ -230,7 +234,7 @@ namespace StarQuant
 			fu1.get(); 
 		}
 		catch (exception& e) {
-			LOG_DEBUG(logger,e.what());
+			LOG_INFO(logger,e.what());
 		}
 		catch (...) {
 			LOG_ERROR(logger,"StarQuant terminated in error!");

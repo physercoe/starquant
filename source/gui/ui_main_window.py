@@ -253,7 +253,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #tool menu
         toolMenu = menubar.addMenu('Tools')
 
-        tool_recorder = QtWidgets.QAction('Recorder',self)
+        tool_recorder = QtWidgets.QAction('Data Recorder',self)
         tool_recorder.triggered.connect(self.recorder_manager.show)
         toolMenu.addAction(tool_recorder)
         tool_csvloader = QtWidgets.QAction('CSV Loader',self)

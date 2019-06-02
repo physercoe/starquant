@@ -32,8 +32,10 @@ namespace StarQuant
 		, autoqry_(false)
 		, timercount_(0)
 	{
+		lastQryTime_ = getMicroTime();
 		name_ = gw;
 		init();
+		
 	}
 
 	CtpTDEngine::~CtpTDEngine() {
@@ -155,7 +157,15 @@ namespace StarQuant
 						if (pmsgin->destination_ != name_)
 							break;				
 						if (estate_ == LOGIN_ACK){
-							queryPosition(pmsgin);
+							uint64_t timenow = getMicroTime();
+							if ( (timenow - lastQryTime_) > 1000000 ) {
+								lastQryTime_ = timenow;
+								queryPosition(pmsgin);
+							}
+							else{
+								qryBuffer_.push(pmsgin);
+							}
+							
 						}
 						else{
 							LOG_DEBUG(logger,name_ <<" is not connected,can not qry pos!");
@@ -169,7 +179,14 @@ namespace StarQuant
 						if (pmsgin->destination_ != name_)
 							break;				
 						if (estate_ == LOGIN_ACK){
-							queryAccount(pmsgin);
+							uint64_t timenow = getMicroTime();
+							if ( (timenow - lastQryTime_) > 1000000 ) {
+								lastQryTime_ = timenow;
+								queryAccount(pmsgin);
+							}
+							else{
+								qryBuffer_.push(pmsgin);
+							}							
 						}
 						else{
 							LOG_DEBUG(logger,name_ <<" is not connected,can not qry acc!");
@@ -183,7 +200,14 @@ namespace StarQuant
 						if (pmsgin->destination_ != name_)
 							break;				
 						if (estate_ == LOGIN_ACK){
-							queryContract(static_pointer_cast<QryContractMsg>(pmsgin));
+							uint64_t timenow = getMicroTime();
+							if ( (timenow - lastQryTime_) > 1000000 ) {
+								lastQryTime_ = timenow;
+								queryContract(static_pointer_cast<QryContractMsg>(pmsgin));
+							}
+							else{
+								qryBuffer_.push(pmsgin);
+							}					
 						}
 						else{
 							LOG_DEBUG(logger,name_ <<" is not connected,can not qry contract!");
@@ -197,7 +221,14 @@ namespace StarQuant
 						if (pmsgin->destination_ != name_)
 							break;				
 						if (estate_ == LOGIN_ACK){
-							queryOrder(pmsgin);
+							uint64_t timenow = getMicroTime();
+							if ( (timenow - lastQryTime_) > 1000000 ) {
+								lastQryTime_ = timenow;
+								queryOrder(pmsgin);
+							}
+							else{
+								qryBuffer_.push(pmsgin);
+							}
 						}
 						else{
 							LOG_DEBUG(logger,name_ <<" is not connected,can not qry order!");
@@ -211,7 +242,14 @@ namespace StarQuant
 						if (pmsgin->destination_ != name_)
 							break;				
 						if (estate_ == LOGIN_ACK){
-							queryTrade(pmsgin);
+							uint64_t timenow = getMicroTime();
+							if ( (timenow - lastQryTime_) > 1000000 ) {
+								lastQryTime_ = timenow;
+								queryTrade(pmsgin);
+							}
+							else{
+								qryBuffer_.push(pmsgin);
+							}
 						}
 						else{
 							LOG_DEBUG(logger,name_ <<" is not connected,can not qry trade!");
@@ -225,7 +263,14 @@ namespace StarQuant
 						if (pmsgin->destination_ != name_)
 							break;				
 						if (estate_ == LOGIN_ACK){
-							queryPositionDetail(pmsgin);
+							uint64_t timenow = getMicroTime();
+							if ( (timenow - lastQryTime_) > 1000000 ) {
+								lastQryTime_ = timenow;
+								queryPositionDetail(pmsgin);
+							}
+							else{
+								qryBuffer_.push(pmsgin);
+							}
 						}
 						else{
 							LOG_DEBUG(logger,name_ <<" is not connected,can not qry posdetail!");
@@ -425,18 +470,51 @@ namespace StarQuant
 		if (estate_ == LOGIN_ACK && autoqry_ ){
 			if (timercount_ %2 == 0){
 				auto pmsgout = make_shared<MsgHeader>(name_,name_,MSG_TYPE_QRY_ACCOUNT);
-				queryAccount(pmsgout);
+				//queryAccount(pmsgout);
+				qryBuffer_.push(pmsgout);
 			}
 			else{
 				auto pmsgout = make_shared<MsgHeader>(name_,name_,MSG_TYPE_QRY_POS);
-				queryPosition(pmsgout);
+				//queryPosition(pmsgout);
+				qryBuffer_.push(pmsgout);
 			}
 		}
 
 	}
 
 	void CtpTDEngine::processbuf(){
-		// reserverd for future use,such as local condition order, algo-trading etc.
+		// pop qrybuffer
+		if (!qryBuffer_.empty()){
+			uint64_t timenow = getMicroTime();
+			if ( (timenow - lastQryTime_) > 1000000 ) {
+				lastQryTime_ = timenow;
+				auto pmsgin  = qryBuffer_.front();
+				switch (pmsgin->msgtype_)
+				{
+					case MSG_TYPE_QRY_POS:
+						queryPosition(pmsgin);					
+						break;
+					case MSG_TYPE_QRY_ACCOUNT:
+						queryAccount(pmsgin);
+						break;
+					case MSG_TYPE_QRY_CONTRACT:
+						queryContract(static_pointer_cast<QryContractMsg>(pmsgin));
+						break;
+					case MSG_TYPE_QRY_ORDER:
+						queryOrder(pmsgin);
+						break;
+					case MSG_TYPE_QRY_POSDETAIL:
+						queryPositionDetail(pmsgin);
+						break;
+					case MSG_TYPE_QRY_TRADE:
+						queryTrade(pmsgin);
+						break;
+					default:
+						break;
+				}
+				qryBuffer_.pop();
+			}
+		}
 	}
 
 
@@ -897,6 +975,9 @@ namespace StarQuant
 
 	void CtpTDEngine::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
+		if (bIsLast){
+			lastQryTime_ = getMicroTime();
+		}		
 		if (!bResult){
 			if(pOrder == nullptr){
 				LOG_INFO(logger,name_ <<" onQryOrder return nullptr");
@@ -978,10 +1059,14 @@ namespace StarQuant
 			LOG_ERROR(logger,name_ <<" Qry order error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
 			
 		}
+
 	}
 	///请求查询成交响应
 	void CtpTDEngine::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
+		if (bIsLast){
+			lastQryTime_ = getMicroTime();
+		}
 		if (!bResult){
 			if(pTrade == nullptr){
 				LOG_INFO(logger,name_ <<" onQrytrade return nullptr");
@@ -1067,11 +1152,14 @@ namespace StarQuant
 			messenger_->send(pmsgout);
 			LOG_ERROR(logger,name_ <<" Qry order error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
 		}
-		
+
 	}
 
 	void CtpTDEngine::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
+		if (bIsLast){
+			lastQryTime_ = getMicroTime();
+		}
 		if (!bResult){
 			if(pInvestorPositionDetail == nullptr){
 				LOG_DEBUG(logger,name_ <<" onRspQryposdetail return nullptr.");
@@ -1110,6 +1198,9 @@ namespace StarQuant
 	///请求查询投资者持仓响应
 	void CtpTDEngine::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
+		if (bIsLast){
+			lastQryTime_ = getMicroTime();
+		}
 		if (!bResult){
 			if(pInvestorPosition == nullptr){
 				LOG_DEBUG(logger,name_ <<" onRspQrypos return nullptr.");
@@ -1229,6 +1320,9 @@ namespace StarQuant
         // ("MarketValue", c_double),	# 账户市值 	
 	void CtpTDEngine::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
+		if (bIsLast){
+			lastQryTime_ = getMicroTime();
+		}
 		if (!bResult){
 			if(pTradingAccount == nullptr){
 				LOG_INFO(logger,name_ <<" qry acc return nullptr");
@@ -1284,6 +1378,9 @@ namespace StarQuant
 	void CtpTDEngine::OnRspQryInstrument(CThostFtdcInstrumentField *pInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
 		// pInstrument->StrikePrice; pInstrument->EndDelivDate; pInstrument->IsTrading;
 		bool bResult = (pRspInfo != nullptr) && (pRspInfo->ErrorID != 0);
+		if (bIsLast){
+			lastQryTime_ = getMicroTime();
+		}
 		if(bResult){
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );

@@ -405,6 +405,11 @@ class RecorderManager(QtWidgets.QWidget):
         self.signal_recorder_out.emit(m)
 
     def refresh_status(self):
+        self.engine_pid.setText('')
+        self.engine_status.setText('False')
+        self.engineid = ''
+        self.bar_recording_edit.clear()
+        self.tick_recording_edit.clear()
         m = Event(type=EventType.RECORDER_CONTROL,
             des='@*',
             src='0',            
@@ -445,12 +450,18 @@ class RecorderManager(QtWidgets.QWidget):
         model.setStringList(self.full_symbols)
 
     def add_recording(self):
+        if self.engine_status.text() == 'False' or self.engine_pid.text() == '': 
+            QtWidgets.QMessageBox().information(None, 'Error','RecorderEngine is not running!',QtWidgets.QMessageBox.Ok)
+            return
         if self.record_choice.currentText() == 'tick':
             self.add_tick_recording()
         elif self.record_choice.currentText() == 'bar':
             self.add_bar_recording()
 
     def remove_recording(self):
+        if self.engine_status.text() == 'False' or self.engine_pid.text() == '': 
+            QtWidgets.QMessageBox().information(None, 'Error','RecorderEngine is not running!',QtWidgets.QMessageBox.Ok)
+            return
         if self.record_choice.currentText() == 'tick':
             self.remove_tick_recording()
         elif self.record_choice.currentText() == 'bar':
