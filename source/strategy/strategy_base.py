@@ -25,6 +25,7 @@ class StrategyBase(metaclass=ABCMeta):
     author = ""
     account = ""
     api = ""
+    autostart = False
     parameters = ["api","account"]
     variables = []
 

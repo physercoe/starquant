@@ -3,7 +3,7 @@
 from queue import Queue, Empty
 from threading import Thread
 from nanomsg import Socket, PAIR, SUB, PUB, PUSH,SUB_SUBSCRIBE, AF_SP,SOL_SOCKET,RCVTIMEO
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,time
 import os,sys
 import yaml
 from collections import defaultdict
@@ -20,7 +20,7 @@ from ..strategy.strategy_base import StrategyBase
 from ..data.rqdata import rqdata_client
 from ..data import database_manager
 from ..trade.portfolio_manager import OffsetConverter
-from ..engine.iengine import BaseEngine
+from ..engine.iengine import BaseEngine,EventEngine
 
 
 class StrategyEngine(BaseEngine):
@@ -32,7 +32,7 @@ class StrategyEngine(BaseEngine):
     data_filename = "cta_strategy_data.json"
 # init    
     def __init__(self,configfile:str = '',id :int = 1):
-        super(StrategyEngine, self).__init__()
+        super(StrategyEngine, self).__init__(event_engine=EventEngine(10))
         """
         two sockets to send and recv msg
         """
@@ -80,12 +80,14 @@ class StrategyEngine(BaseEngine):
         self.contracts = {}
         self.active_orders = {}        # SQ id list
 
-
-
         self.rq_client = None
         self.rq_symbols = set()
 
         self.offset_converter = OffsetConverter(self)
+
+        self.autoinited = False
+        self.autostarted = False
+        self.dayswitched = False
 
         self.init_engine()
 
@@ -147,7 +149,42 @@ class StrategyEngine(BaseEngine):
         self.event_engine.register(EventType.CONTRACT, self.process_contract_event)        
         self.event_engine.register(EventType.STRATEGY_CONTROL,self.process_strategycontrol_event)
         self.event_engine.register(EventType.HEADER,self.process_general_event)
+        self.event_engine.register(EventType.TIMER,self.process_timer_event)
 # event handler
+
+    def process_timer_event(self,event):
+        #auto init and start strategy at 8:57, 20:57
+        nowtime = datetime.now().time()
+        if (nowtime > time(hour=8, minute=55) ) and (nowtime < time(hour=8, minute=56)) and (not self.autoinited):
+            for name, strategy in self.strategies.items():
+                if strategy.autostart:
+                    self.init_strategy(name)
+            self.dayswitched = False
+            self.autoinited = True
+        if (nowtime > time(hour=20, minute=57) ) and (nowtime < time(hour=20, minute=58)) and (not self.autostarted):
+            for name, strategy in self.strategies.items():
+                if strategy.autostart:
+                    self.start_strategy(name)        
+            self.autostarted = True
+            self.dayswitched = False
+
+        # auto stop strategy at 14:57 and 22:57, 23:27, 00:27, 2:27 
+        if (nowtime > time(hour=16, minute=0) ) and (nowtime < time(hour=16, minute=1)) and (not self.dayswitched):
+            for name, strategy in self.strategies.items():
+                if strategy.autostart:
+                    self.reset_strategy(name)     
+            self.dayswitched = True
+            self.autostarted = False
+            self.autoinited = False
+        if (nowtime > time(hour=3, minute=0) ) and (nowtime < time(hour=3, minute=1)) and (not self.dayswitched):
+            for name, strategy in self.strategies.items():
+                if strategy.autostart:
+                    self.reset_strategy(name)         
+            self.dayswitched = True
+            self.autostarted = False
+            self.autoinited = False
+
+
     def process_general_event(self, event):
         for name, strategy in self.strategies.items():
             self.call_strategy_func(strategy, strategy.on_headermsg, event)

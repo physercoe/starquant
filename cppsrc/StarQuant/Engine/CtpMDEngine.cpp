@@ -489,25 +489,51 @@ namespace StarQuant
 		}
 
 		string arrivetime = ymdhmsf6();
-		auto pk = make_shared<TickMsg>();
+		auto pk = make_shared<TickMsg>();		
+		pk->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pDepthMarketData->InstrumentID];		
 		char buf[64];
 		char a[9];
-		char b[9];
+		char b[9];		
 		strcpy(a,pDepthMarketData->ActionDay);
 		strcpy(b,pDepthMarketData->UpdateTime);
+		int msec = pDepthMarketData->UpdateMillisec;
+		if (startwith(pk->data_.fullSymbol_,"CZCE")){
+		// add milliseconds for czce tick data
+			msec = getMilliSeconds();
+		}
         // std::sprintf(buf, "%c%c%c%c-%c%c-%c%c %c%c:%c%c:%c%c.%.3d", a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],b[0],b[1],b[3],b[4],b[6],b[7],pDepthMarketData->UpdateMillisec );
-		std::sprintf(buf, " %c%c:%c%c:%c%c.%.3d", b[0],b[1],b[3],b[4],b[6],b[7],pDepthMarketData->UpdateMillisec );
+		std::sprintf(buf, " %c%c:%c%c:%c%c.%.3d", b[0],b[1],b[3],b[4],b[6],b[7],msec );
 		pk->destination_ = DESTINATION_ALL;
 		pk->source_ = name_;
 		pk->data_.time_ = ymd() + buf;
-		// pk->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pDepthMarketData->InstrumentID);
-		pk->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pDepthMarketData->InstrumentID];		
+		// pk->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pDepthMarketData->InstrumentID);		
 		pk->data_.price_ = pDepthMarketData->LastPrice;
 		pk->data_.size_ = pDepthMarketData->Volume;			
 		pk->data_.bidPrice_[0] = pDepthMarketData->BidPrice1 == numeric_limits<double>::max()? 0.0: pDepthMarketData->BidPrice1;
 		pk->data_.bidSize_[0] = pDepthMarketData->BidVolume1;
 		pk->data_.askPrice_[0] = pDepthMarketData->AskPrice1 == numeric_limits<double>::max()? 0.0: pDepthMarketData->AskPrice1;
 		pk->data_.askSize_[0] = pDepthMarketData->AskVolume1;
+		if (startwith(pk->data_.fullSymbol_,"SHFE") ){
+		// 5 level data
+			pk->msgtype_ = MSG_TYPE_TICK_L5;
+			pk->data_.depth_ = 5;
+			pk->data_.bidPrice_[1] = pDepthMarketData->BidPrice2 == numeric_limits<double>::max()? 0.0: pDepthMarketData->BidPrice2;
+			pk->data_.bidSize_[1] = pDepthMarketData->BidVolume2;
+			pk->data_.askPrice_[1] = pDepthMarketData->AskPrice2 == numeric_limits<double>::max()? 0.0: pDepthMarketData->AskPrice2;
+			pk->data_.askSize_[1] = pDepthMarketData->AskVolume2;
+			pk->data_.bidPrice_[2] = pDepthMarketData->BidPrice3 == numeric_limits<double>::max()? 0.0: pDepthMarketData->BidPrice3;
+			pk->data_.bidSize_[2] = pDepthMarketData->BidVolume3;
+			pk->data_.askPrice_[2] = pDepthMarketData->AskPrice3 == numeric_limits<double>::max()? 0.0: pDepthMarketData->AskPrice3;
+			pk->data_.askSize_[2] = pDepthMarketData->AskVolume3;
+			pk->data_.bidPrice_[3] = pDepthMarketData->BidPrice4 == numeric_limits<double>::max()? 0.0: pDepthMarketData->BidPrice4;
+			pk->data_.bidSize_[3] = pDepthMarketData->BidVolume4;
+			pk->data_.askPrice_[3] = pDepthMarketData->AskPrice4 == numeric_limits<double>::max()? 0.0: pDepthMarketData->AskPrice4;
+			pk->data_.askSize_[3] = pDepthMarketData->AskVolume4;
+			pk->data_.bidPrice_[4] = pDepthMarketData->BidPrice5 == numeric_limits<double>::max()? 0.0: pDepthMarketData->BidPrice5;
+			pk->data_.bidSize_[4] = pDepthMarketData->BidVolume5;
+			pk->data_.askPrice_[4] = pDepthMarketData->AskPrice5 == numeric_limits<double>::max()? 0.0: pDepthMarketData->AskPrice5;
+			pk->data_.askSize_[4] = pDepthMarketData->AskVolume5;
+		}
 		pk->data_.openInterest_ = pDepthMarketData->OpenInterest;
 		pk->data_.open_ = pDepthMarketData->OpenPrice == numeric_limits<double>::max()? 0.0: pDepthMarketData->OpenPrice;
 		pk->data_.high_ = pDepthMarketData->HighestPrice == numeric_limits<double>::max()? 0.0: pDepthMarketData->HighestPrice;

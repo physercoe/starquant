@@ -35,6 +35,8 @@ namespace StarQuant
 
 		TickWriter recorder_;
 		uint64_t count_ = 0;
+		bool contractUpdated_ = false;
+
 		std::map<std::string, Security> securityDetails_; //ctpsymbol to security
 		std::map<string, Tick> orderBook_;
 		std::map<string,string> ctp2Full_;

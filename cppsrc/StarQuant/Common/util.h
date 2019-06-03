@@ -63,6 +63,7 @@ namespace StarQuant {
 #define LOCALTIME_S(x,y) localtime_s(x,y)
 #endif
 #define DATE_FORMAT "%Y-%m-%d"
+#define DATE_FORMAT_COMPACT "%Y%m%d"
 #define DATE_FORMAT_CLEAN  "%4d-%02d-%02d"
 #define DATE_TIME_FORMAT "%Y-%m-%d %H:%M:%S"
 #define DATE_TIME_FORMAT_CLEAN  "%4d-%02d-%02d %02d:%02d:%02d"
@@ -90,8 +91,9 @@ namespace StarQuant {
 // time related
 
 	uint64_t getMicroTime();
-
+	int getMilliSeconds();
 	string ymd();
+	string ymdcompact();
 	string ymdhms();
 	string ymdhmsf();
 	string ymdhmsf6();

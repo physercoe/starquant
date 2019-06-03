@@ -483,6 +483,11 @@ namespace StarQuant
 	}
 
 	void CtpTDEngine::processbuf(){
+		// save datamanager's security file 
+		if (saveSecurityFile_){
+			DataManager::instance().saveSecurityToFile();
+			saveSecurityFile_ = false;
+		}
 		// pop qrybuffer
 		if (!qryBuffer_.empty()){
 			uint64_t timenow = getMicroTime();
@@ -807,6 +812,7 @@ namespace StarQuant
 			frontID_ = pRspUserLogin->FrontID;
 			sessionID_ = pRspUserLogin->SessionID;
 			orderRef_ = stoi(pRspUserLogin->MaxOrderRef) + 1;
+			DataManager::instance().contractUpdated_ = ( ymdcompact() == string(pRspUserLogin->TradingDay) );
 			LOG_INFO(logger,name_ <<" user logged in,"
 							<<"TradingDay="<<pRspUserLogin->TradingDay
 							<<" LoginTime="<<pRspUserLogin->LoginTime
@@ -857,10 +863,11 @@ namespace StarQuant
 						MSG_TYPE_ENGINE_STATUS,
 						to_string(estate_));
 			messenger_->send(pmsgs);
-			//  qry instrument only at first login everyday(same as seetlementconfirm)
-			if ( ! issettleconfirmed_ ){
+			//  qry instrument only once everyday
+			if ( ! DataManager::instance().contractUpdated_ ){
 				CThostFtdcQryInstrumentField req = {0};		
 				int error = this->api_->ReqQryInstrument(&req,reqId_++);
+				DataManager::instance().contractUpdated_ = true;
 			}
 			issettleconfirmed_ = true;
 			LOG_INFO(logger,name_ <<" Settlement confirmed.ConfirmDate="<<pSettlementInfoConfirm->ConfirmDate<<"ConfirmTime="<<pSettlementInfoConfirm->ConfirmTime);
@@ -1426,7 +1433,8 @@ namespace StarQuant
 				DataManager::instance().securityDetails_[symbol] = pmsg->data_;
 			}
 			if (bIsLast){
-				DataManager::instance().saveSecurityToFile();
+				//DataManager::instance().saveSecurityToFile();
+				saveSecurityFile_  = true;
 				LOG_DEBUG(logger,name_ <<" OnRspQryInstrument:"
 				<<" InstrumentID="<<pInstrument->InstrumentID
 				<<" InstrumentName="<<GBKToUTF8(pInstrument->InstrumentName)

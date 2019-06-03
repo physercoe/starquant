@@ -80,11 +80,10 @@ class EventEngine:
         """
         Sleep by interval second(s) and then generate a timer event.
         """
-        # while self._active:
-        #     sleep(self._interval)
-        #     event = Event(EVENT_TIMER)
-        #     self.put(event)
-        pass
+        while self._active:
+            sleep(self._interval)
+            event = Event(type=EventType.TIMER)
+            self.put(event)
 
     def start(self):
         """

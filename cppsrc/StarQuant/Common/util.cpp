@@ -206,6 +206,14 @@ namespace StarQuant {
 #endif
 	}
 
+	int getMilliSeconds(){
+		struct timeval tm;
+		int milli = 0;
+		gettimeofday(&tm, nullptr);
+		milli = int( tm.tv_usec / 1000);
+		return milli;
+	}
+
 	string ymd() {
 		char buf[128] = { 0 };
 		const size_t sz = sizeof("0000-00-00");
@@ -215,6 +223,18 @@ namespace StarQuant {
 			time(&timer);
 			tm_info = localtime(&timer);
 			strftime(buf, sz, DATE_FORMAT, tm_info);
+		}
+		return string(buf);
+	}
+	string ymdcompact(){
+		char buf[128] = { 0 };
+		const size_t sz = sizeof("00000000");
+		{
+			time_t timer;
+			struct tm* tm_info;
+			time(&timer);
+			tm_info = localtime(&timer);
+			strftime(buf, sz, DATE_FORMAT_COMPACT, tm_info);
 		}
 		return string(buf);
 	}

@@ -3,7 +3,7 @@
 from queue import Queue, Empty
 from threading import Thread
 from nanomsg import Socket, PAIR, SUB, PUB, PUSH,SUB_SUBSCRIBE, AF_SP,SOL_SOCKET,RCVTIMEO
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,time
 import os,sys
 import yaml
 from collections import defaultdict
@@ -18,7 +18,7 @@ from ..common.datastruct import *
 from ..common.utility import *
 from source.data.data_board import BarGenerator
 from ..data import database_manager
-from ..engine.iengine import BaseEngine
+from ..engine.iengine import BaseEngine,EventEngine
 
 
 class RecorderEngine(BaseEngine):
@@ -30,7 +30,7 @@ class RecorderEngine(BaseEngine):
 
 # init    
     def __init__(self,configfile:str = '',gateway:str = "CTP.MD"):
-        super(RecorderEngine, self).__init__()
+        super(RecorderEngine, self).__init__(event_engine=EventEngine(10))
         """
         two sockets to send and recv msg
         """
@@ -52,7 +52,8 @@ class RecorderEngine(BaseEngine):
         self.bar_recordings = {}
         self.bar_generators = {}
         self.contracts = {}
-
+        self.subscribed = False
+        self.dayswitched = False
         self.init_engine()
 
 # init functions 
@@ -62,7 +63,6 @@ class RecorderEngine(BaseEngine):
         self.load_setting()
         self.register_event()
         self.put_event()
-        self.init_subcribe()
         self.start()
 
     def init_nng(self):
@@ -117,16 +117,33 @@ class RecorderEngine(BaseEngine):
         self.event_engine.register(EventType.CONTRACT, self.process_contract_event)        
         self.event_engine.register(EventType.RECORDER_CONTROL,self.process_recordercontrol_event)
         self.event_engine.register(EventType.HEADER,self.process_general_event)
+        self.event_engine.register(EventType.TIMER,self.process_timer_event)
 
     def init_subcribe(self):
-        for sym in self.tick_recordings.keys():
+        symset = set(self.tick_recordings.keys()).update(self.bar_recordings.keys())
+        for sym in symset:
             self.subscribe(sym)
-            sleep(1)
-        for sym in self.bar_recordings.keys():
-            self.subscribe(sym)
-            sleep(1)    
+        self.subscribed = True    
 
 # event handler
+    def process_timer_event(self,event):
+        #auto subscribe at 8:55, 20:55
+        nowtime = datetime.now().time()
+        if (nowtime > time(hour=8, minute=55) ) and (nowtime < time(hour=8, minute=56)) and (not self.subscribed): 
+            self.init_subcribe()
+            self.dayswitched = False
+        if (nowtime > time(hour=20, minute=55) ) and (nowtime < time(hour=20, minute=56)) and (not self.subscribed): 
+            self.init_subcribe()
+            self.dayswitched = False
+        # reset at 16:00 and 3:00
+        if (nowtime > time(hour=16, minute=0) ) and (nowtime < time(hour=16, minute=1)) and (not self.dayswitched):
+            self.subscribed = False
+            self.dayswitched = True
+        if (nowtime > time(hour=3, minute=0) ) and (nowtime < time(hour=3, minute=1)) and  (not self.dayswitched):
+            self.subscribed = False                
+            self.dayswitched = True
+        
+
     def process_general_event(self, event):
         pass
 
@@ -308,6 +325,7 @@ class RecorderEngine(BaseEngine):
             self._send_sock.send(m.serialize())
         else:
             self.write_log(f"行情订阅失败，找不到合约{full_symbol}")
+        
 
 
 
