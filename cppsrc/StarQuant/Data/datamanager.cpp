@@ -14,6 +14,7 @@ namespace StarQuant {
 
 	DataManager::DataManager() : count_(0)
 	{
+		loadSecurityFile();
 	}
 
 	DataManager::~DataManager()
@@ -46,6 +47,37 @@ namespace StarQuant {
 			newk.size_ = fill.tradeSize_;
 			orderBook_[fill.fullSymbol_] = newk;
 		}
+	}
+
+	void DataManager::loadSecurityFile(){
+		string contractpath = boost::filesystem::current_path().string() + "/etc/ctpcontract.yaml";
+		YAML::Node contractinfo = YAML::LoadFile(contractpath);
+		for (YAML::const_iterator symsec = contractinfo.begin();symsec != contractinfo.end(); symsec++)
+		{
+			auto sym = symsec->first.as<std::string>();
+			auto securities = symsec->second;
+			Security sec;
+			sec.symbol_ = securities["symbol"].as<std::string>(); 
+			sec.exchange_ = securities["exchange"].as<std::string>();
+			sec.securityType_ = securities["product"].as<char>();
+			sec.multiplier_ = securities["size"].as<int>();
+			sec.localName_ = securities["name"].as<std::string>();
+			sec.ticksize_ = securities["pricetick"].as<double>();
+			sec.postype_ = securities["positiontype"].as<char>() ;
+			sec.longMarginRatio_ = securities["long_margin_ratio"].as<double>();
+			sec.shortMarginRatio_ = securities["short_margin_ratio"].as<double>();
+			sec.underlyingSymbol_ = securities["option_underlying"].as<std::string>();
+			sec.optionType_ = securities["option_type"].as<char>();
+			sec.strikePrice_ = securities["option_strike"].as<double>();
+			sec.expiryDate_ = securities["option_expiry"].as<std::string>();
+			sec.fullSymbol_ =  securities["full_symbol"].as<std::string>();
+			securityDetails_[sym] = sec;
+			ctp2Full_[sym] = sec.fullSymbol_;
+			full2Ctp_[sec.fullSymbol_] = sym;
+		}
+		//back up 
+		std::ofstream fout("etc/ctpcontract.yaml.bak");
+		fout<< contractinfo;
 	}
 
 	void DataManager::saveSecurityToFile() {

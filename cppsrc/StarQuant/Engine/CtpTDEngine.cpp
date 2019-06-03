@@ -1428,10 +1428,11 @@ namespace StarQuant
 			// string symbol = boost::to_upper_copy(string(pInstrument->InstrumentName));
 			
 			string symbol = pInstrument->InstrumentID;
-			auto it = DataManager::instance().securityDetails_.find(symbol);
-			if (it == DataManager::instance().securityDetails_.end()) {
-				DataManager::instance().securityDetails_[symbol] = pmsg->data_;
-			}
+			DataManager::instance().securityDetails_[symbol] = pmsg->data_;
+			// auto it = DataManager::instance().securityDetails_.find(symbol);
+			// if (it == DataManager::instance().securityDetails_.end()) {
+			// 	DataManager::instance().securityDetails_[symbol] = pmsg->data_;
+			// }
 			if (bIsLast){
 				//DataManager::instance().saveSecurityToFile();
 				saveSecurityFile_  = true;

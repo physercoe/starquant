@@ -41,26 +41,9 @@ namespace StarQuant {
 //  reset maps
 		_gatewaymap.clear();
 
-// 读入合约相关信息数据，TODO:从 md qry得到相关数据
+// 读入合约相关信息数据，
 		std::lock_guard<mutex> g(readlock_);
-		string contractpath = boost::filesystem::current_path().string() + "/etc/contract.yaml";
-		YAML::Node contractinfo = YAML::LoadFile(contractpath);
-		//std::cout<<contractinfo[0].  as<std::string>();
-		for (YAML::const_iterator exch = contractinfo.begin();exch != contractinfo.end();exch++)
-		{
-			string exchange = 	exch->first.as<std::string>();
-			for (YAML::const_iterator cont = exch->second.begin();cont != exch->second.end();cont++)
-			{
-				string contract = cont->first.as<std::string>();
-				string instrument = cont->second["ctpsymbol"].as<std::string>();
-				string fullsym = exchange + " " + cont->second["type"].as<std::string>() + " " + contract;
-				instrument2sec[instrument] = fullsym ;
-				sec2instrument[fullsym] = instrument;							
-			}
-
-		}
-
-
+		
 		string path = boost::filesystem::current_path().string() + "/etc/config_server.yaml";
 		YAML::Node config = YAML::LoadFile(path);
 		string configmode = config["mode"].as<std::string>();

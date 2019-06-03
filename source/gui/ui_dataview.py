@@ -530,9 +530,9 @@ class OrderBookWidget(QtWidgets.QWidget):
             self.av2_label.setText(str(tick.ask_volume_2))
 
             self.bp3_label.setText(str(tick.bid_price_3))
-            self.bv3_label.setText(str(tick.bid_size_3))
+            self.bv3_label.setText(str(tick.bid_volume_3))
             self.ap3_label.setText(str(tick.ask_price_3))
-            self.av3_label.setText(str(tick.ask_size_3))
+            self.av3_label.setText(str(tick.ask_volume_3))
 
             self.bp4_label.setText(str(tick.bid_price_4))
             self.bv4_label.setText(str(tick.bid_volume_4))

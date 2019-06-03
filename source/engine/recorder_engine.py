@@ -120,7 +120,8 @@ class RecorderEngine(BaseEngine):
         self.event_engine.register(EventType.TIMER,self.process_timer_event)
 
     def init_subcribe(self):
-        symset = set(self.tick_recordings.keys()).update(self.bar_recordings.keys())
+        symset = set(self.tick_recordings.keys())
+        symset.update(self.bar_recordings.keys())
         for sym in symset:
             self.subscribe(sym)
         self.subscribed = True    

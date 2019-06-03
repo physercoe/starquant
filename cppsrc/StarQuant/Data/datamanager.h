@@ -53,6 +53,7 @@ namespace StarQuant
 		void updateOrderBook(const Tick& k){ orderBook_[k.fullSymbol_] = k;};
 		void updateOrderBook(const Fill& fill);
 		void saveSecurityToFile();
+		void loadSecurityFile();
 	};
 }
 
