@@ -35,6 +35,7 @@ class RecorderEngine(BaseEngine):
         two sockets to send and recv msg
         """
         self.__active = False
+        self._thread = Thread(target=self._run)
         self.id = os.getpid()
         self.engine_type = EngineType.LIVE     
         self._recv_sock = Socket(SUB)
@@ -63,7 +64,7 @@ class RecorderEngine(BaseEngine):
         self.load_setting()
         self.register_event()
         self.put_event()
-        self.start()
+
 
     def init_nng(self):
         self._recv_sock.set_string_option(SUB, SUB_SUBSCRIBE, '')  # receive msg start with all
@@ -193,11 +194,9 @@ class RecorderEngine(BaseEngine):
             full_symbol = event.data
             self.remove_bar_recording(full_symbol)
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_START):
-            if not self.__active:
-                self.start()
+            self.init_subcribe()
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_STOP):
-            if self.__active:
-                self.stop()
+            self.clear()
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_RELOAD):
             pass
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_RESET):
@@ -329,29 +328,16 @@ class RecorderEngine(BaseEngine):
         
 
 
+    def clear(self):
+        self.bar_recordings.clear()
+        self.tick_recordings.clear()
+        self.save_setting()
+        self.put_event()
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-  
-# start and stop    
-    def start(self, timer=True):
-        """
-        start the dispatcher thread and begin to recv msg through nng
-        """
-        self.event_engine.start()
-        print('tradeclient started ,pid = %d ' % os.getpid())
-        self.__active = True
+    def _run(self):
         while self.__active:
             try:
                 msgin = self._recv_sock.recv(flags=0)
@@ -368,22 +354,25 @@ class RecorderEngine(BaseEngine):
                     self.event_engine.put(m)
             except Exception as e:
                 pass
-                #print("TradeEngineError {0}".format(str(e.args[0])).encode("utf-8"))
+                #print("TradeEngineError {0}".format(str(e.args[0])).encode("utf-8"))        
+  
+# start and stop    
+    def start(self):
+        """
+        start the dispatcher thread and begin to recv msg through nng
+        """
+        print('tradeclient started ,pid = %d ' % os.getpid())
+        self.event_engine.start()
+        self.__active = True
+        self._thread.start()
  
     def stop(self):
         """
         stop 
         """
-        self.__active = False
+        self.__active = False        
         self.event_engine.stop()
-
-    def put(self, event):
-        """
-        send event msg,TODO:check the event
-        """
-        # 
-        self._send_sock.send(event.serialize(),flags=1)
-
+        self._thread.join()
 
     def write_log(self, msg: str):
         """

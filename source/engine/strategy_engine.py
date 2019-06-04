@@ -465,6 +465,11 @@ class StrategyEngine(BaseEngine):
             m.source = str(self.id)
             self._send_sock.send(m.serialize())
 
+            m = Event(type=EventType.QRY,msgtype=MSG_TYPE.MSG_TYPE_QRY_ACCOUNT)
+            m.destination = strategy.api + '.' + strategy.account
+            m.source = str(self.id)
+            self._send_sock.send(m.serialize())
+
             # Put event to update init completed status.
             strategy.inited = True
             self.put_strategy_event(strategy)

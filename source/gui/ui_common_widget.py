@@ -302,9 +302,9 @@ class RecorderManager(QtWidgets.QWidget):
         refresh_button = QtWidgets.QPushButton("refresh")
         refresh_button.clicked.connect(self.refresh_status)
 
-        start_button = QtWidgets.QPushButton("START")
+        start_button = QtWidgets.QPushButton("订阅所有合约")
         start_button.clicked.connect(self.start_engine)
-        stop_button = QtWidgets.QPushButton("STOP")
+        stop_button = QtWidgets.QPushButton("清空所有合约")
         stop_button.clicked.connect(self.stop_engine)
 
 

@@ -10,6 +10,7 @@ from multiprocessing import Process
 from source.engine.recorder_engine import RecorderEngine
 
 recorderengine = RecorderEngine()
+atexit.register(recorderengine.stop)
 recorderengine.start()
 
 
