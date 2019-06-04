@@ -186,13 +186,16 @@ namespace StarQuant
 		inconnectaction_ = true;
 		int error;
 		int count = 0;// count numbers of tries, two many tries ends
-		string ctp_data_address = ctpacc_.md_ip + ":" + to_string(ctpacc_.md_port);	
+		
 		CThostFtdcReqUserLoginField loginField = CThostFtdcReqUserLoginField();		
 		while(estate_ != EState::LOGIN_ACK && estate_ != STOP){
 			switch(estate_){
 				case EState::DISCONNECTED:
 					if (!apiinited_){
-						this->api_->RegisterFront((char*)ctp_data_address.c_str());
+						for (auto it:ctpacc_.md_ip){
+							string ctp_data_address = it + ":" + to_string(ctpacc_.md_port);	
+							this->api_->RegisterFront((char*)ctp_data_address.c_str());
+						}
 						this->api_->Init();
 						apiinited_ = true;
 					}

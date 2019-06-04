@@ -335,8 +335,7 @@ namespace StarQuant
 			privatetype = THOST_TERT_RESUME;
 		}		
 		int error;
-		int count = 0;// count numbers of tries, two many tries ends
-		string ctp_td_address = ctpacc_.td_ip + ":" + to_string(ctpacc_.td_port);	
+		int count = 0;// count numbers of tries, two many tries ends		
 		CThostFtdcReqUserLoginField loginField = CThostFtdcReqUserLoginField();
 		while (estate_ != LOGIN_ACK && estate_ != STOP){
 			switch (estate_){
@@ -344,7 +343,10 @@ namespace StarQuant
 					if (!apiinited_){
 						this->api_->SubscribePrivateTopic(privatetype);
 						this->api_->SubscribePublicTopic(publictype);
-						this->api_->RegisterFront((char*)ctp_td_address.c_str());
+						for (auto it:ctpacc_.td_ip){
+							string ctp_td_address = it + ":" + to_string(ctpacc_.td_port);	
+							this->api_->RegisterFront((char*)ctp_td_address.c_str());
+						}						
 						this->api_->Init();	
 						apiinited_ = true;					
 					}

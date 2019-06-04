@@ -83,9 +83,11 @@ namespace StarQuant {
 			gw.intid = config[s]["intid"].as<int>();
 			gw.api = config[s]["api"].as<std::string>();
 			gw.brokerid = config[s]["brokerid"].as<std::string>();
-			gw.md_ip = config[s]["md_ip"].as<std::string>();
+			auto mdips = config[s]["md_ip"].as<std::vector<string>>();
+			gw.md_ip.assign(mdips.begin(),mdips.end());
+			auto tdips = config[s]["td_ip"].as<std::vector<string>>();
+			gw.td_ip.assign(tdips.begin(),tdips.end());
 			gw.md_port = config[s]["md_port"].as<uint16_t>();
-			gw.td_ip = config[s]["td_ip"].as<std::string>();
 			gw.td_port = config[s]["td_port"].as<uint16_t>();
 			gw.userid = config[s]["userid"].as<std::string>();
 			gw.password = config[s]["password"].as<std::string>();
