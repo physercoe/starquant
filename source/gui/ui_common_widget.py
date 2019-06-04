@@ -303,7 +303,7 @@ class RecorderManager(QtWidgets.QWidget):
         refresh_button.clicked.connect(self.refresh_status)
 
         self.data_source = QtWidgets.QComboBox()
-        self.data_source.addItems(['CTP.MD', 'TAP.MD']) 
+        self.data_source.addItems(['CTP.MD','TAP.MD']) 
 
         start_button = QtWidgets.QPushButton("订阅所有合约")
         start_button.clicked.connect(self.start_engine)
