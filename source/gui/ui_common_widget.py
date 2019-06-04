@@ -293,14 +293,17 @@ class RecorderManager(QtWidgets.QWidget):
 
         # Create widgets
         self.engine_status = QtWidgets.QLineEdit()
-        self.engine_status.setMaximumWidth(100)
+        self.engine_status.setMaximumWidth(50)
         self.engine_status.setReadOnly(True)
         self.engine_status.setText('False')
         self.engine_pid = QtWidgets.QLineEdit()
         self.engine_pid.setReadOnly(True)
-        self.engine_pid.setMaximumWidth(100)
+        self.engine_pid.setMaximumWidth(70)
         refresh_button = QtWidgets.QPushButton("refresh")
         refresh_button.clicked.connect(self.refresh_status)
+
+        self.data_source = QtWidgets.QComboBox()
+        self.data_source.addItems(['CTP.MD', 'TAP.MD']) 
 
         start_button = QtWidgets.QPushButton("订阅所有合约")
         start_button.clicked.connect(self.start_engine)
@@ -318,6 +321,8 @@ class RecorderManager(QtWidgets.QWidget):
         self.symbol_completer.setCompletionMode(
             self.symbol_completer.PopupCompletion)
         self.symbol_line.setCompleter(self.symbol_completer)
+
+
 
         self.record_choice = QtWidgets.QComboBox()
         self.record_choice.addItems(['tick', 'bar'])        
@@ -349,6 +354,8 @@ class RecorderManager(QtWidgets.QWidget):
         statusbox.addWidget(self.engine_pid)
         statusbox.addWidget(QtWidgets.QLabel("Alive"))
         statusbox.addWidget(self.engine_status)
+        statusbox.addWidget(QtWidgets.QLabel("DataSource"))
+        statusbox.addWidget(self.data_source)
         statusbox.addWidget(start_button)
         statusbox.addWidget(stop_button)
 
@@ -391,18 +398,20 @@ class RecorderManager(QtWidgets.QWidget):
     def start_engine(self):
         m = Event(type=EventType.RECORDER_CONTROL,
             des='@' + self.engineid,
-            src='0',            
+            src=self.data_source.currentText(),            
             msgtype=MSG_TYPE.MSG_TYPE_RECORDER_START
         )
         self.signal_recorder_out.emit(m)
 
     def stop_engine(self):
-        m = Event(type=EventType.RECORDER_CONTROL,
-            des='@' + self.engineid,
-            src='0',            
-            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_STOP
-        )
-        self.signal_recorder_out.emit(m)
+        mbox = QtWidgets.QMessageBox().question(None, 'confirm','are you sure',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
+        if mbox == QtWidgets.QMessageBox.Yes:
+            m = Event(type=EventType.RECORDER_CONTROL,
+                des='@' + self.engineid,
+                src='0',            
+                msgtype=MSG_TYPE.MSG_TYPE_RECORDER_STOP
+            )
+            self.signal_recorder_out.emit(m)
 
     def refresh_status(self):
         self.engine_pid.setText('')
@@ -473,7 +482,7 @@ class RecorderManager(QtWidgets.QWidget):
 
         m = Event(type=EventType.RECORDER_CONTROL,
             des='@' + self.engineid,
-            src='0',
+            src=self.data_source.currentText(),
             data=full_symbol,            
             msgtype=MSG_TYPE.MSG_TYPE_RECORDER_ADD_BAR
         )
@@ -484,7 +493,7 @@ class RecorderManager(QtWidgets.QWidget):
         full_symbol = self.symbol_line.text()
         m = Event(type=EventType.RECORDER_CONTROL,
             des='@' + self.engineid,
-            src='0', 
+            src=self.data_source.currentText(), 
             data=full_symbol,           
             msgtype=MSG_TYPE.MSG_TYPE_RECORDER_ADD_TICK
         )

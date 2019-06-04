@@ -120,6 +120,26 @@ string FillMsg::serialize(){
     return str;
 }
 
+bool isActiveOrder(const Order& o){
+    if (o.orderStatus_ == OrderStatus::OS_Filled)
+        return false;
+    if (o.orderStatus_ == OrderStatus::OS_Error)
+        return false; 
+    if (o.orderStatus_ == OrderStatus::OS_Canceled)
+        return false;
+  
+    return true;   
+}
+bool isActiveOS(const OrderStatus& os){
+    if (os == OrderStatus::OS_Filled)
+        return false;
+    if (os == OrderStatus::OS_Error)
+        return false; 
+    if (os == OrderStatus::OS_Canceled)
+        return false;
+  
+    return true; 
+}
 
 
 void OrderMsg::deserialize(const string& msgin){

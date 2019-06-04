@@ -44,6 +44,9 @@ namespace StarQuant
 
 		void insertOrder(shared_ptr<CtpOrderMsg> pmsg);
 		void cancelOrder(shared_ptr<OrderActionMsg> pmsg);
+		void cancelAll(const string& fullsym = "");
+		void closeAll(const string& fullsym = "");
+		
 		void queryAccount(shared_ptr<MsgHeader> pmsg);
 		void queryPosition(shared_ptr<MsgHeader> pmsg);
 		void queryContract(shared_ptr<QryContractMsg> pmsg);

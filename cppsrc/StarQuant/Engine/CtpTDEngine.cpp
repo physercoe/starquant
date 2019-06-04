@@ -628,6 +628,36 @@ namespace StarQuant
 
 	}
 	
+	void CtpTDEngine::cancelAll(const string& fullsym){
+		vector<std::shared_ptr<Order>> olist;
+		if (fullsym.empty()){
+			olist = OrderManager::instance().retrieveNonFilledOrderPtr();
+		}
+		else
+		{
+			olist = OrderManager::instance().retrieveNonFilledOrderPtr(fullsym);
+		}
+		if (!olist.empty()){
+			for (auto o : olist)
+			{
+				auto pmsg = make_shared<OrderActionMsg>(name_,name_);
+				pmsg->data_.serverOrderID_ = o->serverOrderID_;
+				cancelOrder(pmsg);
+			}
+		}
+	}
+
+	void CtpTDEngine::closeAll(const string& fullsym){
+		if (fullsym.empty()){
+			// retrieve all pos
+		}
+		else{
+			// retrieve this sym
+			//string poskey = 
+		} 
+	}
+
+
 	// 查询账户
 	void CtpTDEngine::queryAccount(shared_ptr<MsgHeader> pmsg) {
 		CThostFtdcQryTradingAccountField myreq = CThostFtdcQryTradingAccountField();

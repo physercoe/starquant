@@ -543,6 +543,9 @@ public:
     OrderStatus orderStatus_ = OrderStatus::OS_UNKNOWN;				
 };
 
+bool isActiveOrder(const Order& o);
+bool isActiveOS(const OrderStatus& os);
+
 class DLL_EXPORT_IMPORT PaperOrder: public Order{
 public:
     PaperOrder(){}

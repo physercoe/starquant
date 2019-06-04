@@ -120,11 +120,11 @@ class RecorderEngine(BaseEngine):
         self.event_engine.register(EventType.HEADER,self.process_general_event)
         self.event_engine.register(EventType.TIMER,self.process_timer_event)
 
-    def init_subcribe(self):
+    def init_subcribe(self,src:str = 'CTP.MD'):
         symset = set(self.tick_recordings.keys())
         symset.update(self.bar_recordings.keys())
         for sym in symset:
-            self.subscribe(sym)
+            self.subscribe(sym,src)
         self.subscribed = True    
 
 # event handler
@@ -153,13 +153,13 @@ class RecorderEngine(BaseEngine):
     def process_tick_event(self, event: Event):
         """"""
         tick = event.data
+        if (tick.open_price):  #exclude onrtnsubscribe return first tick which time not in trade time 
+            if tick.full_symbol in self.tick_recordings:
+                self.record_tick(tick)
 
-        if tick.full_symbol in self.tick_recordings:
-            self.record_tick(tick)
-
-        if tick.full_symbol in self.bar_recordings:
-            bg = self.get_bar_generator(tick.full_symbol)
-            bg.update_tick(tick)
+            if tick.full_symbol in self.bar_recordings:
+                bg = self.get_bar_generator(tick.full_symbol)
+                bg.update_tick(tick)
 
 
     def process_contract_event(self, event: Event):
@@ -183,10 +183,10 @@ class RecorderEngine(BaseEngine):
             self.put_event()
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_ADD_TICK):
             full_symbol = event.data
-            self.add_tick_recording(full_symbol)
+            self.add_tick_recording(full_symbol,event.source)
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_ADD_BAR):
             full_symbol = event.data
-            self.add_bar_recording(full_symbol)
+            self.add_bar_recording(full_symbol,event.source)
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_REMOVE_TICK):
             full_symbol = event.data
             self.remove_tick_recording(full_symbol)
@@ -220,7 +220,7 @@ class RecorderEngine(BaseEngine):
         m = Event(type=EventType.RECORDER_CONTROL,data=msg,des='@0',src=str(self.id),msgtype=MSG_TYPE.MSG_TYPE_RECORDER_RTN_DATA)
         self._send_sock.send(m.serialize())
 
-    def add_bar_recording(self, full_symbol: str):
+    def add_bar_recording(self, full_symbol: str, src:str = 'CTP.MD'):
         """"""
         if full_symbol in self.bar_recordings:
             self.write_log(f"已在K线记录列表中：{full_symbol}")
@@ -237,13 +237,13 @@ class RecorderEngine(BaseEngine):
             "gateway_name": self.gateway
         }
 
-        self.subscribe(full_symbol)
+        self.subscribe(full_symbol,src)
         self.save_setting()
         self.put_event()
 
         self.write_log(f"添加K线记录成功：{full_symbol}")
 
-    def add_tick_recording(self, full_symbol: str):
+    def add_tick_recording(self, full_symbol: str,src:str = 'CTP.MD'):
         """"""
         if full_symbol in self.tick_recordings:
             self.write_log(f"已在Tick记录列表中：{full_symbol}")
@@ -260,7 +260,7 @@ class RecorderEngine(BaseEngine):
             "gateway_name": self.gateway
         }
 
-        self.subscribe(full_symbol)
+        self.subscribe(full_symbol,src)
         self.save_setting()
         self.put_event()
 
@@ -308,14 +308,14 @@ class RecorderEngine(BaseEngine):
 
         return bg
 
-    def subscribe(self, full_symbol: str):
+    def subscribe(self, full_symbol: str, src:str = 'CTP.MD'):
         contract = self.contracts.get(full_symbol,None)
         if contract:
             m = Event(type=EventType.SUBSCRIBE,msgtype=MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA)
-            m.destination = self.gateway
+            m.destination = src
             m.source = str(self.id)
             req = SubscribeRequest()
-            if self.gateway == 'CTP.MD':
+            if src == 'CTP.MD':
                 req.sym_type = SYMBOL_TYPE.CTP                
                 req.content = contract.symbol
             else:

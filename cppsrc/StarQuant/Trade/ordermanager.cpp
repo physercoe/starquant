@@ -179,7 +179,7 @@ namespace StarQuant {
 	vector<std::shared_ptr<Order>> OrderManager::retrieveNonFilledOrderPtr() {
 		vector<std::shared_ptr<Order>> v;
 		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
-			if (!isCompleted(iterator->first))
+			if (isActiveOS(iterator->second->orderStatus_))
 			{
 				v.push_back(iterator->second);
 			}
@@ -191,7 +191,7 @@ namespace StarQuant {
 	vector<std::shared_ptr<Order>> OrderManager::retrieveNonFilledOrderPtr(const string& fullsymbol) {
 		vector<std::shared_ptr<Order>> v;
 		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
-			if ((!isCompleted(iterator->first)) && (iterator->second->fullSymbol_ == fullsymbol))
+			if ( isActiveOS(iterator->second->orderStatus_)  && (iterator->second->fullSymbol_ == fullsymbol) )
 			{
 				v.push_back(iterator->second);
 			}
@@ -203,7 +203,7 @@ namespace StarQuant {
 	vector<long> OrderManager::retrieveNonFilledOrderId() {
 		vector<long> v;
 		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
-			if (!isCompleted(iterator->first))
+			if (isActiveOS(iterator->second->orderStatus_))
 			{
 				v.push_back(iterator->first);
 			}
@@ -215,7 +215,7 @@ namespace StarQuant {
 	vector<long> OrderManager::retrieveNonFilledOrderId(const string& fullsymbol) {
 		vector<long> v;
 		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
-			if ((!isCompleted(iterator->first)) && (iterator->second->fullSymbol_ == fullsymbol))
+			if ((isActiveOS(iterator->second->orderStatus_)) && (iterator->second->fullSymbol_ == fullsymbol))
 			{
 				v.push_back(iterator->first);
 			}
@@ -226,7 +226,7 @@ namespace StarQuant {
 
 	bool OrderManager::isEmpty()
 	{
-		return false;
+		return orders_.empty();
 	}
 
 	bool OrderManager::isTracked(long oid) {
@@ -234,16 +234,21 @@ namespace StarQuant {
 		return (it != orders_.end());
 	}
 
-	bool OrderManager::isFilled(long oid) { return false; }
-	bool OrderManager::isCanceled(long oid) { return false; }
 
 	bool OrderManager::isCompleted(long oid) {
-		return (isFilled(oid) || isCanceled(oid));
+		if (isTracked(oid)){
+			return isActiveOS(orders_[oid]->orderStatus_);
+		}
+		else{
+			LOG_ERROR(logger,"Order is not tracked. ServerOrderId= "<<oid);
+			return true;
+		}
+	
 	}
 
 	bool OrderManager::hasPendingOrders() {
 		for (auto iterator = orders_.begin(); iterator != orders_.end(); ++iterator) {
-			if (!isCompleted(iterator->first))
+			if (isActiveOS(iterator->second->orderStatus_))
 			{
 				return true;
 			}

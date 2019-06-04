@@ -50,8 +50,6 @@ namespace StarQuant {
 
 		bool isEmpty();
 		bool isTracked(long oid);
-		bool isFilled(long oid);
-		bool isCanceled(long oid);
 		bool isCompleted(long oid);		// either filled or canceled
 		bool hasPendingOrders();		// is all orders either filled or canceled?
 	};
