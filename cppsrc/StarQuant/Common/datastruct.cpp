@@ -172,6 +172,7 @@ std::shared_ptr<Order> OrderMsg::toPOrder(){
     o->clientID_ = data_.clientID_;
     o->clientOrderID_ = data_.clientOrderID_;
     o->tag_ =  data_.tag_;
+    o->orderType_ = data_.orderType_;
 
     o->fullSymbol_ = data_.fullSymbol_; 
     o->price_ = data_.price_;
@@ -246,6 +247,7 @@ void CtpOrderMsg::deserialize(const string& msgin){
     data_.clientID_ = stoi(v[5]);
     data_.clientOrderID_ = stol(v[6]);
     data_.tag_ = v[7];
+    data_.orderType_ = OrderType(stoi(v[7]));
 
     data_.orderField_ = {};
     strcpy(data_.orderField_.InstrumentID,v[8].c_str());
@@ -277,6 +279,8 @@ std::shared_ptr<Order> CtpOrderMsg::toPOrder(){
     o->clientID_ = data_.clientID_;
     o->clientOrderID_ = data_.clientOrderID_;
     o->tag_ =  data_.tag_;
+    o->orderType_ = data_.orderType_;
+    
     o->fullSymbol_ = data_.fullSymbol_;
     o->price_ = data_.price_;
     o->quantity_ = data_.quantity_;
@@ -361,6 +365,7 @@ void OrderStatusMsg::set(std::shared_ptr<Order> po){
     data_.clientID_ = po->clientID_;
     data_.clientOrderID_ = po->clientOrderID_;
     data_.tag_ =  po->tag_;
+    data_.orderType_ = po->orderType_;
     data_.fullSymbol_ = po->fullSymbol_;
     data_.price_ = po->price_;
     data_.quantity_ = po->quantity_;
@@ -477,6 +482,15 @@ void QryContractMsg::deserialize(const string& msgin){
     data_ = v[4];
 
 }
+
+void CancelAllMsg::deserialize(const string& msgin){
+    vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    destination_ = v[0];
+    source_ = v[1];     
+    symtype_ = SymbolType(stoi(v[3]));     
+    data_ = v[4];
+}
+
 
 
 string ErrorMsg::serialize(){

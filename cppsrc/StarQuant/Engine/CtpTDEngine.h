@@ -44,8 +44,9 @@ namespace StarQuant
 
 		void insertOrder(shared_ptr<CtpOrderMsg> pmsg);
 		void cancelOrder(shared_ptr<OrderActionMsg> pmsg);
-		void cancelAll(const string& fullsym = "");
+		void cancelAll(shared_ptr<CancelAllMsg> pmsg);
 		void closeAll(const string& fullsym = "");
+		void checkLocalOrders();
 		
 		void queryAccount(shared_ptr<MsgHeader> pmsg);
 		void queryPosition(shared_ptr<MsgHeader> pmsg);
@@ -53,6 +54,7 @@ namespace StarQuant
 		void queryOrder(shared_ptr<MsgHeader> pmsg);
 		void queryTrade(shared_ptr<MsgHeader> pmsg);
 		void queryPositionDetail(shared_ptr<MsgHeader> pmsg);
+
 
 	public:
 		virtual void OnFrontConnected();
@@ -386,6 +388,7 @@ namespace StarQuant
 		bool saveSecurityFile_ = false;
 		map<string, std::shared_ptr<Position> > posbuffer_;   //used for calculate position 
 		std::queue < std::shared_ptr<MsgHeader> > qryBuffer_;   // used for qry queue to keep qry interval < 1s
+		std::vector<shared_ptr<CtpOrderMsg> > localorders_;
 		uint64_t lastQryTime_;
 		int timercount_;
 		

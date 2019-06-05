@@ -16,7 +16,7 @@ class PassThroughRiskManager(RiskManagerBase):
         return original_order
     def passorder(self):
         self._orderperseconds =self._orderperseconds +1
-        if (self._orderperseconds > 1):
+        if (self._orderperseconds > 4):
             print('order flow rate limit reached ')
             return False
         return True

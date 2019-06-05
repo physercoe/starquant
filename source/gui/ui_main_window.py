@@ -467,6 +467,9 @@ class MainWindow(QtWidgets.QMainWindow):
         manualwidget.qry_signal.connect(self._outgoing_qry_request_handler)
         manualwidget.manual_req.connect(self._outgoing_queue.put)
         manualwidget.subscribe_signal.connect(self._outgoing_general_request_handler)
+        manualwidget.cancelall_signal.connect(self._outgoing_general_request_handler)
+
+        
         self.manual_widget = manualwidget
         dockmanual = QtWidgets.QDockWidget('Manual Control Center',self)
         dockmanual.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable|QtWidgets.QDockWidget.DockWidgetMovable)

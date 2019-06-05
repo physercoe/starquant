@@ -28,6 +28,9 @@ class ManualWindow(QtWidgets.QFrame):
     subscribe_signal = QtCore.pyqtSignal(Event)
     qry_signal = QtCore.pyqtSignal(Event) 
     manual_req = QtCore.pyqtSignal(str)
+    cancelall_signal = QtCore.pyqtSignal(Event)
+    localorder_signal = QtCore.pyqtSignal(Event)
+
     def __init__(self, apilist):
         super(ManualWindow, self).__init__()
 
@@ -136,6 +139,29 @@ class ManualWindow(QtWidgets.QFrame):
         except:
             print('place ctp order error')
 
+    def place_local_order_ctp(self,of):
+        try:
+            m = Event(EventType.ORDER)
+            m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_CTP
+            m.destination = self.gateway.currentText() 
+            m.source = '0'  
+            ot = OrderType.LPT
+            if of.ContingentCondition in [THOST_FTDC_CC_Touch,THOST_FTDC_CC_TouchProfit]:
+                of.ContingentCondition = THOST_FTDC_CC_Immediately
+            o = OrderData(
+                api = "CTP.TD" ,
+                account = m.destination[7:],
+                clientID = 0,
+                client_order_id = self.manualorderid,
+                type = ot,
+                orderfield = of
+            )
+            m.data = o   
+            self.order_signal.emit(m)
+            self.manualorderid = self.manualorderid + 1
+        except:
+            print('place ctp local order error')      
+
     def place_order_paper(self,of):
         try:
             m = Event(EventType.ORDER)
@@ -159,6 +185,10 @@ class ManualWindow(QtWidgets.QFrame):
         qa.source = '0'
         self.qry_signal.emit(qa)
         
+    def cancelall(self,ca):
+        ca.destination = self.gateway.currentText() 
+        ca.source = '0'
+        self.cancelall_signal.emit(ca)        
 
     def init_wxcmd(self):
         self.wechatmsg = ItchatMsgThread()
@@ -236,7 +266,9 @@ class ManualWindow(QtWidgets.QFrame):
         ctpapi = CtpApiWindow()
         ctpapi.subscribe_signal.connect(self.subsrcibe)
         ctpapi.qry_signal.connect(self.qry)
+        ctpapi.cancelall_signal.connect(self.cancelall)
         ctpapi.orderfield_signal.connect(self.place_order_ctp)
+        ctpapi.local_orderfield_signal.connect(self.place_local_order_ctp)
 
         paperapi = PaperApiWindow()
         paperapi.orderfield_signal.connect(self.place_order_paper)
@@ -260,9 +292,11 @@ class ManualWindow(QtWidgets.QFrame):
             self.api_widget.setCurrentIndex(1)
 
 class CtpApiWindow(QtWidgets.QFrame):
+    local_orderfield_signal = QtCore.pyqtSignal(CtpOrderField)
     orderfield_signal = QtCore.pyqtSignal(CtpOrderField)
     subscribe_signal = QtCore.pyqtSignal(Event)
     qry_signal = QtCore.pyqtSignal(Event) 
+    cancelall_signal = QtCore.pyqtSignal(Event)
 
     def __init__(self):
         super(CtpApiWindow, self).__init__()
@@ -406,7 +440,9 @@ class CtpApiWindow(QtWidgets.QFrame):
         self.request_type.addItems(['Order',
             'LocalOrder',
             'ParkedOrder',
-            'Option']
+            'CancelAll',
+            'CloseAll',
+            'Lock']
             )
         self.algo_type = QtWidgets.QComboBox()
         self.algo_type.addItems(['None','TWAP','Iceberg','Sniper'])
@@ -472,10 +508,44 @@ class CtpApiWindow(QtWidgets.QFrame):
                 of.MinVolume = int(self.order_minquantity.text())
                 of.StopPrice = float(self.stop_price.text())
             except:
-                pass
+                print('ctp request error,please check numerical field')
+                return
             
             self.orderfield_signal.emit(of)
-            return
+        elif (self.request_type.currentText() == 'LocalOrder'):
+            of = CtpOrderField()
+            of.InstrumentID = self.sym.text()
+            of.OrderPriceType = self.orderfielddict['pricetype'][self.order_price_type.currentIndex()]
+            of.Direction = self.orderfielddict['direction'][self.direction_type.currentIndex()]
+            of.CombOffsetFlag = self.orderfielddict['orderflag'][self.order_flag_type.currentIndex()]
+            of.CombHedgeFlag = self.orderfielddict['hedge'][self.hedge_type.currentIndex()]
+            of.TimeCondition = self.orderfielddict['timecondition'][self.time_condition_type.currentIndex()]
+            of.GTDDate = self.time_condition_time.text()
+            of.VolumeCondition = self.orderfielddict['volumecondition'][self.volume_condition_type.currentIndex()]
+            of.ContingentCondition = self.orderfielddict['condition'][self.order_condition_type.currentIndex()]
+            of.ForceCloseReason = THOST_FTDC_FCC_NotForceClose
+            try:
+                of.LimitPrice = float(self.limit_price.text())
+                of.VolumeTotalOriginal = int(self.order_quantity.text())
+                of.MinVolume = int(self.order_minquantity.text())
+                of.StopPrice = float(self.stop_price.text())
+            except:
+                print('ctp request error,please check numerical field')
+                return
+            if of.StopPrice <= 0:
+                QtWidgets.QMessageBox().information(None, 'Error','Stop Price must be positive number !',QtWidgets.QMessageBox.Ok)
+                return
+            self.local_orderfield_signal.emit(of)
+
+        elif (self.request_type.currentText() == 'CancelAll'):
+            ss = CancelAllRequest()
+            ss.sym_type = SYMBOL_TYPE.CTP
+            ss.content = str(self.sym.text())
+            m = Event(EventType.CANCEL)
+            m.msg_type = MSG_TYPE.MSG_TYPE_CANCEL_ALL
+            m.data = ss
+            self.cancelall_signal.emit(m)
+
 
     def subscribe(self):
         ss = SubscribeRequest()
@@ -485,7 +555,7 @@ class CtpApiWindow(QtWidgets.QFrame):
         m.msg_type = MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA
         m.data = ss
         self.subscribe_signal.emit(m)
-        return
+
         
 
 

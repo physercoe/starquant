@@ -89,7 +89,8 @@ enum OrderType {
     OT_Rspquot,
     OT_Swap,
     OT_FAK,
-    OT_FOK
+    OT_FOK,
+    OT_LPT     //local price conditon touched 
 };
 
 enum OrderStatus {
@@ -540,7 +541,8 @@ public:
     string localNo_;             //unique local id ,frontid +sessionid +orderref
     string createTime_;
     string updateTime_;
-    OrderStatus orderStatus_ = OrderStatus::OS_UNKNOWN;				
+    OrderStatus orderStatus_ = OrderStatus::OS_UNKNOWN;
+    OrderType orderType_ = OrderType::OT_Default;				
 };
 
 bool isActiveOrder(const Order& o);
@@ -551,7 +553,6 @@ public:
     PaperOrder(){}
     ~PaperOrder(){}
 
-    OrderType orderType_ = OrderType::OT_Market;						// MKT, LMT, STP, STPLMT, etc
     OrderFlag orderFlag_ = OrderFlag::OF_OpenPosition;
     int orderSize_ = 0;
     string fillNo_;					// < 0 = short, order size != trade size
@@ -819,6 +820,22 @@ public:
     virtual void deserialize(const string& msgin);
 };
 
+class DLL_EXPORT_IMPORT CancelAllMsg: public MsgHeader{
+public:
+    CancelAllMsg(string des,string src) :MsgHeader(des,src,MSG_TYPE_CANCEL_ALL),data_()
+    {
+    }
+    CancelAllMsg():MsgHeader(),data_(){
+        msgtype_ = MSG_TYPE::MSG_TYPE_CANCEL_ALL;
+    }
+    ~CancelAllMsg() {}
+
+    SymbolType symtype_;
+    string data_;
+
+    // virtual string serialize();
+    virtual void deserialize(const string& msgin);
+};
 
 
 class DLL_EXPORT_IMPORT ErrorMsg: public MsgHeader{

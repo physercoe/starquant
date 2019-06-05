@@ -223,6 +223,7 @@ class OrderType(Enum):
     SWAP = 22        # swap
     FAK = 23
     FOK = 24
+    LPT = 25    #local price condition touched 
 
 OT2STR = {
     OrderType.MKT:'市价',
@@ -231,6 +232,7 @@ OT2STR = {
     OrderType.STPLMT:'限价止损',
     OrderType.FAK:'FAK',
     OrderType.FOK:'FOK',
+    OrderType.LPT:'本地条件单',
     OrderType.DEFAULT:'未知'
 }
 class OrderStatus(Enum):
@@ -342,6 +344,7 @@ class Status(Enum):
     """
     Order status.
     """
+    NEWBORN = "等待提交"
     SUBMITTING = "提交中"
     NOTTRADED = "未成交"
     PARTTRADED = "部分成交"
@@ -352,7 +355,7 @@ class Status(Enum):
 
 ORDERSTATUS_2VT = {
     OrderStatus.SUBMITTED: Status.SUBMITTING,
-    OrderStatus.NEWBORN: Status.SUBMITTING,
+    OrderStatus.NEWBORN: Status.NEWBORN,
     OrderStatus.UNKNOWN: Status.UNKNOWN,
     OrderStatus.ACKNOWLEDGED: Status.NOTTRADED,
     OrderStatus.PARTIALLY_FILLED: Status.PARTTRADED,
@@ -361,7 +364,7 @@ ORDERSTATUS_2VT = {
     OrderStatus.ERROR: Status.REJECTED
 }
 
-ACTIVE_STATUSES = set([Status.UNKNOWN,Status.SUBMITTING, Status.NOTTRADED, Status.PARTTRADED])
+ACTIVE_STATUSES = set([Status.NEWBORN,Status.SUBMITTING, Status.NOTTRADED,Status.PARTTRADED,Status.UNKNOWN])
 class Product(Enum):
     """
     Product class.

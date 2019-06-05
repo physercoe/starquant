@@ -155,6 +155,10 @@ namespace StarQuant {
 				pheader = make_shared<OrderActionMsg>();
 				pheader->deserialize(msgin);
 				break;
+			case MSG_TYPE_CANCEL_ALL:
+				pheader = make_shared<CancelAllMsg>();
+				pheader->deserialize(msgin);
+				break;			
 			case MSG_TYPE_QRY_CONTRACT:
 				pheader = make_shared<QryContractMsg>(des,src);
 				pheader->deserialize(msgin);

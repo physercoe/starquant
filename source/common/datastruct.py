@@ -1427,6 +1427,7 @@ class QryContractRequest:
     def serialize(self):
         msg = str(self.sym_type.value) + '|' + self.content
         return msg
+
 @dataclass
 class SubscribeRequest:
     """
@@ -1452,8 +1453,8 @@ class CancelRequest:
         msg = str(self.clientID) + '|' + str(self.client_order_id) + '|' + str(self.server_order_id)
         return msg        
 
-
 OrderRequest = OrderData
+CancelAllRequest = SubscribeRequest
 
 # ############################# vnpy 's data #########################
 

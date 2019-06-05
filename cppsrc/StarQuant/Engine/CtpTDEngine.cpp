@@ -105,7 +105,7 @@ namespace StarQuant
 
 	void CtpTDEngine::start(){
 		while(estate_ != EState::STOP){
-			auto pmsgin = messenger_->recv();
+			auto pmsgin = messenger_->recv(1);
 			bool processmsg = ((pmsgin != nullptr) && ( startwith(pmsgin->destination_,DESTINATION_ALL) || (pmsgin->destination_ == name_ )));
 			// if (pmsgin == nullptr || (pmsgin->destination_ != name_  && ! startwith(pmsgin->destination_,DESTINATION_ALL) ) )
 			// 	continue;
@@ -150,6 +150,20 @@ namespace StarQuant
 							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
 								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
 								name_ + " is not connected,can not cancel order!");
+							messenger_->send(pmsgout);
+						}
+						break;
+					case MSG_TYPE_CANCEL_ALL:
+						if (pmsgin->destination_ != name_)
+							break;				
+						if (estate_ == LOGIN_ACK){
+							cancelAll(static_pointer_cast<CancelAllMsg>(pmsgin));
+						}
+						else{
+							LOG_DEBUG(logger,name_ <<" is not connected,can not cancel all!");
+							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
+								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
+								name_ + " is not connected,can not cancel all!");
 							messenger_->send(pmsgout);
 						}
 						break;
@@ -485,11 +499,15 @@ namespace StarQuant
 	}
 
 	void CtpTDEngine::processbuf(){
+		// check local order
+		checkLocalOrders();
+
 		// save datamanager's security file 
 		if (saveSecurityFile_){
 			DataManager::instance().saveSecurityToFile();
 			saveSecurityFile_ = false;
 		}
+
 		// pop qrybuffer
 		if (!qryBuffer_.empty()){
 			uint64_t timenow = getMicroTime();
@@ -524,18 +542,64 @@ namespace StarQuant
 		}
 	}
 
+	void CtpTDEngine::checkLocalOrders(){
+		// check local order
+		if (! localorders_.empty()){
+			for (auto it = localorders_.begin();it != localorders_.end();)
+			{
+				auto pmsg = (*it);
+				double stopprice = pmsg->data_.price_;
+				bool directionbuy = (pmsg->data_.quantity_ >0) ;
+				string fullsym = pmsg->data_.fullSymbol_;
+				if (DataManager::instance().orderBook_.count(fullsym) == 0 ){
+					++it;
+					continue;
+				}
+				double lastprice = DataManager::instance().orderBook_[fullsym].price_;				
+				bool longtriggered = ( directionbuy ) && (lastprice >= stopprice );
+				bool shorttriggered = ( !directionbuy ) && (lastprice <= stopprice ); 
+				if (longtriggered || shorttriggered){
+					//touched 
+					strcpy(pmsg->data_.orderField_.OrderRef, to_string(orderRef_).c_str()); 
+					pmsg->data_.localNo_ = to_string(frontID_) + "." + to_string(sessionID_) + "." + to_string(orderRef_++) ;
+					auto o = OrderManager::instance().retrieveOrderFromServerOrderId(pmsg->data_.serverOrderID_);
+					o->localNo_ = pmsg->data_.localNo_;
+					lock_guard<mutex> gs(orderStatus_mtx);
+					o->orderStatus_ = OrderStatus::OS_Submitted;
+					int error = api_->ReqOrderInsert(&(pmsg->data_.orderField_), reqId_++);
+					LOG_INFO(logger, name_<<"Local Order Touched: clientorderid ="<<pmsg->data_.clientOrderID_<<" FullSymbol = "<<pmsg->data_.fullSymbol_);					
+					if (error != 0){
+						o->orderStatus_ = OrderStatus::OS_Error;
+						//send error msg
+						auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+							MSG_TYPE_ERROR_INSERTORDER,
+							to_string(o->clientOrderID_));
+						messenger_->send(pmsgout);
+						LOG_ERROR(logger,name_<<" insertOrder error: "<<error);
+					}
+					//send OrderStatus
+					auto pmsgout = make_shared<OrderStatusMsg>(pmsg->source_,name_);
+					pmsgout->set(o);
+					messenger_->send(pmsgout);
+					// delete this localorder, update iterator
+					it = localorders_.erase(it);
+				}
+				else{
+					++it;
+				}
+
+			}
+		}
+	}
 
 	void CtpTDEngine::insertOrder(shared_ptr<CtpOrderMsg> pmsg){
-		strcpy(pmsg->data_.orderField_.OrderRef, to_string(orderRef_).c_str());
 		strcpy(pmsg->data_.orderField_.InvestorID, ctpacc_.userid.c_str());
 		strcpy(pmsg->data_.orderField_.UserID, ctpacc_.userid.c_str());
 		strcpy(pmsg->data_.orderField_.BrokerID, ctpacc_.brokerid.c_str());
 		lock_guard<mutex> g(oid_mtx);
 		pmsg->data_.serverOrderID_ = m_serverOrderId++;
 		pmsg->data_.brokerOrderID_ = m_brokerOrderId_++;
-		pmsg->data_.localNo_ = to_string(frontID_) + "." + to_string(sessionID_) + "." + to_string(orderRef_++) ;
 		pmsg->data_.createTime_ = ymdhmsf();			
-		//pmsg->data_.fullSymbol_ = CConfig::instance().CtpSymbolToSecurityFullName(pmsg->data_.orderField_.InstrumentID);
 		pmsg->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pmsg->data_.orderField_.InstrumentID];
 		pmsg->data_.price_ = pmsg->data_.orderField_.LimitPrice;
 		int dir_ = pmsg->data_.orderField_.Direction != THOST_FTDC_D_Sell ? 1:-1 ;
@@ -546,22 +610,34 @@ namespace StarQuant
 			+ ":p" + pmsg->data_.orderField_.OrderPriceType
 			+ ":c" + pmsg->data_.orderField_.ContingentCondition + ":" + to_string(pmsg->data_.orderField_.StopPrice)
 			+ ":t" + pmsg->data_.orderField_.TimeCondition
-			+ ":v" + pmsg->data_.orderField_.VolumeCondition;		
+			+ ":v" + pmsg->data_.orderField_.VolumeCondition;
+		pmsg->data_.orderStatus_ = OrderStatus::OS_NewBorn;		
 		std::shared_ptr<Order> o = pmsg->toPOrder();
 		OrderManager::instance().trackOrder(o);	
-		lock_guard<mutex> gs(orderStatus_mtx);
-		pmsg->data_.orderStatus_ = OrderStatus::OS_Submitted;
-		int error = api_->ReqOrderInsert(&(pmsg->data_.orderField_), reqId_++);
-		LOG_INFO(logger, name_<<"Insert Order: clientorderid ="<<pmsg->data_.clientOrderID_<<" FullSymbol = "<<pmsg->data_.fullSymbol_);					
-		if (error != 0){
-			o->orderStatus_ = OrderStatus::OS_Error;
-			pmsg->data_.orderStatus_ = OrderStatus::OS_Error;
-			//send error msg
-			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
-				MSG_TYPE_ERROR_INSERTORDER,
-				to_string(o->clientOrderID_));
-			messenger_->send(pmsgout);
-			LOG_ERROR(logger,name_<<" insertOrder error: "<<error);
+		//local condition order
+		if (pmsg->data_.orderType_ == OrderType::OT_LPT){
+			pmsg->data_.price_ = pmsg->data_.orderField_.StopPrice;
+			o->price_ = pmsg->data_.price_;
+			localorders_.push_back(pmsg);
+		}
+		//direct order, TODO: copy orderref to order in OM
+		else{
+			strcpy(pmsg->data_.orderField_.OrderRef, to_string(orderRef_).c_str()); 
+			pmsg->data_.localNo_ = to_string(frontID_) + "." + to_string(sessionID_) + "." + to_string(orderRef_++) ;
+			o->localNo_ = pmsg->data_.localNo_; 
+			lock_guard<mutex> gs(orderStatus_mtx);
+			o->orderStatus_ = OrderStatus::OS_Submitted;
+			int error = api_->ReqOrderInsert(&(pmsg->data_.orderField_), reqId_++);
+			LOG_INFO(logger, name_<<"Insert Order: clientorderid ="<<pmsg->data_.clientOrderID_<<" FullSymbol = "<<pmsg->data_.fullSymbol_);					
+			if (error != 0){
+				o->orderStatus_ = OrderStatus::OS_Error;
+				//send error msg
+				auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+					MSG_TYPE_ERROR_INSERTORDER,
+					to_string(o->clientOrderID_));
+				messenger_->send(pmsgout);
+				LOG_ERROR(logger,name_<<" insertOrder error: "<<error);
+			}
 		}
 		//send OrderStatus
 		auto pmsgout = make_shared<OrderStatusMsg>(pmsg->source_,name_);
@@ -585,6 +661,22 @@ namespace StarQuant
 			o = OrderManager::instance().retrieveOrderFromServerOrderId(pmsg->data_.serverOrderID_);
 		}
 		if (o != nullptr){
+			// delete local orders
+			if (o->orderType_ == OrderType::OT_LPT){
+				long oid = o->serverOrderID_;
+				for (auto it = localorders_.begin();it != localorders_.end();++it){
+					if ((*it)->data_.serverOrderID_ == oid){
+						o->orderStatus_ = OrderStatus::OS_Canceled;
+						o->updateTime_ = ymdhmsf();
+						auto pmsgout = make_shared<OrderStatusMsg>((*it)->source_,name_);
+						pmsgout->set(o);
+						messenger_->send(pmsgout);
+						it = localorders_.erase(it);
+						break;
+					}
+				}
+				return;
+			}
 			vector<string> locno = stringsplit(o->localNo_,'.');
 			ofront = stoi(locno[0]);
 			osess = stoi(locno[1]);
@@ -600,7 +692,8 @@ namespace StarQuant
 			messenger_->send(pmsgout);
 			LOG_ERROR(logger,"cancel order ordermanager cannot find order!");
 			return;
-		}		
+		}
+		//send cancel request		
 		strcpy(myreq.InstrumentID, ctpsym.c_str());
 		//strcpy(myreq.ExchangeID, o->.c_str());			// TODO: check the required field
 		strcpy(myreq.OrderRef, oref.c_str());
@@ -628,8 +721,12 @@ namespace StarQuant
 
 	}
 	
-	void CtpTDEngine::cancelAll(const string& fullsym){
+	void CtpTDEngine::cancelAll(shared_ptr<CancelAllMsg> pmsg ){
 		vector<std::shared_ptr<Order>> olist;
+		string fullsym = pmsg->data_;
+		if (pmsg->symtype_ == SymbolType::ST_Ctp){
+			fullsym = DataManager::instance().ctp2Full_[fullsym];
+		}
 		if (fullsym.empty()){
 			olist = OrderManager::instance().retrieveNonFilledOrderPtr();
 		}
@@ -652,8 +749,11 @@ namespace StarQuant
 			// retrieve all pos
 		}
 		else{
-			// retrieve this sym
-			//string poskey = 
+			string longkey = ctpacc_.userid + "." + fullsym + "." +  THOST_FTDC_PD_Long ;
+			string shortkey = ctpacc_.userid + "." + fullsym + "." +  THOST_FTDC_PD_Short ;
+			auto poslong = PortfolioManager::instance().retrievePosition(longkey);
+			auto posshort = PortfolioManager::instance().retrievePosition(shortkey);
+			
 		} 
 	}
 
@@ -957,7 +1057,7 @@ namespace StarQuant
 			else {//not record this order yet
 				auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 					MSG_TYPE_ERROR_ORGANORDER,
-					pInputOrder->OrderRef);
+					"onRspOrder Insert, OrderManager cannot find order,OrderRef");
 				messenger_->send(pmsgout);
 				LOG_ERROR(logger,name_ <<" onRspOrder Insert, OrderManager cannot find order,OrderRef="<<pInputOrder->OrderRef);
 			}
@@ -1678,7 +1778,7 @@ namespace StarQuant
 			else {
 				auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 					MSG_TYPE_ERROR_ORGANORDER,
-					pInputOrder->OrderRef);
+					"OnErrRtnOrderInsert ordermanager cannot find orderref!");
 				messenger_->send(pmsgout);			
 				LOG_ERROR(logger,name_ <<" OnErrRtnOrderInsert ordermanager cannot find orderref:"<<pInputOrder->OrderRef);
 			}
