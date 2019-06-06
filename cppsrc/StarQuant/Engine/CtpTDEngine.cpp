@@ -3,6 +3,8 @@
 #include <boost/algorithm/algorithm.hpp>
 #include <limits>
 
+#include <fmt/format.h>
+
 #include <Common/datastruct.h>
 #include <Common/logger.h>
 #include <Common/util.h>
@@ -115,7 +117,9 @@ namespace StarQuant
 					case MSG_TYPE_ENGINE_CONNECT:
 						if (connect()){
 							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
-								MSG_TYPE_INFO_ENGINE_TDCONNECTED, name_ + "logined,ready to request.");
+								MSG_TYPE_INFO_ENGINE_TDCONNECTED, 
+								fmt::format("{} logined,ready to request.",name_)
+							);
 							messenger_->send(pmsgout,1);
 						}
 						break;
@@ -133,7 +137,8 @@ namespace StarQuant
 							LOG_DEBUG(logger,name_ <<" is not connected,can not insert order!");
 							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
 								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-								name_+ " is not connected,can not insert order!");
+								fmt::format("{} is not connected,can not insert order!", name_)
+							);
 							messenger_->send(pmsgout);
 						}
 						break;
@@ -149,7 +154,8 @@ namespace StarQuant
 							LOG_DEBUG(logger,name_ <<" is not connected,can not cancel order!");
 							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
 								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-								name_ + " is not connected,can not cancel order!");
+								fmt::format("{} is not connected,can not cancel order!", name_)
+							);
 							messenger_->send(pmsgout);
 						}
 						break;
@@ -163,7 +169,8 @@ namespace StarQuant
 							LOG_DEBUG(logger,name_ <<" is not connected,can not cancel all!");
 							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
 								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-								name_ + " is not connected,can not cancel all!");
+								fmt::format("{} is not connected,can not cancel all!", name_ )
+							);
 							messenger_->send(pmsgout);
 						}
 						break;
@@ -182,7 +189,8 @@ namespace StarQuant
 							LOG_DEBUG(logger,name_ <<" is not connected,can not qry!");
 							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
 								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-								name_ + " is not connected,can not qry !");
+								fmt::format("{} is not connected,can not qry !",name_)
+							);
 							messenger_->send(pmsgout);
 						}
 						break;
@@ -469,7 +477,7 @@ namespace StarQuant
 						//send error msg
 						auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
 							MSG_TYPE_ERROR_INSERTORDER,
-							to_string(o->clientOrderID_));
+							fmt::format("Insert order error, order_server_id:{}",o->serverOrderID_));
 						messenger_->send(pmsgout);
 						LOG_ERROR(logger,name_<<" insertOrder error: "<<error);
 					}
@@ -530,7 +538,7 @@ namespace StarQuant
 				//send error msg
 				auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
 					MSG_TYPE_ERROR_INSERTORDER,
-					to_string(o->clientOrderID_));
+					fmt::format("insertOrder error:{}, oid:{}",error,o->serverOrderID_));
 				messenger_->send(pmsgout);
 				LOG_ERROR(logger,name_<<" insertOrder error: "<<error);
 			}
@@ -584,7 +592,8 @@ namespace StarQuant
 		{
 			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
 				MSG_TYPE_ERROR_ORGANORDER,
-				to_string(o->clientOrderID_));
+				fmt::format("cancelOrder OM cannot find order, osid:{},ocid:{}", o->serverOrderID_,o->clientOrderID_)
+				);
 			messenger_->send(pmsgout);
 			LOG_ERROR(logger,"cancel order ordermanager cannot find order!");
 			return;
@@ -603,7 +612,7 @@ namespace StarQuant
 		if (i != 0){
 			auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
 				MSG_TYPE_ERROR_CANCELORDER,
-				to_string(o->clientOrderID_));
+				fmt::format("cancle order error:{}, osid:{}",i,o->serverOrderID_) );
 			messenger_->send(pmsgout);
 			LOG_ERROR(logger,name_<<" cancle order error "<<i);
 			return;
@@ -782,22 +791,20 @@ namespace StarQuant
 						to_string(estate_));
 			messenger_->send(pmsgs);
 			reqId_ = 1;
-			string sout("Ctp td disconnected, nReason=");
-			sout += to_string(nReason);
 			auto pmsgout = make_shared<InfoMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_INFO_ENGINE_TDDISCONNECTED,
-				sout);
+				fmt::format("Ctp td disconnected, nReason={}.",nReason) 
+				);
 			messenger_->send(pmsgout);
 			LOG_INFO(logger, name_ <<" disconnected, nReason="<<nReason);
 		}
 	}
 	///心跳超时警告。当长时间未收到报文时，该方法被调用。
 	void CtpTDEngine::OnHeartBeatWarning(int nTimeLapse) {
-		string sout("Ctp td heartbeat overtime error, nTimeLapse=");
-		sout += to_string(nTimeLapse);
 		auto pmsgout = make_shared<InfoMsg>(DESTINATION_ALL, name_,
 			MSG_TYPE_INFO_HEARTBEAT_WARNING,
-			sout);
+			fmt::format("Ctp td heartbeat overtime error, nTimeLapse={}",nTimeLapse)
+			);
 		messenger_->send(pmsgout);		
 		LOG_INFO(logger,name_ <<" heartbeat overtime error, nTimeLapse="<<nTimeLapse);
 	}
@@ -806,10 +813,10 @@ namespace StarQuant
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
 			string errormsgutf8;			
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			string sout("Ctp Td authentication failed");
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_CONNECT,
-				sout);
+				fmt::format("Ctp Td authentication failed, ErrorID:{},Errmsg:{}",pRspInfo->ErrorID,errormsgutf8)
+				);
 			messenger_->send(pmsgout);				
 			LOG_ERROR(logger,name_ <<" authentication failed."<<pRspInfo->ErrorID<<errormsgutf8);
 		}
@@ -828,11 +835,10 @@ namespace StarQuant
 		{
 			string errormsgutf8;			
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			string sout("Ctp td login failed: ErrorID=");
-			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_CONNECT,
-				sout);
+				fmt::format("Ctp td login failed: ErrorID={},ErrorMsg={}",pRspInfo->ErrorID,errormsgutf8 )
+				);
 			messenger_->send(pmsgout);	
 			LOG_ERROR(logger,name_ <<" login failed: ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8);  
 		}
@@ -855,11 +861,12 @@ namespace StarQuant
 				strcpy(myreq.InvestorID, ctpacc_.userid.c_str());
 				int error = api_->ReqSettlementInfoConfirm(&myreq, reqId_++);
 				if (error != 0){
-					string sout("Ctp TD settlement confirming error");
 					auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 						MSG_TYPE_ERROR_CONNECT,
-						sout);
+						fmt::format("Ctp TD settlement confirming error:{}",error)
+						);
 					LOG_ERROR(logger,name_ <<" settlement confirming error");
+					return;
 				}
 				LOG_INFO(logger,name_ <<" settlement confirming...");
 			}
@@ -874,11 +881,10 @@ namespace StarQuant
 		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
 			string errormsgutf8;			
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" ); 
-			string sout("Ctp TD settlement confirming error, ErrorID=");
-			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_CONNECT,
-				sout);	
+				fmt::format("Ctp TD settlement confirming error, ErrorID={},ErrorMsg={}",pRspInfo->ErrorID,errormsgutf8)
+				);	
 			LOG_ERROR(logger,name_ <<" Settlement confirm error: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
 		}
 		else{
@@ -892,18 +898,16 @@ namespace StarQuant
  		if (pRspInfo != nullptr && pRspInfo->ErrorID != 0){
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" ); 
-			string sout("Ctp td logout failed: ErrorID=");
-			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_CONNECT,
-				sout);
+				fmt::format("Ctp td logout failed, ErrorID={},ErrorMsg={}",pRspInfo->ErrorID,errormsgutf8)
+				);
 			LOG_ERROR(logger,name_ <<" logout failed: "<<"ErrorID="<<pRspInfo->ErrorID<<"ErrorMsg="<<errormsgutf8); 
 		}
 		else{
-			string sout("Ctp td logouted");
 			auto pmsgout = make_shared<InfoMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_INFO_ENGINE_TDDISCONNECTED,
-				sout);
+				"Ctp td logouted");
 			messenger_->send(pmsgout);
 			estate_ = CONNECTING;
 			auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
@@ -929,7 +933,7 @@ namespace StarQuant
 				o->updateTime_ = ymdhmsf();	
 				auto pmsgout = make_shared<ErrorMsg>(to_string(o->clientID_), name_,
 					MSG_TYPE_ERROR_INSERTORDER,
-					to_string(o->clientOrderID_));
+					fmt::format("OnRspOrderInsert, osid:{}",o->serverOrderID_ ));
 				messenger_->send(pmsgout);
 				auto pmsgout2 = make_shared<OrderStatusMsg>(to_string(o->clientID_),name_);
 				pmsgout2->set(o);
@@ -939,7 +943,8 @@ namespace StarQuant
 			else {//not record this order yet
 				auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 					MSG_TYPE_ERROR_ORGANORDER,
-					"onRspOrder Insert, OrderManager cannot find order,OrderRef");
+					fmt::format("onRspOrderInsert, OrderManager cannot find OrderRef:{}",oref)
+					);
 				messenger_->send(pmsgout);
 				LOG_ERROR(logger,name_ <<" onRspOrder Insert, OrderManager cannot find order,OrderRef="<<pInputOrder->OrderRef);
 			}
@@ -971,15 +976,16 @@ namespace StarQuant
 			if (o != nullptr) {
 				auto pmsgout = make_shared<ErrorMsg>(to_string(o->clientID_), name_,
 					MSG_TYPE_ERROR_CANCELORDER,
-					to_string(o->clientOrderID_));
+					fmt::format("OnRspOrderAction,osid:{}",o->serverOrderID_) );
 				messenger_->send(pmsgout);
-				LOG_ERROR(logger,name_ <<" OnRsp cancel order error:"<<pRspInfo->ErrorID<<errormsgutf8);
+				
 			}
 			else
 			{
 				auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 					MSG_TYPE_ERROR_ORGANORDER,
-					localno);
+					fmt::format("OnRspOrderAction OrderManager cannot find order,localNo:{}.",localno)
+					);
 				messenger_->send(pmsgout);
 				LOG_ERROR(logger,name_ <<" OnRspOrderAction OrderManager cannot find order,localNo="<<localno);
 			}
@@ -1037,7 +1043,8 @@ namespace StarQuant
 				messenger_->send(pmsgout);	
 				auto pmsgout2 = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 					MSG_TYPE_ERROR_ORGANORDER,
-					localno + ": OM don't record this order. ");
+					fmt::format("OM don't record this order:{}.",localno)
+					);
 				messenger_->send(pmsgout2);
 				LOG_INFO(logger,name_ <<" OnQryOrder details:"
 				<<" InstrumentID="<<pOrder->InstrumentID
@@ -1071,11 +1078,10 @@ namespace StarQuant
 		else{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			string sout("Ctp Td Qry order error, errorID=");
-			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;			
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_QRY_POS,
-				sout);
+				fmt::format("Ctp.td qry order error: ErrorID={},ErrorMsg={}",pRspInfo->ErrorID,errormsgutf8)
+				);
 			messenger_->send(pmsgout);
 			LOG_ERROR(logger,name_ <<" Qry order error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
 			
@@ -1146,7 +1152,8 @@ namespace StarQuant
 				messenger_->send(pmsg);
 				auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 					MSG_TYPE_ERROR_ORGANORDER,
-					string(pTrade->OrderSysID) + ":OM dont record this order.");
+					fmt::format("OM dont record this order:{}.",pTrade->OrderSysID) 
+					);
 				messenger_->send(pmsgout);			
 				LOG_INFO(logger,name_ <<" OnQryTrade details:"
 				<<" TradeID="<<pTrade->TradeID
@@ -1165,11 +1172,10 @@ namespace StarQuant
 		{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			string sout("Ctp Td Qry order error, errorID=");
-			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;			
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_QRY_POS,
-				sout);
+				fmt::format("Ctp Td Qry order error, errorID={}, errorMsg={}", pRspInfo->ErrorID,errormsgutf8)
+				);
 			messenger_->send(pmsgout);
 			LOG_ERROR(logger,name_ <<" Qry order error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
 		}
@@ -1203,11 +1209,10 @@ namespace StarQuant
 		else{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			string sout("Ctp Td Qry posdetail error, errorID=");
-			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;			
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_QRY_POS,
-				sout);
+				fmt::format("Ctp Td Qry posdetail error, errorID={}, errorMsg={}", pRspInfo->ErrorID,errormsgutf8)
+				);
 			messenger_->send(pmsgout);
 			LOG_ERROR(logger,name_ <<" Qry posdetail error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
 
@@ -1299,11 +1304,10 @@ namespace StarQuant
 		{
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			string sout("Ctp Td Qry pos error, errorID=");
-			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;			
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_QRY_POS,
-				sout);
+				fmt::format("Ctp Td Qry pos error, errorID={}, errorMsg={}", pRspInfo->ErrorID,errormsgutf8)
+				);
 			messenger_->send(pmsgout);
 			LOG_ERROR(logger,name_ <<" Qry pos error, errorID="<<pRspInfo->ErrorID<<" ErrorMsg:"<<errormsgutf8);
 		}
@@ -1385,11 +1389,10 @@ namespace StarQuant
 		else {			
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			string sout("Ctp Td Qry acc error, errorID=");
-			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_QRY_ACC,
-				sout);
+				fmt::format("Ctp Td Qry acc error, errorID={}, errorMsg={}", pRspInfo->ErrorID,errormsgutf8)
+				);
 			messenger_->send(pmsgout);
 			LOG_ERROR(logger,name_ <<" Qry Acc error:"<<errormsgutf8);
 		}
@@ -1405,11 +1408,10 @@ namespace StarQuant
 		if(bResult){
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			string sout("Ctp Td Qry Instrument error, errorID=");
-			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_QRY_CONTRACT,
-				sout);
+				fmt::format("Ctp Td Qry instrument error, errorID={}, errorMsg={}", pRspInfo->ErrorID,errormsgutf8)
+				);
 			messenger_->send(pmsgout);			
 			LOG_ERROR(logger,name_ <<" Qry Instrument error:"<<errormsgutf8);
 		}
@@ -1472,11 +1474,10 @@ namespace StarQuant
 		if (bResult){
 			string errormsgutf8;
 			errormsgutf8 =  boost::locale::conv::between( pRspInfo->ErrorMsg, "UTF-8", "GB18030" );
-			string sout("Ctp td server OnRspError: ErrorID=");
-			sout += to_string(pRspInfo->ErrorID) + "ErrorMsg=" + errormsgutf8;			
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR,
-				sout);
+				fmt::format("Ctp.td OnRspError: ErrorID={},ErrorMsg={}",pRspInfo->ErrorID,errormsgutf8)
+				);
 			LOG_ERROR(logger,name_ <<" server OnRspError: ErrorID="<<pRspInfo->ErrorID <<"ErrorMsg="<<errormsgutf8);
 		}
 	}
@@ -1521,7 +1522,8 @@ namespace StarQuant
 			messenger_->send(pmsgout);	
 			auto pmsgout2 = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_ORGANORDER,
-				localno);
+				fmt::format("OnRtnOrder OrderManager cannot find LocalNo:{}",localno)
+				);
 			messenger_->send(pmsgout2);
 			LOG_ERROR(logger,name_ <<" OnRtnOrder OrderManager cannot find LocalNo:"<<localno);	
 		}
@@ -1616,7 +1618,8 @@ namespace StarQuant
 			messenger_->send(pmsg);
 			auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_ERROR_ORGANORDER,
-				pTrade->OrderSysID);
+				fmt::format("OnRtnTrade ordermanager cannot find orderNo:{}",pTrade->OrderSysID)
+				);
 			messenger_->send(pmsgout);			
 			LOG_ERROR(logger,name_ <<" OnRtnTrade ordermanager cannot find orderNo:"<<pTrade->OrderSysID);
 		}	
@@ -1650,7 +1653,7 @@ namespace StarQuant
 				o->updateTime_ = ymdhmsf();
 				auto pmsgout = make_shared<ErrorMsg>(to_string(o->clientID_), name_,
 					MSG_TYPE_ERROR_INSERTORDER,
-					to_string(o->clientOrderID_));
+					fmt::format("OnErrRtnOrderInsert,osid:{}",o->serverOrderID_));
 				messenger_->send(pmsgout);
 
 				auto pmsgout2 = make_shared<OrderStatusMsg>(to_string(o->clientID_),name_);
@@ -1660,7 +1663,8 @@ namespace StarQuant
 			else {
 				auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 					MSG_TYPE_ERROR_ORGANORDER,
-					"OnErrRtnOrderInsert ordermanager cannot find orderref!");
+					fmt::format("OnErrRtnOrderInsert ordermanager cannot find orderref:{}",localno)
+					);
 				messenger_->send(pmsgout);			
 				LOG_ERROR(logger,name_ <<" OnErrRtnOrderInsert ordermanager cannot find orderref:"<<pInputOrder->OrderRef);
 			}
@@ -1692,14 +1696,15 @@ namespace StarQuant
 			if (o != nullptr) {
 				auto pmsgout = make_shared<ErrorMsg>(to_string(o->clientID_), name_,
 					MSG_TYPE_ERROR_CANCELORDER,
-					to_string(o->clientOrderID_));
+					fmt::format("OnErrRtnOrderAction, osid:{}",o->serverOrderID_) );
 				messenger_->send(pmsgout);	
 			}
 			else
 			{
 				auto pmsgout = make_shared<ErrorMsg>(DESTINATION_ALL, name_,
 					MSG_TYPE_ERROR_ORGANORDER,
-					pOrderAction->OrderRef);
+					fmt::format("OnErrRtnOrderAction OrderManager cannot find order,OrderRef:{}", localno)
+					);
 				messenger_->send(pmsgout);
 				LOG_ERROR(logger,name_ <<" OnErrRtnOrderAction OrderManager cannot find order,OrderRef="<<localno);
 			}

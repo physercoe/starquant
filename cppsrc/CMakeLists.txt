@@ -22,6 +22,7 @@ find_package(nanomsg REQUIRED)
 find_package(cereal REQUIRED)
 find_package(libmongoc-1.0 REQUIRED)
 find_package(log4cplus REQUIRED)
+find_package(fmt REQUIRED)
 
 INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
 INCLUDE_DIRECTORIES(${RAPIDJSON_INCLUDE_DIRS})
@@ -32,7 +33,7 @@ include_directories(${NANOMSG_INCLUDE_DIR})
 include_directories(${CEREAL_INCLUDE_DIR})
 include_directories(${MONGOC_INCLUDE_DIRS})
 include_directories(${LOG4CPLUS_INCLUDE_DIRS})
-
+include_directories(${FMT_INCLUDE_DIRS})
 
 ADD_DEFINITIONS("-std=gnu++17 -DIB_USE_STD_STRING ")
 subdirs(StarQuant)

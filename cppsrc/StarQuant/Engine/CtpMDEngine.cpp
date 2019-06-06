@@ -10,6 +10,7 @@
 #include <time.h>
 #include <boost/locale.hpp>
 #include <boost/algorithm/string.hpp>
+#include <fmt/format.h>
 
 #include <Engine/CtpMDEngine.h>
 #include <APIs/Ctp/ThostFtdcMdApi.h>
@@ -280,8 +281,6 @@ namespace StarQuant
 		{
 			string ctpticker = symbol[i];
 			if (st == ST_Full ){
-				// if (ctpticker.back() == '\0') 
-				// 	ctpticker.pop_back();
 				ctpticker = DataManager::instance().full2Ctp_[ctpticker];	
 			}
 			insts[i] = (char*)ctpticker.c_str();
@@ -308,8 +307,6 @@ namespace StarQuant
 		{
 			string ctpticker = symbol[i];
 			if (st == ST_Full){
-				// if (ctpticker.back() == '\0') 
-				// 	ctpticker.pop_back();
 				ctpticker = DataManager::instance().full2Ctp_[ctpticker];
 			}
 
@@ -379,11 +376,10 @@ namespace StarQuant
 						to_string(estate_));
 			messenger_->send(pmsg);
 			loginReqId_ = 0;
-			string sout("CTP.MD disconnected, nReason=");
-			sout += to_string(nReason);
 			auto pmsgout = make_shared<InfoMsg>(DESTINATION_ALL, name_,
 				MSG_TYPE_INFO_ENGINE_MDDISCONNECTED,
-				sout);
+				fmt::format("Ctp md disconnected, nReason={}", nReason)
+				);
 			messenger_->send(pmsgout);			
 			LOG_INFO(logger,name_ <<"  front is  disconnected, nReason="<<nReason);	
 		}
