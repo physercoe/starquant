@@ -343,7 +343,11 @@ namespace StarQuant
 
 	}
 	void CtpMDEngine::processbuf(){
-	// TODO: datamanager do task
+		// save datamanager's security file 
+		if (DataManager::instance().saveSecurityFile_){
+			DataManager::instance().saveSecurityToFile();
+			DataManager::instance().saveSecurityFile_ = false;
+		}
 	}
 
 	/////////////////////////////////////////////// end of outgoing functions ///////////////////////////////////////

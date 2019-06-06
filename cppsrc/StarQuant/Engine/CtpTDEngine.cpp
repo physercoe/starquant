@@ -168,132 +168,24 @@ namespace StarQuant
 						}
 						break;
 					case MSG_TYPE_QRY_POS:
-						if (pmsgin->destination_ != name_)
-							break;				
-						if (estate_ == LOGIN_ACK){
-							uint64_t timenow = getMicroTime();
-							if ( (timenow - lastQryTime_) > 1000000 ) {
-								lastQryTime_ = timenow;
-								queryPosition(pmsgin);
-							}
-							else{
-								qryBuffer_.push(pmsgin);
-							}
-							
-						}
-						else{
-							LOG_DEBUG(logger,name_ <<" is not connected,can not qry pos!");
-							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-								name_ + " is not connected,can not qry pos!");
-							messenger_->send(pmsgout);
-						}
-						break;
 					case MSG_TYPE_QRY_ACCOUNT:
-						if (pmsgin->destination_ != name_)
-							break;				
-						if (estate_ == LOGIN_ACK){
-							uint64_t timenow = getMicroTime();
-							if ( (timenow - lastQryTime_) > 1000000 ) {
-								lastQryTime_ = timenow;
-								queryAccount(pmsgin);
-							}
-							else{
-								qryBuffer_.push(pmsgin);
-							}							
-						}
-						else{
-							LOG_DEBUG(logger,name_ <<" is not connected,can not qry acc!");
-							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-								name_ + " is not connected,can not qry acc!");
-							messenger_->send(pmsgout);
-						}
-						break;
 					case MSG_TYPE_QRY_CONTRACT:
+					case MSG_TYPE_QRY_ORDER:
+					case MSG_TYPE_QRY_TRADE:
+					case MSG_TYPE_QRY_POSDETAIL:															
 						if (pmsgin->destination_ != name_)
 							break;				
 						if (estate_ == LOGIN_ACK){
-							uint64_t timenow = getMicroTime();
-							if ( (timenow - lastQryTime_) > 1000000 ) {
-								lastQryTime_ = timenow;
-								queryContract(static_pointer_cast<QryContractMsg>(pmsgin));
-							}
-							else{
-								qryBuffer_.push(pmsgin);
-							}					
+							qryBuffer_.push(pmsgin);
 						}
 						else{
-							LOG_DEBUG(logger,name_ <<" is not connected,can not qry contract!");
+							LOG_DEBUG(logger,name_ <<" is not connected,can not qry!");
 							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
 								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-								name_ + " is not connected,can not qry contract!");
+								name_ + " is not connected,can not qry !");
 							messenger_->send(pmsgout);
 						}
 						break;
-					case MSG_TYPE_QRY_ORDER:
-						if (pmsgin->destination_ != name_)
-							break;				
-						if (estate_ == LOGIN_ACK){
-							uint64_t timenow = getMicroTime();
-							if ( (timenow - lastQryTime_) > 1000000 ) {
-								lastQryTime_ = timenow;
-								queryOrder(pmsgin);
-							}
-							else{
-								qryBuffer_.push(pmsgin);
-							}
-						}
-						else{
-							LOG_DEBUG(logger,name_ <<" is not connected,can not qry order!");
-							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-								name_ + " is not connected,can not qry order!");
-							messenger_->send(pmsgout);
-						}
-						break;	
-					case MSG_TYPE_QRY_TRADE:
-						if (pmsgin->destination_ != name_)
-							break;				
-						if (estate_ == LOGIN_ACK){
-							uint64_t timenow = getMicroTime();
-							if ( (timenow - lastQryTime_) > 1000000 ) {
-								lastQryTime_ = timenow;
-								queryTrade(pmsgin);
-							}
-							else{
-								qryBuffer_.push(pmsgin);
-							}
-						}
-						else{
-							LOG_DEBUG(logger,name_ <<" is not connected,can not qry trade!");
-							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-								name_ + " is not connected,can not qry trade!");
-							messenger_->send(pmsgout);
-						}
-						break;	
-					case MSG_TYPE_QRY_POSDETAIL:
-						if (pmsgin->destination_ != name_)
-							break;				
-						if (estate_ == LOGIN_ACK){
-							uint64_t timenow = getMicroTime();
-							if ( (timenow - lastQryTime_) > 1000000 ) {
-								lastQryTime_ = timenow;
-								queryPositionDetail(pmsgin);
-							}
-							else{
-								qryBuffer_.push(pmsgin);
-							}
-						}
-						else{
-							LOG_DEBUG(logger,name_ <<" is not connected,can not qry posdetail!");
-							auto pmsgout = make_shared<ErrorMsg>(pmsgin->source_, name_,
-								MSG_TYPE_ERROR_ENGINENOTCONNECTED,
-								name_ + " is not connected,can not qry posdetail!");
-							messenger_->send(pmsgout);
-						}
-						break;	
 					case MSG_TYPE_ENGINE_STATUS:
 						{
 							auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
@@ -444,6 +336,16 @@ namespace StarQuant
 			}			
 		}
 		inconnectaction_ = false;
+		auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
+			MSG_TYPE_ENGINE_STATUS,
+			to_string(estate_));
+		messenger_->send(pmsgs);
+		//  qry instrument only once everyday
+		if ( ! DataManager::instance().contractUpdated_ ){
+			CThostFtdcQryInstrumentField req = {0};		
+			error = this->api_->ReqQryInstrument(&req,reqId_++);
+			DataManager::instance().contractUpdated_ = true;
+		}
 		return true;
 	}
 
@@ -501,12 +403,6 @@ namespace StarQuant
 	void CtpTDEngine::processbuf(){
 		// check local order
 		checkLocalOrders();
-
-		// save datamanager's security file 
-		if (saveSecurityFile_){
-			DataManager::instance().saveSecurityToFile();
-			saveSecurityFile_ = false;
-		}
 
 		// pop qrybuffer
 		if (!qryBuffer_.empty()){
@@ -620,7 +516,7 @@ namespace StarQuant
 			o->price_ = pmsg->data_.price_;
 			localorders_.push_back(pmsg);
 		}
-		//direct order, TODO: copy orderref to order in OM
+		//direct order
 		else{
 			strcpy(pmsg->data_.orderField_.OrderRef, to_string(orderRef_).c_str()); 
 			pmsg->data_.localNo_ = to_string(frontID_) + "." + to_string(sessionID_) + "." + to_string(orderRef_++) ;
@@ -858,7 +754,7 @@ namespace StarQuant
 
 
 
-	////////////////////////////////////////////////////// begin callback/incoming function ///////////////////////////////////////
+///////////////////////////////////////////////////////////// begin callback/incoming function ///////////////////////////////////////
 	///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
 	void CtpTDEngine::OnFrontConnected() {
 		LOG_INFO(logger,name_ <<" front connected.");
@@ -969,10 +865,6 @@ namespace StarQuant
 			}
 			else{
 				estate_ = LOGIN_ACK;
-				auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_ENGINE_STATUS,
-						to_string(estate_));
-				messenger_->send(pmsgs);
 			}
 
 		}
@@ -991,16 +883,6 @@ namespace StarQuant
 		}
 		else{
 			estate_ = LOGIN_ACK;
-			auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
-						MSG_TYPE_ENGINE_STATUS,
-						to_string(estate_));
-			messenger_->send(pmsgs);
-			//  qry instrument only once everyday
-			if ( ! DataManager::instance().contractUpdated_ ){
-				CThostFtdcQryInstrumentField req = {0};		
-				int error = this->api_->ReqQryInstrument(&req,reqId_++);
-				DataManager::instance().contractUpdated_ = true;
-			}
 			issettleconfirmed_ = true;
 			LOG_INFO(logger,name_ <<" Settlement confirmed.ConfirmDate="<<pSettlementInfoConfirm->ConfirmDate<<"ConfirmTime="<<pSettlementInfoConfirm->ConfirmTime);
 		}
@@ -1567,7 +1449,7 @@ namespace StarQuant
 			// }
 			if (bIsLast){
 				//DataManager::instance().saveSecurityToFile();
-				saveSecurityFile_  = true;
+				DataManager::instance().saveSecurityFile_  = true;
 				LOG_DEBUG(logger,name_ <<" OnRspQryInstrument:"
 				<<" InstrumentID="<<pInstrument->InstrumentID
 				<<" InstrumentName="<<GBKToUTF8(pInstrument->InstrumentName)

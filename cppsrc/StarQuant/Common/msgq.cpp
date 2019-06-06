@@ -1,3 +1,6 @@
+
+#include <iostream>
+
 #include <Common/msgq.h>
 #include <Common/logger.h>
 #include <Common/config.h>
@@ -118,56 +121,68 @@ namespace StarQuant {
 		if (msgin.empty())
 			return nullptr;
 		// LOG_DEBUG(logger, name_ <<" recv msg:"<<msgin);
-		string des;
-		string src;
-		string stype;
-		stringstream ss(msgin);
-		getline(ss,des,SERIALIZATION_SEPARATOR);
-		getline(ss,src,SERIALIZATION_SEPARATOR);
-		getline(ss,stype,SERIALIZATION_SEPARATOR);
-		MSG_TYPE mtype = MSG_TYPE(stoi(stype));
-		std::shared_ptr<MsgHeader> pheader;
-		switch (mtype)
-		{
-			case MSG_TYPE_ORDER:
-				pheader = make_shared<OrderMsg>();
-				pheader->msgtype_ = MSG_TYPE_ORDER;
-				pheader->deserialize(msgin);
-				break;
-			case MSG_TYPE_ORDER_CTP:
-				pheader = make_shared<CtpOrderMsg>();
-				pheader->deserialize(msgin);
-				break;
-			case MSG_TYPE_ORDER_PAPER:
-				pheader = make_shared<PaperOrderMsg>();
-				pheader->deserialize(msgin);
-				break;							
-			case MSG_TYPE_SUBSCRIBE_MARKET_DATA:
-				pheader = make_shared<SubscribeMsg>(des,src);
-				pheader->deserialize(msgin);
-				break;
-			case MSG_TYPE_UNSUBSCRIBE:
-				pheader = make_shared<UnSubscribeMsg>(des,src);
-				pheader->deserialize(msgin);
-				break;
-			case MSG_TYPE_ORDER_ACTION:
-			case MSG_TYPE_CANCEL_ORDER:	
-				pheader = make_shared<OrderActionMsg>();
-				pheader->deserialize(msgin);
-				break;
-			case MSG_TYPE_CANCEL_ALL:
-				pheader = make_shared<CancelAllMsg>();
-				pheader->deserialize(msgin);
-				break;			
-			case MSG_TYPE_QRY_CONTRACT:
-				pheader = make_shared<QryContractMsg>(des,src);
-				pheader->deserialize(msgin);
-				break;			
-			default:
-				pheader = make_shared<MsgHeader>(des,src,mtype);
-				break;
+		try{
+			string des;
+			string src;
+			string stype;
+			stringstream ss(msgin);
+			getline(ss,des,SERIALIZATION_SEPARATOR);
+			getline(ss,src,SERIALIZATION_SEPARATOR);
+			getline(ss,stype,SERIALIZATION_SEPARATOR);
+			MSG_TYPE mtype = MSG_TYPE(stoi(stype));
+			std::shared_ptr<MsgHeader> pheader;
+			switch (mtype)
+			{
+				case MSG_TYPE_ORDER:
+					pheader = make_shared<OrderMsg>();
+					pheader->msgtype_ = MSG_TYPE_ORDER;
+					pheader->deserialize(msgin);
+					break;
+				case MSG_TYPE_ORDER_CTP:
+					pheader = make_shared<CtpOrderMsg>();
+					pheader->deserialize(msgin);
+					break;
+				case MSG_TYPE_ORDER_PAPER:
+					pheader = make_shared<PaperOrderMsg>();
+					pheader->deserialize(msgin);
+					break;							
+				case MSG_TYPE_SUBSCRIBE_MARKET_DATA:
+					pheader = make_shared<SubscribeMsg>(des,src);
+					pheader->deserialize(msgin);
+					break;
+				case MSG_TYPE_UNSUBSCRIBE:
+					pheader = make_shared<UnSubscribeMsg>(des,src);
+					pheader->deserialize(msgin);
+					break;
+				case MSG_TYPE_ORDER_ACTION:
+				case MSG_TYPE_CANCEL_ORDER:	
+					pheader = make_shared<OrderActionMsg>();
+					pheader->deserialize(msgin);
+					break;
+				case MSG_TYPE_CANCEL_ALL:
+					pheader = make_shared<CancelAllMsg>();
+					pheader->deserialize(msgin);
+					break;			
+				case MSG_TYPE_QRY_CONTRACT:
+					pheader = make_shared<QryContractMsg>(des,src);
+					pheader->deserialize(msgin);
+					break;			
+				default:
+					pheader = make_shared<MsgHeader>(des,src,mtype);
+					break;
+			}
+			return pheader;
+
 		}
-		return pheader;
+		catch (std::exception& e) {
+			LOG_ERROR(logger,e.what());
+			return nullptr;
+		}
+		catch(...){
+			LOG_ERROR(logger,"MSGQ deserialize error!");
+			return nullptr;
+		}
+
 	}
 
 	

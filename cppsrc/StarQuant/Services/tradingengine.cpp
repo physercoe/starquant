@@ -98,6 +98,7 @@ namespace StarQuant
 	//set console handler		
 		signal(SIGINT, ConsoleControlHandler);
 		signal(SIGPWR, ConsoleControlHandler);
+
 		time_t timer;
 		struct tm tm_info;
 		

@@ -385,10 +385,10 @@ namespace StarQuant
 		bool inconnectaction_;
 		bool autoconnect_;
 		bool autoqry_;
-		bool saveSecurityFile_ = false;
+
 		map<string, std::shared_ptr<Position> > posbuffer_;   //used for calculate position 
 		std::queue < std::shared_ptr<MsgHeader> > qryBuffer_;   // used for qry queue to keep qry interval < 1s
-		std::vector<shared_ptr<CtpOrderMsg> > localorders_;
+		std::vector<shared_ptr<CtpOrderMsg> > localorders_;   //local condition order
 		uint64_t lastQryTime_;
 		int timercount_;
 		
