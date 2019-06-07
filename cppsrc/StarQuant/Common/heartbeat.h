@@ -5,12 +5,12 @@
 
 namespace StarQuant
 {
-	class CHeartbeat {
-	protected:
-		time_t last_time;
-	public:
-		// derived class overwrites heartbeat to tell if itself is still alive
-		bool heartbeat(int);
-	};
+    class CHeartbeat {
+    protected:
+        time_t last_time;
+    public:
+        // derived class overwrites heartbeat to tell if itself is still alive
+        bool heartbeat(int);
+    };
 }
 #endif

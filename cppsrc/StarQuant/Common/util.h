@@ -79,47 +79,47 @@ namespace StarQuant {
 
 
 //console ,control related
-	// std::atomic<bool>* setconsolecontrolhandler(void);
-	// int check_gshutdown(bool force = true);
+    // std::atomic<bool>* setconsolecontrolhandler(void);
+    // int check_gshutdown(bool force = true);
 
-	//except signal
-	#include <setjmp.h>
-	#include <string.h>
+    //except signal
+    #include <setjmp.h>
+    #include <string.h>
 
-	struct Except_frame
-	{
-		jmp_buf env;
-		int flag;
-		void clear()
-		{
-			flag = 0;
-			bzero(env,sizeof(env));
-		}
-		bool isDef()
-		{
-			return flag;
-		}
-		Except_frame()
-		{
-		clear();
-		}
-	};
-	void errorDump();
-	void recvSignal(int sig);
-	
+    struct Except_frame
+    {
+        jmp_buf env;
+        int flag;
+        void clear()
+        {
+            flag = 0;
+            bzero(env,sizeof(env));
+        }
+        bool isDef()
+        {
+            return flag;
+        }
+        Except_frame()
+        {
+        clear();
+        }
+    };
+    void errorDump();
+    void recvSignal(int sig);
+    
 
-	void ConsoleControlHandler(int sig);
+    void ConsoleControlHandler(int sig);
 
-	
+    
 //string related 
-	vector<string> stringsplit(const string &s, char delim);
-	bool startwith(const string&, const string&);
-	bool endwith(const std::string &str, const std::string &suffix);
-	string UTF8ToGBK(const std::string & strUTF8);
-	string GBKToUTF8(const std::string & strGBK);
-	
+    vector<string> stringsplit(const string &s, char delim);
+    bool startwith(const string&, const string&);
+    bool endwith(const std::string &str, const std::string &suffix);
+    string UTF8ToGBK(const std::string & strUTF8);
+    string GBKToUTF8(const std::string & strGBK);
+    
 // numerical	
-	double rounded(double x, int n = 3);
+    double rounded(double x, int n = 3);
 
 
     inline bool is_greater(double x, double y)
@@ -160,33 +160,33 @@ namespace StarQuant {
 
 // time related
 
-	uint64_t getMicroTime();
-	int getMilliSeconds();
-	string ymd();
-	string ymdcompact();
-	string ymdhms();
-	string ymdhmsf();
-	string ymdhmsf6();
-	string hmsf();
-	int hmsf2inttime(string hmsf);
+    uint64_t getMicroTime();
+    int getMilliSeconds();
+    string ymd();
+    string ymdcompact();
+    string ymdhms();
+    string ymdhmsf();
+    string ymdhmsf6();
+    string hmsf();
+    int hmsf2inttime(string hmsf);
 
-	void msleep(uint64_t _ms);
-	string nowMS();
+    void msleep(uint64_t _ms);
+    string nowMS();
 
-	string ptime2str(const ptime& pt);
-	time_t str2time_t(const string& s);
-	string time_t2str(time_t tt);
-	time_t ptime2time(ptime t);
+    string ptime2str(const ptime& pt);
+    time_t str2time_t(const string& s);
+    string time_t2str(time_t tt);
+    time_t ptime2time(ptime t);
 
-	int tointdate();
-	int tointtime();
-	int tointdate(time_t time);
-	int tointtime(time_t time);
-	int inttimetointtimespan(int time);							// convert to # of seconds
-	int inttimespantointtime(int timespan);						// # of seconds to int time
-	int inttimeadd(int firsttime, int timespaninseconds);		// in seconds
-	int inttimediff(int firsttime, int latertime);				// in seconds
-	int64_t string2unixtimems(const string& s);
+    int tointdate();
+    int tointtime();
+    int tointdate(time_t time);
+    int tointtime(time_t time);
+    int inttimetointtimespan(int time);							// convert to # of seconds
+    int inttimespantointtime(int timespan);						// # of seconds to int time
+    int inttimeadd(int firsttime, int timespaninseconds);		// in seconds
+    int inttimediff(int firsttime, int latertime);				// in seconds
+    int64_t string2unixtimems(const string& s);
 
 
 

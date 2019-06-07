@@ -11,7 +11,7 @@ BOOST_PYTHON_MODULE(StarQuant)
 BOOST_PYTHON_MODULE(libstarquant)
 #endif
 {
-	class_<tradingengine, boost::noncopyable>("tradingengine_").
-		def("run", &tradingengine::run).
-		def("live", &tradingengine::live);
+    class_<tradingengine, boost::noncopyable>("tradingengine_").
+        def("run", &tradingengine::run).
+        def("live", &tradingengine::live);
 }

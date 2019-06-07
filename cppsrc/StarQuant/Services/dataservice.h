@@ -7,11 +7,11 @@
 namespace StarQuant
 {
 
-	//void MarketDataService(std::shared_ptr<marketdatafeed>, int);
-	void DataBoardService();
-	void BarAggregatorServcie();
-	void TickRecordingService();
-	void TickReplayService(const std::string& filetoreplay,int tickinterval=0);
+    //void MarketDataService(std::shared_ptr<marketdatafeed>, int);
+    void DataBoardService();
+    void BarAggregatorServcie();
+    void TickRecordingService();
+    void TickReplayService(const std::string& filetoreplay,int tickinterval=0);
 }
 
 #endif

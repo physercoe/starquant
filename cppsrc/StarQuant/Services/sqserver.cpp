@@ -14,10 +14,10 @@
 using namespace StarQuant;
 
 int main(int argc, char** argv) {
-	std::cout << "StarQuant Server. Version 0.5\n";
+    std::cout << "StarQuant Server. Version 0.5\n";
 
-	tradingengine engine;
-	std::cout << "Type Ctrl-C to exit\n\n";
-	engine.run();
-	return 0;
+    tradingengine engine;
+    std::cout << "Type Ctrl-C to exit\n\n";
+    engine.run();
+    return 0;
 }

@@ -34,57 +34,57 @@ printf("%s ",ymdhmsf().c_str());printf(__VA_ARGS__);\
 }while (0)
 
 
-	class logger {
-		static logger* pinstance_;
-		static mutex instancelock_;
+    class logger {
+        static logger* pinstance_;
+        static mutex instancelock_;
 
-		FILE* logfile = nullptr;
-		logger();
-		~logger();
+        FILE* logfile = nullptr;
+        logger();
+        ~logger();
 
-	public:
-		static logger& instance();
+    public:
+        static logger& instance();
 
-		void Initialize();
+        void Initialize();
 
-		void Printf2File(const char *format, ...);
-	};
+        void Printf2File(const char *format, ...);
+    };
 
-	class SQLogger 
-	{
-		protected:
-    		log4cplus::Logger logger;
-		protected:
-			SQLogger() {};
-			SQLogger(string name);
+    class SQLogger 
+    {
+        protected:
+            log4cplus::Logger logger;
+        protected:
+            SQLogger() {};
+            SQLogger(string name);
 
-	public:
+    public:
 
-		inline log4cplus::Logger& getLogger(){
-			return logger;
-		}
-		inline void fatal(const char* content){
-			LOG4CPLUS_FATAL(logger, content);
-		}
-		inline void error(const char* content){
-			LOG4CPLUS_ERROR(logger, content);
-		}
-		inline void info(const char* content){
-			LOG4CPLUS_INFO(logger, content);
-		}
-		inline void debug(const char* content){
-			LOG4CPLUS_DEBUG(logger, content);
-		}
+        inline log4cplus::Logger& getLogger(){
+            return logger;
+        }
+        inline void fatal(const char* content){
+            LOG4CPLUS_FATAL(logger, content);
+        }
+        inline void error(const char* content){
+            LOG4CPLUS_ERROR(logger, content);
+        }
+        inline void info(const char* content){
+            LOG4CPLUS_INFO(logger, content);
+        }
+        inline void debug(const char* content){
+            LOG4CPLUS_DEBUG(logger, content);
+        }
 
-		static string getConfigFolder();
+        static string getConfigFolder();
 
-		// attention: return true if really configured.
-		static bool doConfigure(string configureName);
+        // attention: return true if really configured.
+        static bool doConfigure(string configureName);
 
-		static std::shared_ptr<SQLogger> getLogger(string name);
+        static std::shared_ptr<SQLogger> getLogger(string name);
 
-	};
-	
+    };
+    
 
 
 }

@@ -6,7 +6,7 @@
 
 namespace StarQuant
 {
-	void StrategyManagerService();
+    void StrategyManagerService();
 }
 
 #endif

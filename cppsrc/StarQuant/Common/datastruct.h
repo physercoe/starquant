@@ -27,7 +27,7 @@ using namespace std;
 
 namespace StarQuant {
 
-// macro definations used 
+// macro definations used
 
 #define SERIALIZATION_SEPARATOR '|'
 #define RELAY_DESTINATION '@'
@@ -52,7 +52,7 @@ enum SymbolType {
     ST_Full = 0,
     ST_Ctp = 1
 };
-const std::string CurrencyTypeString[] = {
+const std::char CurrencyTypeString[] = {
     "USD",
     "AUD",
     "CAD",
@@ -66,14 +66,14 @@ const std::string CurrencyTypeString[] = {
     "SEK"
 };
 enum OrderType {
-    OT_Market = 0,				// market
+    OT_Market = 0,  // market
     OT_MarketOnClose,
-    OT_Limit = 2,				// limit
+    OT_Limit = 2,   // limit
     OT_LimitOnClose,
     OT_PeggedToMarket,
-    OT_Stop = 5,				// stop
-    OT_StopLimit = 6,			// stop limit
-    OT_TrailingStop = 7,		// traiing stop
+    OT_Stop = 5,    // stop
+    OT_StopLimit = 6,   // stop limit
+    OT_TrailingStop = 7,    // traiing stop
     OT_Relative,
     OT_VolumeWeightedAveragePrice,
     OT_TrailingStopLimit,
@@ -91,7 +91,7 @@ enum OrderType {
     OT_Swap,
     OT_FAK,
     OT_FOK,
-    OT_LPT     //local price conditon touched 
+    OT_LPT    //local price conditon touched 
 };
 
 enum OrderStatus {
