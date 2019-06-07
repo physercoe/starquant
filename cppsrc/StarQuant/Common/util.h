@@ -73,6 +73,9 @@ namespace StarQuant {
 #define NYC_TZ_STR "UTC" TIMEZONE_STRING(NYC_TZ_OFFSET) ":00:00"
 
 
+#define EPSILON (1e-6)
+#define DOUBLEMAX (1e16) // 一亿亿, 2018年A股总市值不到50万亿
+
 //console ,control related
 	// std::atomic<bool>* setconsolecontrolhandler(void);
 	// int check_gshutdown(bool force = true);
@@ -85,7 +88,45 @@ namespace StarQuant {
 	bool endwith(const std::string &str, const std::string &suffix);
 	string UTF8ToGBK(const std::string & strUTF8);
 	string GBKToUTF8(const std::string & strGBK);
+	
+// numerical	
+	double rounded(double x, int n = 3);
 
+
+    inline bool is_greater(double x, double y)
+    {
+        return std::isgreater(x - y, EPSILON);
+    }
+
+    inline bool is_less(double x, double y)
+    {
+        return std::isless(x - y, EPSILON * -1);
+    }
+
+    inline bool is_equal(double x, double y)
+    {
+        return std::abs(x - y) <= EPSILON * std::abs(x);
+    }
+
+    inline bool is_greater_equal(double x, double y)
+    {
+        return is_greater(x, y) || is_equal(x, y);
+    }
+
+    inline bool is_less_equal(double x, double y)
+    {
+        return is_less(x, y) || is_equal(x, y);
+    }
+
+    inline bool is_zero(double x)
+    {
+        return is_equal(x, 0.0);
+    }
+
+    inline bool is_too_large(double x)
+    {
+        return is_greater(x, DOUBLEMAX);
+    }
 
 
 // time related

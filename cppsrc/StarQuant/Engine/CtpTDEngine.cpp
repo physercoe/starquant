@@ -11,6 +11,7 @@
 #include <Common/msgq.h>
 #include <Trade/ordermanager.h>
 #include <Trade/portfoliomanager.h>
+#include <Trade/riskmanager.h>
 #include <Data/datamanager.h>
 #include <Engine/CtpTDEngine.h>
 
@@ -448,25 +449,27 @@ namespace StarQuant
 
 	void CtpTDEngine::checkLocalOrders(){
 		// check local order
-		if (! localorders_.empty()){
-			for (auto it = localorders_.begin();it != localorders_.end();)
-			{
-				auto pmsg = (*it);
-				double stopprice = pmsg->data_.price_;
-				bool directionbuy = (pmsg->data_.quantity_ >0) ;
-				string fullsym = pmsg->data_.fullSymbol_;
-				if (DataManager::instance().orderBook_.count(fullsym) == 0 ){
-					++it;
-					continue;
-				}
-				double lastprice = DataManager::instance().orderBook_[fullsym].price_;				
-				bool longtriggered = ( directionbuy ) && (lastprice >= stopprice );
-				bool shorttriggered = ( !directionbuy ) && (lastprice <= stopprice ); 
-				if (longtriggered || shorttriggered){
-					//touched 
+		if (localorders_.empty())
+			return;
+		for (auto it = localorders_.begin();it != localorders_.end();)
+		{
+			auto pmsg = (*it);
+			double stopprice = pmsg->data_.price_;
+			bool directionbuy = (pmsg->data_.quantity_ >0) ;
+			string fullsym = pmsg->data_.fullSymbol_;
+			if (DataManager::instance().orderBook_.count(fullsym) == 0 ){
+				++it;
+				continue;
+			}
+			double lastprice = DataManager::instance().orderBook_[fullsym].price_;				
+			bool longtriggered = ( directionbuy ) && (lastprice >= stopprice );
+			bool shorttriggered = ( !directionbuy ) && (lastprice <= stopprice ); 
+			if (longtriggered || shorttriggered){
+				//touched 
+				auto o = OrderManager::instance().retrieveOrderFromServerOrderId(pmsg->data_.serverOrderID_);
+				if (RiskManager::instance().passOrder(o)){
 					strcpy(pmsg->data_.orderField_.OrderRef, to_string(orderRef_).c_str()); 
 					pmsg->data_.localNo_ = to_string(frontID_) + "." + to_string(sessionID_) + "." + to_string(orderRef_++) ;
-					auto o = OrderManager::instance().retrieveOrderFromServerOrderId(pmsg->data_.serverOrderID_);
 					o->localNo_ = pmsg->data_.localNo_;
 					lock_guard<mutex> gs(orderStatus_mtx);
 					o->orderStatus_ = OrderStatus::OS_Submitted;
@@ -493,7 +496,12 @@ namespace StarQuant
 				}
 
 			}
+			else{
+				++it;
+			}
+
 		}
+
 	}
 
 	void CtpTDEngine::insertOrder(shared_ptr<CtpOrderMsg> pmsg){
@@ -525,23 +533,39 @@ namespace StarQuant
 			localorders_.push_back(pmsg);
 		}
 		//direct order
-		else{
-			strcpy(pmsg->data_.orderField_.OrderRef, to_string(orderRef_).c_str()); 
-			pmsg->data_.localNo_ = to_string(frontID_) + "." + to_string(sessionID_) + "." + to_string(orderRef_++) ;
-			o->localNo_ = pmsg->data_.localNo_; 
-			lock_guard<mutex> gs(orderStatus_mtx);
-			o->orderStatus_ = OrderStatus::OS_Submitted;
-			int error = api_->ReqOrderInsert(&(pmsg->data_.orderField_), reqId_++);
-			LOG_INFO(logger, name_<<"Insert Order: clientorderid ="<<pmsg->data_.clientOrderID_<<" FullSymbol = "<<pmsg->data_.fullSymbol_);					
-			if (error != 0){
+		else
+		{
+			//risk check
+			if (RiskManager::instance().passOrder(o)){
+				strcpy(pmsg->data_.orderField_.OrderRef, to_string(orderRef_).c_str()); 
+				pmsg->data_.localNo_ = to_string(frontID_) + "." + to_string(sessionID_) + "." + to_string(orderRef_++) ;
+				o->localNo_ = pmsg->data_.localNo_; 
+				lock_guard<mutex> gs(orderStatus_mtx);
+				o->orderStatus_ = OrderStatus::OS_Submitted;
+				int error = api_->ReqOrderInsert(&(pmsg->data_.orderField_), reqId_++);
+				LOG_INFO(logger, name_<<"Insert Order: osid ="<<pmsg->data_.serverOrderID_);					
+				if (error != 0){
+					o->orderStatus_ = OrderStatus::OS_Error;
+					//send error msg
+					auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
+						MSG_TYPE_ERROR_INSERTORDER,
+						fmt::format("insertOrder error:{}, oid:{}",error,o->serverOrderID_)
+						);
+					messenger_->send(pmsgout);
+					LOG_ERROR(logger,name_<<" insertOrder error: "<<error);
+				}
+			}
+			else{
+				lock_guard<mutex> gs(orderStatus_mtx);
 				o->orderStatus_ = OrderStatus::OS_Error;
-				//send error msg
 				auto pmsgout = make_shared<ErrorMsg>(pmsg->source_, name_,
 					MSG_TYPE_ERROR_INSERTORDER,
-					fmt::format("insertOrder error:{}, oid:{}",error,o->serverOrderID_));
+					fmt::format("Order Risk, oid:{}",o->serverOrderID_)
+					);
 				messenger_->send(pmsgout);
-				LOG_ERROR(logger,name_<<" insertOrder error: "<<error);
+				LOG_ERROR(logger,name_<<" Order Risk, osid:"<<o->serverOrderID_);				
 			}
+
 		}
 		//send OrderStatus
 		auto pmsgout = make_shared<OrderStatusMsg>(pmsg->source_,name_);
@@ -595,7 +619,7 @@ namespace StarQuant
 				fmt::format("cancelOrder OM cannot find order, osid:{},ocid:{}", o->serverOrderID_,o->clientOrderID_)
 				);
 			messenger_->send(pmsgout);
-			LOG_ERROR(logger,"cancel order ordermanager cannot find order!");
+			LOG_ERROR(logger,"cancelorder OM cannot find order(osid):"<<o->serverOrderID_);
 			return;
 		}
 		//send cancel request		
@@ -757,7 +781,7 @@ namespace StarQuant
 				MSG_TYPE_ERROR_QRY_POS,
 				"Ctp td qry posdetail error");
 			messenger_->send(pmsgout);
-			LOG_ERROR(logger,name_ <<" qry  posdetail error "<<error);
+			LOG_ERROR(logger,name_ <<" qry posdetail error "<<error);
 		}
 	}
 

@@ -14,7 +14,7 @@
 using namespace StarQuant;
 
 int main(int argc, char** argv) {
-	std::cout << "StarQuant Server. Version 0.1\n";
+	std::cout << "StarQuant Server. Version 0.45\n";
 
 	tradingengine engine;
 	std::cout << "Type Ctrl-C to exit\n\n";

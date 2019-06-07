@@ -175,11 +175,11 @@ namespace StarQuant {
 
 		}
 		catch (std::exception& e) {
-			LOG_ERROR(logger,e.what());
+			LOG_ERROR(logger,e.what()<< " [orignial msg:" <<msgin<<"]");
 			return nullptr;
 		}
 		catch(...){
-			LOG_ERROR(logger,"MSGQ deserialize error!");
+			LOG_ERROR(logger,"MSGQ cannot deserialize msg:"<<msgin);
 			return nullptr;
 		}
 

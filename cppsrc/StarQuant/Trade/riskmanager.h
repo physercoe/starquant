@@ -7,7 +7,7 @@
 #include <regex>
 #include <mutex>
 #include <atomic>
-
+#include <Common/datastruct.h>
 using namespace std;
 
 namespace StarQuant
@@ -39,6 +39,9 @@ namespace StarQuant
 		int limitOrderCountPerSec_;
 
 		int orderCountPerSec_;
+
+		//check order
+		bool passOrder(std::shared_ptr<Order>);
 
 		// reset per day, sec ...
 		void reset();

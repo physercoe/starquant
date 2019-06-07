@@ -1,8 +1,6 @@
 #include <Trade/riskmanager.h>
 #include <Common/config.h>
 namespace StarQuant {
-
-
 	RiskManager* RiskManager::pinstance_ = nullptr;
 	mutex RiskManager::instancelock_;
 
@@ -27,6 +25,23 @@ namespace StarQuant {
 		return *pinstance_;
 	}
 
+
+
+	bool RiskManager::passOrder(std::shared_ptr<Order> o){
+		totalOrderCount_ += 1;
+		totalOrderSize_ += abs(o->quantity_);
+		orderCountPerSec_ += 1;
+		bool ocok = (totalOrderCount_ <= limitOrderCount_) ;
+		bool osok = (totalOrderSize_ <= limitOrderSize_);
+		bool ospok = (abs(o->quantity_) <= limitSizePerOrder_);
+		bool ocpsok = (orderCountPerSec_ <= limitOrderCountPerSec_ );
+		if (ocok && osok && ospok && ocpsok)
+			return true;
+		return false;
+	
+	}
+
+
 	void RiskManager::reset() {
         alive_ = CConfig::instance().riskcheck;
         limitSizePerOrder_ = CConfig::instance().sizeperorderlimit;
@@ -37,10 +52,12 @@ namespace StarQuant {
         limitOrderCountPerSec_ = CConfig::instance().ordercountperseclimit;
 
 	}
+
 	void RiskManager::resetflow() {
         orderCountPerSec_ = 0;
 
 	}
+
 	void RiskManager::switchday() {
         totalOrderCount_ = 0;
         totalCash_ = 0.0;

@@ -144,6 +144,8 @@ bool isActiveOS(const OrderStatus& os){
 
 void OrderMsg::deserialize(const string& msgin){
     vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    if (v.size() < 8)
+        throw std::out_of_range("OutofRange in Order deserialize");
     destination_ = v[0];
     source_ = v[1];
     data_.api_ = v[3];
@@ -192,6 +194,8 @@ std::shared_ptr<Order> OrderMsg::toPOrder(){
 
 void PaperOrderMsg::deserialize(const string& msgin){
     vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    if (v.size() < 14)
+        throw std::out_of_range("OutofRange in PaperOrder deserialize.");
     destination_ = v[0];
     source_ = v[1];
     data_.api_ = v[3];
@@ -240,6 +244,8 @@ std::shared_ptr<Order> PaperOrderMsg::toPOrder(){
 
 void CtpOrderMsg::deserialize(const string& msgin){
     vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    if (v.size() < 27)
+        throw std::out_of_range("OutofRange in CtpOrder deserialize.");
     destination_ = v[0];
     source_ = v[1];
     data_.api_ = v[3];
@@ -301,6 +307,8 @@ std::shared_ptr<Order> CtpOrderMsg::toPOrder(){
 
 void CtpParkedOrderMsg::deserialize(const string& msgin){
     vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    if (v.size() < 27)
+        throw std::out_of_range("OutofRange in CtpParkOrder deserialize.");
     destination_ = v[0];
     source_ = v[1];
     data_.api_ = v[3];
@@ -447,6 +455,8 @@ void PosMsg::set(std::shared_ptr<Position> pp){
 
 void OrderActionMsg::deserialize(const string& msgin){
     vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    if (v.size() < 6)
+        throw std::out_of_range("OutofRange in OrderAction deserialize.");
     destination_ = v[0];
     source_ = v[1];
     data_.clientID_ = stoi(v[3]);
@@ -456,6 +466,8 @@ void OrderActionMsg::deserialize(const string& msgin){
 
 void SubscribeMsg::deserialize(const string& msgin){
     vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    if (v.size() < 5)
+        throw std::out_of_range("OutofRange in Subscribe deserialize.");
     destination_ = v[0];
     source_ = v[1];  
     symtype_ = SymbolType(stoi(v[3]));  
@@ -466,6 +478,8 @@ void SubscribeMsg::deserialize(const string& msgin){
 
 void UnSubscribeMsg::deserialize(const string& msgin){
     vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR); 
+    if (v.size() < 5)
+        throw std::out_of_range("OutofRange in Unsubscribe deserialize.");
     destination_ = v[0];
     source_ = v[1];
     symtype_ = SymbolType(stoi(v[3]));     
@@ -476,6 +490,8 @@ void UnSubscribeMsg::deserialize(const string& msgin){
 
 void QryContractMsg::deserialize(const string& msgin){
     vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    if (v.size() < 5)
+        throw std::out_of_range("OutofRange in qrycontract deserialize.");
     destination_ = v[0];
     source_ = v[1];     
     symtype_ = SymbolType(stoi(v[3]));     
@@ -485,6 +501,8 @@ void QryContractMsg::deserialize(const string& msgin){
 
 void CancelAllMsg::deserialize(const string& msgin){
     vector<string> v = stringsplit(msgin,SERIALIZATION_SEPARATOR);
+    if (v.size() < 5)
+        throw std::out_of_range("OutofRange in cancelall deserialize.");
     destination_ = v[0];
     source_ = v[1];     
     symtype_ = SymbolType(stoi(v[3]));     

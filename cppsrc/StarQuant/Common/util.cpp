@@ -60,6 +60,7 @@ namespace StarQuant {
 #elif defined(__linux__)
 #include <signal.h>
 	void ConsoleControlHandler(int sig) {
+
 		gShutdown = true;
 		PRINT_SHUTDOWN_MESSAGE;
 		//throw runtime_error("crl c");
@@ -130,6 +131,15 @@ namespace StarQuant {
 	}
 
 
+// numerical
+
+	double rounded(double x, int n){
+		char out[64];
+		double xrounded;
+		sprintf(out, "%.*f", n, x);
+		xrounded = strtod(out, 0);
+		return xrounded;
+	}
 
 // time related 
 	uint64_t getMicroTime()
