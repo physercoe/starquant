@@ -2,6 +2,8 @@
 #include <fstream>
 #include <boost/algorithm/algorithm.hpp>
 #include <yaml-cpp/yaml.h>
+#include <fmt/format.h>
+
 #include <Data/datamanager.h>
 #include <Trade/portfoliomanager.h>
 #include <Common/datastruct.h>
@@ -50,100 +52,116 @@ namespace StarQuant {
 	}
 
 	void DataManager::loadSecurityFile(){
-		string contractpath = boost::filesystem::current_path().string() + "/etc/ctpcontract.yaml";
-		YAML::Node contractinfo = YAML::LoadFile(contractpath);
-		for (YAML::const_iterator symsec = contractinfo.begin();symsec != contractinfo.end(); symsec++)
-		{
-			auto sym = symsec->first.as<std::string>();
-			auto securities = symsec->second;
-			Security sec;
-			sec.symbol_ = securities["symbol"].as<std::string>(); 
-			sec.exchange_ = securities["exchange"].as<std::string>();
-			sec.securityType_ = securities["product"].as<char>();
-			sec.multiplier_ = securities["size"].as<int>();
-			sec.localName_ = securities["name"].as<std::string>();
-			sec.ticksize_ = securities["pricetick"].as<double>();
-			sec.postype_ = securities["positiontype"].as<char>() ;
-			sec.longMarginRatio_ = securities["long_margin_ratio"].as<double>();
-			sec.shortMarginRatio_ = securities["short_margin_ratio"].as<double>();
-			sec.underlyingSymbol_ = securities["option_underlying"].as<std::string>();
-			sec.optionType_ = securities["option_type"].as<char>();
-			sec.strikePrice_ = securities["option_strike"].as<double>();
-			sec.expiryDate_ = securities["option_expiry"].as<std::string>();
-			sec.fullSymbol_ =  securities["full_symbol"].as<std::string>();
-			securityDetails_[sym] = sec;
-			ctp2Full_[sym] = sec.fullSymbol_;
-			full2Ctp_[sec.fullSymbol_] = sym;
+		try{
+			string contractpath = boost::filesystem::current_path().string() + "/etc/ctpcontract.yaml";
+			YAML::Node contractinfo = YAML::LoadFile(contractpath);
+			for (YAML::const_iterator symsec = contractinfo.begin();symsec != contractinfo.end(); symsec++)
+			{
+				auto sym = symsec->first.as<std::string>();
+				auto securities = symsec->second;
+				Security sec;
+				sec.symbol_ = securities["symbol"].as<std::string>(); 
+				sec.exchange_ = securities["exchange"].as<std::string>();
+				sec.securityType_ = securities["product"].as<char>();
+				sec.multiplier_ = securities["size"].as<int>();
+				sec.localName_ = securities["name"].as<std::string>();
+				sec.ticksize_ = securities["pricetick"].as<double>();
+				sec.postype_ = securities["positiontype"].as<char>() ;
+				sec.longMarginRatio_ = securities["long_margin_ratio"].as<double>();
+				sec.shortMarginRatio_ = securities["short_margin_ratio"].as<double>();
+				sec.underlyingSymbol_ = securities["option_underlying"].as<std::string>();
+				sec.optionType_ = securities["option_type"].as<char>();
+				sec.strikePrice_ = securities["option_strike"].as<double>();
+				sec.expiryDate_ = securities["option_expiry"].as<std::string>();
+				sec.fullSymbol_ =  securities["full_symbol"].as<std::string>();
+				securityDetails_[sym] = sec;
+				ctp2Full_[sym] = sec.fullSymbol_;
+				full2Ctp_[sec.fullSymbol_] = sym;
+			}
+			//back up 
+			std::ofstream fout("etc/ctpcontract.yaml.bak");
+			fout<< contractinfo;
 		}
-		//back up 
-		std::ofstream fout("etc/ctpcontract.yaml.bak");
-		fout<< contractinfo;
+		catch(exception &e){
+			fmt::print("Read contract exception:{}.",e.what());
+		}
+		catch(...){
+			fmt::print("Read contract error!");
+		}
 	}
 
 	void DataManager::saveSecurityToFile() {
-		YAML::Node securities;
-		for (auto iterator = securityDetails_.begin(); iterator != securityDetails_.end(); ++iterator) {
-			auto sym = iterator->first;
-			auto sec = iterator->second;
-			securities[sym]["symbol"] = sec.symbol_; 
-			securities[sym]["exchange"] = sec.exchange_;
-			securities[sym]["product"] = sec.securityType_;
-			securities[sym]["size"] = sec.multiplier_;
-			securities[sym]["name"] = sec.localName_;
-			securities[sym]["pricetick"] = sec.ticksize_;
-			securities[sym]["positiontype"] = sec.postype_;
-			securities[sym]["long_margin_ratio"] = sec.longMarginRatio_;
-			securities[sym]["short_margin_ratio"] = sec.shortMarginRatio_;
-			securities[sym]["option_underlying"] = sec.underlyingSymbol_;
-			securities[sym]["option_type"] = sec.optionType_;
-			securities[sym]["option_strike"] = sec.strikePrice_;
-			securities[sym]["option_expiry"] = sec.expiryDate_;
-			string fullsym;
-			string type;
-			string product;
-			string contracno;
-			int i;
-			if (sec.securityType_ == '1' || sec.securityType_ == '2'){
-				for(i = 0;i<sym.size();i++){
-					if (isdigit(sym[i]))
-						break;
+		try{
+			YAML::Node securities;
+			for (auto iterator = securityDetails_.begin(); iterator != securityDetails_.end(); ++iterator) {
+				auto sym = iterator->first;
+				auto sec = iterator->second;
+				securities[sym]["symbol"] = sec.symbol_; 
+				securities[sym]["exchange"] = sec.exchange_;
+				securities[sym]["product"] = sec.securityType_;
+				securities[sym]["size"] = sec.multiplier_;
+				securities[sym]["name"] = sec.localName_;
+				securities[sym]["pricetick"] = sec.ticksize_;
+				securities[sym]["positiontype"] = sec.postype_;
+				securities[sym]["long_margin_ratio"] = sec.longMarginRatio_;
+				securities[sym]["short_margin_ratio"] = sec.shortMarginRatio_;
+				securities[sym]["option_underlying"] = sec.underlyingSymbol_;
+				securities[sym]["option_type"] = sec.optionType_;
+				securities[sym]["option_strike"] = sec.strikePrice_;
+				securities[sym]["option_expiry"] = sec.expiryDate_;
+				string fullsym;
+				string type;
+				string product;
+				string contracno;
+				int i;
+				if (sec.securityType_ == '1' || sec.securityType_ == '2'){
+					for(i = 0;i<sym.size();i++){
+						if (isdigit(sym[i]))
+							break;
+					}
+					product = sym.substr(0,i);
+					contracno = sym.substr(i);
+					type = (sec.securityType_ == '1'? "F":"O");
+					fullsym = sec.exchange_ + " " + type + " " + boost::to_upper_copy(product) + " " + contracno;
 				}
-				product = sym.substr(0,i);
-				contracno = sym.substr(i);
-				type = (sec.securityType_ == '1'? "F":"O");
-				fullsym = sec.exchange_ + " " + type + " " + boost::to_upper_copy(product) + " " + contracno;
-			}
-			else if (sec.securityType_ == '3'){
-				int pos = sym.find(" ");
-				string combo = sym.substr(pos+1);
-				int sep = combo.find("&");
-				string sym1 = combo.substr(0,sep);
-				string sym2 = combo.substr(sep+1);
-				for(i = 0;i<sym1.size();i++){
-					if (isdigit(sym1[i]))
-						break;
-				}					
-				product = sym1.substr(0,i) + "&";
-				contracno = sym1.substr(i) + "&";
-				for(i = 0;i<sym2.size();i++){
-					if (isdigit(sym2[i]))
-						break;
+				else if (sec.securityType_ == '3'){
+					int pos = sym.find(" ");
+					string combo = sym.substr(pos+1);
+					int sep = combo.find("&");
+					string sym1 = combo.substr(0,sep);
+					string sym2 = combo.substr(sep+1);
+					for(i = 0;i<sym1.size();i++){
+						if (isdigit(sym1[i]))
+							break;
+					}					
+					product = sym1.substr(0,i) + "&";
+					contracno = sym1.substr(i) + "&";
+					for(i = 0;i<sym2.size();i++){
+						if (isdigit(sym2[i]))
+							break;
+					}
+					product += sym2.substr(0,i);
+					contracno += sym2.substr(i);
+					fullsym = sec.exchange_ + " " + "S" + " " + boost::to_upper_copy(product) + " " + contracno;						
 				}
-				product += sym2.substr(0,i);
-				contracno += sym2.substr(i);
-				fullsym = sec.exchange_ + " " + "S" + " " + boost::to_upper_copy(product) + " " + contracno;						
+				else 
+				{
+					fullsym = sec.exchange_ + " " + sec.securityType_ + " " + sym;	
+				}
+				securities[sym]["full_symbol"] = fullsym;
+				ctp2Full_[sym] = fullsym;
+				full2Ctp_[fullsym] = sym;
+				securityDetails_[sym].fullSymbol_ = fullsym;
 			}
-			else 
-			{
-				fullsym = sec.exchange_ + " " + sec.securityType_ + " " + sym;	
-			}
-			securities[sym]["full_symbol"] = fullsym;
-			ctp2Full_[sym] = fullsym;
-			full2Ctp_[fullsym] = sym;
-			securityDetails_[sym].fullSymbol_ = fullsym;
+			std::ofstream fout("etc/ctpcontract.yaml");
+			fout<< securities;
 		}
-		std::ofstream fout("etc/ctpcontract.yaml");
-		fout<< securities;
+		catch(exception &e){
+			fmt::print("Write Contract exception:{}.",e.what());
+		}
+		catch(...){
+			fmt::print("Write Contract error!");
+		}
 	}
 
 

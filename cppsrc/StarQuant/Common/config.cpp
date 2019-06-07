@@ -5,6 +5,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <cctype>
+#include <fmt/format.h>
 
 #include <Common/config.h>
 #include <Common/util.h>
@@ -41,72 +42,80 @@ namespace StarQuant {
 //  reset maps
 		_gatewaymap.clear();
 
-// 读入合约相关信息数据，
+	//read server config
 		std::lock_guard<mutex> g(readlock_);
-		
-		string path = boost::filesystem::current_path().string() + "/etc/config_server.yaml";
-		YAML::Node config = YAML::LoadFile(path);
-		string configmode = config["mode"].as<std::string>();
-		if (configmode =="record")
-			_mode = RUN_MODE::RECORD_MODE;
-		else if (configmode == "replay"){
-			_mode = RUN_MODE::REPLAY_MODE;
-			_tickinterval =config["tickinterval"].as<int>();
-			_brokerdelay = config["brokerdelay"].as<int>();
-			filetoreplay = config["filetoreplay"].as<std::string>();
+		try{
+			string path = boost::filesystem::current_path().string() + "/etc/config_server.yaml";
+			YAML::Node config = YAML::LoadFile(path);
+			string configmode = config["mode"].as<std::string>();
+			if (configmode =="record")
+				_mode = RUN_MODE::RECORD_MODE;
+			else if (configmode == "replay"){
+				_mode = RUN_MODE::REPLAY_MODE;
+				_tickinterval =config["tickinterval"].as<int>();
+				_brokerdelay = config["brokerdelay"].as<int>();
+				filetoreplay = config["filetoreplay"].as<std::string>();
+			}
+			_config_dir = boost::filesystem::current_path().string() + "/etc/";
+			_log_dir = config["log_dir"].as<std::string>();
+			_data_dir = config["data_dir"].as<std::string>();
+			boost::filesystem::path log_path(logDir());
+			boost::filesystem::create_directory(log_path);
+			boost::filesystem::path data_path(dataDir());
+			boost::filesystem::create_directory(data_path);
+			logconfigfile_ = boost::filesystem::current_path().string() + "/etc/config_log";
+			// const string msgq = config["msgq"].as<std::string>();
+			// _msgq = MSGQ::NANOMSG;
+			cpuaffinity = config["cpuaffinity"].as<bool>();
+			autoconnect = config["autoconnect"].as<bool>();
+			autoqry = config["autoqry"].as<bool>();
+			_mongodbaddr = config["dbaddr"].as<std::string>();
+			_mongodbname = config["dbname"].as<std::string>();
+
+			SERVERPUB_URL = config["serverpub_url"].as<std::string>();
+			SERVERSUB_URL = config["serversub_url"].as<std::string>();
+			SERVERPULL_URL = config["serverpull_url"].as<std::string>();
+
+			// read gateway info
+			const std::vector<string> gws = config["gateway"].as<std::vector<string>>();
+			for (auto s : gws){
+				struct Gateway gw;
+				gw.id = s;
+				gw.intid = config[s]["intid"].as<int>();
+				gw.api = config[s]["api"].as<std::string>();
+				gw.brokerid = config[s]["brokerid"].as<std::string>();
+				auto mdips = config[s]["md_ip"].as<std::vector<string>>();
+				gw.md_ip.assign(mdips.begin(),mdips.end());
+				auto tdips = config[s]["td_ip"].as<std::vector<string>>();
+				gw.td_ip.assign(tdips.begin(),tdips.end());
+				gw.md_port = config[s]["md_port"].as<uint16_t>();
+				gw.td_port = config[s]["td_port"].as<uint16_t>();
+				gw.userid = config[s]["userid"].as<std::string>();
+				gw.password = config[s]["password"].as<std::string>();
+				gw.auth_code = config[s]["auth_code"].as<std::string>();
+				gw.productinfo = config[s]["user_prod_info"].as<std::string>();
+				gw.appid = config[s]["appid"].as<std::string>();
+				gw.publicstream = config[s]["publicstream"].as<std::string>();
+				gw.privatestream = config[s]["privatestream"].as<std::string>();
+				_gatewaymap[s] = gw;
+			}		
+
+			// read risk info
+			riskcheck = config["risk"]["check"].as<bool>();
+			sizeperorderlimit = config["risk"]["sizeperorder"].as<int>();
+			cashperorderlimit = config["risk"]["cashperorder"].as<double>();
+			ordercountlimit = config["risk"]["ordercount"].as<int>();
+			cashlimit = config["risk"]["cash"].as<double>();
+			ordersizelimit = config["risk"]["ordersize"].as<int>();
+			ordercountperseclimit = config["risk"]["ordercountpersec"].as<int>();
 		}
-		_config_dir = boost::filesystem::current_path().string() + "/etc/";
-		_log_dir = config["log_dir"].as<std::string>();
-		_data_dir = config["data_dir"].as<std::string>();
-		boost::filesystem::path log_path(logDir());
-		boost::filesystem::create_directory(log_path);
-		boost::filesystem::path data_path(dataDir());
-		boost::filesystem::create_directory(data_path);
-		logconfigfile_ = boost::filesystem::current_path().string() + "/etc/config_log";
-		// const string msgq = config["msgq"].as<std::string>();
-		// _msgq = MSGQ::NANOMSG;
-		cpuaffinity = config["cpuaffinity"].as<bool>();
-		autoconnect = config["autoconnect"].as<bool>();
-		autoqry = config["autoqry"].as<bool>();
-		_mongodbaddr = config["dbaddr"].as<std::string>();
-		_mongodbname = config["dbname"].as<std::string>();
+		catch(exception &e){
+			fmt::print("Read Config exception:{}.",e.what());
+		}
+		catch(...){
+			fmt::print("Read Config error!");
+		}
 
-		SERVERPUB_URL = config["serverpub_url"].as<std::string>();
-		SERVERSUB_URL = config["serversub_url"].as<std::string>();
-		SERVERPULL_URL = config["serverpull_url"].as<std::string>();
-
-		// read gateway info
-		const std::vector<string> gws = config["gateway"].as<std::vector<string>>();
-		for (auto s : gws){
-			struct Gateway gw;
-			gw.id = s;
-			gw.intid = config[s]["intid"].as<int>();
-			gw.api = config[s]["api"].as<std::string>();
-			gw.brokerid = config[s]["brokerid"].as<std::string>();
-			auto mdips = config[s]["md_ip"].as<std::vector<string>>();
-			gw.md_ip.assign(mdips.begin(),mdips.end());
-			auto tdips = config[s]["td_ip"].as<std::vector<string>>();
-			gw.td_ip.assign(tdips.begin(),tdips.end());
-			gw.md_port = config[s]["md_port"].as<uint16_t>();
-			gw.td_port = config[s]["td_port"].as<uint16_t>();
-			gw.userid = config[s]["userid"].as<std::string>();
-			gw.password = config[s]["password"].as<std::string>();
-			gw.auth_code = config[s]["auth_code"].as<std::string>();
-			gw.productinfo = config[s]["user_prod_info"].as<std::string>();
-			gw.appid = config[s]["appid"].as<std::string>();
-			gw.publicstream = config[s]["publicstream"].as<std::string>();
-			gw.privatestream = config[s]["privatestream"].as<std::string>();
-			_gatewaymap[s] = gw;
-		}		
-
-		// read risk info
-		riskcheck = config["risk"]["check"].as<bool>();
-		sizeperorderlimit = config["risk"]["sizeperorder"].as<int>();
-		cashperorderlimit = config["risk"]["cashperorder"].as<double>();
-		ordercountlimit = config["risk"]["ordercount"].as<int>();
-		cashlimit = config["risk"]["cash"].as<double>();
-		ordersizelimit = config["risk"]["ordersize"].as<int>();
-		ordercountperseclimit = config["risk"]["ordercountpersec"].as<int>();
 	}
 
 	string CConfig::configDir()
