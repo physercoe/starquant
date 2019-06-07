@@ -31,7 +31,7 @@ namespace StarQuant
 {
 
 	extern std::atomic<bool> gShutdown;
-
+	extern Except_frame g_except_stack;
 
 
 	extern atomic<uint64_t> MICRO_SERVICE_NUMBER;
@@ -160,86 +160,99 @@ namespace StarQuant
 	int tradingengine::run() {
 		if (gShutdown)
 			return 1;
-		try {
-			auto fu1 = async(launch::async, std::bind(&tradingengine::cronjobs,this,std::placeholders::_1), true);
-			if (mode == RUN_MODE::RECORD_MODE) {
-				LOG_INFO(logger,"RECORD_MODE");
-				//threads_.push_back(new thread(TickRecordingService));
-				}
-			else if (mode == RUN_MODE::REPLAY_MODE) {
-				LOG_INFO(logger,"REPLAY_MODE");
-				// threads_.push_back(new thread(TickReplayService, CConfig::instance().filetoreplay,CConfig::instance()._tickinterval));
-				// threads_.push_back(new thread(DataBoardService));
-				// //threads_.push_back(new thread(StrategyManagerService));
-			}
-			else if (mode == RUN_MODE::TRADE_MODE) {
-				LOG_INFO(logger,"TRADE_MODE");
+		// sigsegv sig backtrace
+		g_except_stack.flag = sigsetjmp(g_except_stack.env,1);
+		if (!g_except_stack.isDef()){
+			signal(SIGSEGV,recvSignal);
+			try {
+				auto fu1 = async(launch::async, std::bind(&tradingengine::cronjobs,this,std::placeholders::_1), true);
+				if (mode == RUN_MODE::RECORD_MODE) {
+					LOG_INFO(logger,"RECORD_MODE");
 					//threads_.push_back(new thread(TickRecordingService));
-				for (auto iter = CConfig::instance()._gatewaymap.begin(); iter != CConfig::instance()._gatewaymap.end(); iter++){
-					if (iter->second.api == "CTP.TD"){
-						std::shared_ptr<IEngine> ctptdengine = make_shared<CtpTDEngine>(iter->first);
-						threads_.push_back(new std::thread(startengine,ctptdengine));
-						pengines_.push_back(ctptdengine);						
 					}
-					else if (iter->second.api == "CTP.MD"){
-						std::shared_ptr<IEngine> ctpmdengine = make_shared<CtpMDEngine>();
-						pengines_.push_back(ctpmdengine);
-						threads_.push_back(new std::thread(startengine,ctpmdengine));					
-					}
-					else if (iter->second.api == "PAPER.TD"){
-						std::shared_ptr<IEngine> papertdengine = make_shared<PaperTDEngine>();
-						threads_.push_back(new std::thread(startengine,papertdengine));
-						pengines_.push_back(papertdengine);				
-					}
-					else if (iter->second.api == "TAP.TD"){
-						//  TODO: finish later
-					}					
-					else if (iter->second.api == "TAP.MD"){
-						//  TODO: finish later
-					}
-					else{
-						LOG_INFO(logger,"API not supported ,ignore it!");
-					}	
+				else if (mode == RUN_MODE::REPLAY_MODE) {
+					LOG_INFO(logger,"REPLAY_MODE");
+					// threads_.push_back(new thread(TickReplayService, CConfig::instance().filetoreplay,CConfig::instance()._tickinterval));
+					// threads_.push_back(new thread(DataBoardService));
+					// //threads_.push_back(new thread(StrategyManagerService));
 				}
-			}
-			else {
-				LOG_ERROR(logger,"Mode doesn't exist,exit.");				
-				return 1;
-			}
-			// set thread affinity
-			//engine thread
-			if (CConfig::instance().cpuaffinity){
-				int num_cpus = std::thread::hardware_concurrency();
-				for (int i = 0; i< threads_.size();i ++){
+				else if (mode == RUN_MODE::TRADE_MODE) {
+					LOG_INFO(logger,"TRADE_MODE");
+						//threads_.push_back(new thread(TickRecordingService));
+					for (auto iter = CConfig::instance()._gatewaymap.begin(); iter != CConfig::instance()._gatewaymap.end(); iter++){
+						if (iter->second.api == "CTP.TD"){
+							std::shared_ptr<IEngine> ctptdengine = make_shared<CtpTDEngine>(iter->first);
+							threads_.push_back(new std::thread(startengine,ctptdengine));
+							pengines_.push_back(ctptdengine);						
+						}
+						else if (iter->second.api == "CTP.MD"){
+							std::shared_ptr<IEngine> ctpmdengine = make_shared<CtpMDEngine>();
+							pengines_.push_back(ctpmdengine);
+							threads_.push_back(new std::thread(startengine,ctpmdengine));					
+						}
+						else if (iter->second.api == "PAPER.TD"){
+							std::shared_ptr<IEngine> papertdengine = make_shared<PaperTDEngine>();
+							threads_.push_back(new std::thread(startengine,papertdengine));
+							pengines_.push_back(papertdengine);				
+						}
+						else if (iter->second.api == "TAP.TD"){
+							//  TODO: finish later
+						}					
+						else if (iter->second.api == "TAP.MD"){
+							//  TODO: finish later
+						}
+						else{
+							LOG_INFO(logger,"API not supported ,ignore it!");
+						}	
+					}
+				}
+				else {
+					LOG_ERROR(logger,"Mode doesn't exist,exit.");				
+					return 1;
+				}
+				// set thread affinity
+				//engine thread
+				if (CConfig::instance().cpuaffinity){
+					int num_cpus = std::thread::hardware_concurrency();
+					for (int i = 0; i< threads_.size();i ++){
+						cpu_set_t cpuset;
+						CPU_ZERO(&cpuset);
+						CPU_SET(i%num_cpus,&cpuset);
+						int rc = pthread_setaffinity_np(threads_[i]->native_handle(),sizeof(cpu_set_t),&cpuset);
+						if (rc != 0) {
+							std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
+						}
+					}
+					//main thread
 					cpu_set_t cpuset;
 					CPU_ZERO(&cpuset);
-					CPU_SET(i%num_cpus,&cpuset);
-					int rc = pthread_setaffinity_np(threads_[i]->native_handle(),sizeof(cpu_set_t),&cpuset);
-					if (rc != 0) {
-						std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
-					}
+					CPU_SET(threads_.size()%num_cpus,&cpuset);
+					int rc = pthread_setaffinity_np(pthread_self(),sizeof(cpu_set_t),&cpuset);
+						if (rc != 0) {
+							std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
+					}	
 				}
-				//main thread
-				cpu_set_t cpuset;
-				CPU_ZERO(&cpuset);
-				CPU_SET(threads_.size()%num_cpus,&cpuset);
-				int rc = pthread_setaffinity_np(pthread_self(),sizeof(cpu_set_t),&cpuset);
-					if (rc != 0) {
-						std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
-				}	
-			}
-			while(!gShutdown){
-				msg_relay_->relay();
-			}
+				while(!gShutdown){
+					msg_relay_->relay();
+				}
 
-			fu1.get(); 
+				fu1.get(); 
+			}
+			catch (exception& e) {
+				LOG_INFO(logger,e.what());
+			}
+			catch (...) {
+				LOG_ERROR(logger,"StarQuant terminated in error!");
+			}
 		}
-		catch (exception& e) {
-			LOG_INFO(logger,e.what());
+		else
+		{
+			//g_except_stack.clear();
+			signal(SIGSEGV,SIG_IGN);
+			LOG_ERROR(logger,"StarQuant terminated by SEGSEGV!");
+			exit(0);
 		}
-		catch (...) {
-			LOG_ERROR(logger,"StarQuant terminated in error!");
-		}
+
 		for (const auto& e: pengines_){
 			e->stop();
 		}

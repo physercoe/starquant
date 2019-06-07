@@ -21,8 +21,51 @@ using namespace std;
 
 namespace StarQuant {
 
-//console related 
 
+
+//signal handler
+
+
+
+#include <execinfo.h>
+#include <signal.h>
+#include <unistd.h>
+#include <stddef.h>
+
+	Except_frame g_except_stack = Except_frame();
+	void errorDump()
+	{
+		void* array[30];
+		size_t size;
+		char** strings;
+		size_t i;
+
+		size = backtrace(array, 30);
+		strings = backtrace_symbols(array, size);
+		if (NULL == strings)
+		{
+			perror("backtrace_symbols");
+		}
+
+		printf("Obtained %zd stack frames.\n", size);
+
+		for(i = 0 ; i < size; i++)
+		{
+			std::cout<<array[i]<<std::endl;
+			printf("%s\n", strings[i]);
+		}
+
+		free(strings);
+		strings = NULL;
+	}
+	void recvSignal(int sig)
+	{
+		printf("StarQuant received signal %d !\n",sig);
+		errorDump();
+		siglongjmp(g_except_stack.env,1);
+	}
+
+//console related 
 	std::atomic<bool> gShutdown{ false };
 
 #if defined(_WIN64) || defined(_WIN32)

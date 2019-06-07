@@ -76,9 +76,38 @@ namespace StarQuant {
 #define EPSILON (1e-6)
 #define DOUBLEMAX (1e16) // 一亿亿, 2018年A股总市值不到50万亿
 
+
+
 //console ,control related
 	// std::atomic<bool>* setconsolecontrolhandler(void);
 	// int check_gshutdown(bool force = true);
+
+	//except signal
+	#include <setjmp.h>
+	#include <string.h>
+
+	struct Except_frame
+	{
+		jmp_buf env;
+		int flag;
+		void clear()
+		{
+			flag = 0;
+			bzero(env,sizeof(env));
+		}
+		bool isDef()
+		{
+			return flag;
+		}
+		Except_frame()
+		{
+		clear();
+		}
+	};
+	void errorDump();
+	void recvSignal(int sig);
+	
+
 	void ConsoleControlHandler(int sig);
 
 	
