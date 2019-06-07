@@ -20,6 +20,36 @@ MSG_TYPE MsgType(const string& msg){
     return msgtype_;
 }
 
+string MsgFrame::serialize() {            
+    string tmp = destination_ 
+    + SERIALIZATION_SEPARATOR + source_
+    + SERIALIZATION_SEPARATOR + to_string(msgtype_);
+    if (dataPtr != nullptr){
+        tmp = tmp + SERIALIZATION_SEPARATOR + dataPtr->serialize();
+    }
+    return tmp;
+};
+void MsgFrame::deserialize(const string& msgin) {
+    string des;
+    string src;
+    string stype;
+    string datas;
+    stringstream ss(msgin);
+    getline(ss,des,SERIALIZATION_SEPARATOR);
+    getline(ss,src,SERIALIZATION_SEPARATOR);
+    getline(ss,stype,SERIALIZATION_SEPARATOR);
+    getline(ss,datas);
+    MSG_TYPE mtype = MSG_TYPE(stoi(stype));
+    destination_ = des;
+    source_ = src;
+    msgtype_ = mtype;
+    if (!datas.empty())
+        dataPtr->deserialize(datas);
+};
+
+
+
+
 string accAddress(const string& msg){
     string acc;
     stringstream ss(msg);

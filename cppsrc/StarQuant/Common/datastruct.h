@@ -2,6 +2,7 @@
 #define __StarQuant_Common_Datastruct_H_
 
 #include <string>
+#include <iostream>
 #include <mutex>
 #include <memory>
 #include <vector>
@@ -333,6 +334,35 @@ struct Gateway{
     string publicstream;
     string privatestream;
 };
+
+//reserved for furture use
+class BaseData{
+    public:
+        virtual string serialize(){return string();}
+        virtual void deserialize(const string& msgin) {};
+};
+//reserved for furture use
+class MsgFrame{
+    public:
+        string destination_;
+        string source_;
+        MSG_TYPE msgtype_;
+        std::shared_ptr<BaseData> dataPtr;
+
+        MsgFrame(){}
+        MsgFrame(string des, string sour, MSG_TYPE mt_)
+        {
+            destination_ = des;
+            source_ = sour;
+            msgtype_ = mt_;
+        };
+        virtual ~MsgFrame(){};
+
+        string serialize();           
+        void deserialize(const string& msgin);
+};
+
+
 
 class MsgHeader{
     public:

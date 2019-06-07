@@ -150,7 +150,7 @@ namespace StarQuant
 		}
 		// ctrl-c
 		if (force) {
-			throw runtime_error("Throw an exception to trigger shutdown");
+			throw runtime_error("ctrl-c triggered shutdown");
 		}
 		return 0;
 	}
