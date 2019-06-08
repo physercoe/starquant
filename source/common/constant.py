@@ -187,6 +187,11 @@ class EventType(Enum):
     CONTRACT = 2055
     INFO = 3100
     ERROR = 3400
+    BACKTEST_START = 9000
+    BACKTEST_FINISH = 9001
+    OPTIMIZATION_START = 9002
+    OPTIMIZATION_FINISH = 9003
+    BACKTEST_LOG = 9010
 
 class OrderFlag(Enum):
     OPEN = 0              # in use

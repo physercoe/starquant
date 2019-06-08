@@ -1128,7 +1128,6 @@ class StrategyBase(metaclass=ABCMeta):
         """
         if not callback:
             callback = self.on_bar
-        pass
         self.strategy_engine.load_bar(self.full_symbol, days, interval, callback)
 
     def load_tick(self, days: int):

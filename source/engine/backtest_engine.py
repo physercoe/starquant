@@ -32,7 +32,7 @@ from ..data import database_manager
 from ..trade.portfolio_manager import PositionHolding
 from ..engine.iengine import BaseEngine,EventEngine
 
-sns.set_style("whitegrid")
+#sns.set_style("whitegrid")
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMax)
 
@@ -108,6 +108,7 @@ class BacktestingEngine:
 
     def __init__(self):
         """"""
+        self.id = 0
         self.full_symbol = ""
         self.symbol = ""
         self.exchange = None

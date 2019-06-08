@@ -54,7 +54,7 @@ from .ui_bt_dataview import BtDataViewWidget,BtDataPGChart
 from .ui_bt_resultsoverview import BtResultViewWidget
 from .ui_bt_posview import BtPosViewWidget
 from .ui_bt_txnview import BtTxnViewWidget
-from .ui_bt_setting import BtSettingWindow
+from .ui_bt_setting import BtSettingWindow,BacktesterManager
 from .ui_dataview import MarketDataView
 
 
@@ -423,47 +423,49 @@ class MainWindow(QtWidgets.QMainWindow):
         tradewidget.setLayout(hbox)
 
 #---------Backtest ----------------------------------------
-        backtestwidget = QtWidgets.QWidget()
-        bt_hbox = QtWidgets.QHBoxLayout()
-      # bt top middle---result
-        bt_topmiddle = QtWidgets.QTabWidget()
-        bt_resulttab1 = BtResultViewWidget()
-        bt_resulttab2 = BtPosViewWidget()
-        bt_resulttab3 = BtTxnViewWidget()
-        bt_topmiddle.addTab(bt_resulttab1, 'OverView and Returns')
-        bt_topmiddle.addTab(bt_resulttab2, 'Position')
-        bt_topmiddle.addTab(bt_resulttab3, 'Transactions')
-    #  bottom middle:  data
-        bt_bottommiddle = QtWidgets.QTabWidget()
-        bt_bottommiddle.setFont(self._font)
-        bt_datatab1 = BtDataViewWidget()
-        bt_datatab2 = BtDataPGChart()
-        bt_bottommiddle.addTab(bt_datatab1, 'Data')
-        bt_bottommiddle.addTab(bt_datatab2, 'PGData')
+        backtestwidget = BacktesterManager(self._events_engine)
+    # backtestwidget = QtWidgets.QWidget()
+    #     bt_hbox = QtWidgets.QHBoxLayout()
+    #   # bt top middle---result
+    #     bt_topmiddle = QtWidgets.QTabWidget()
+
+    #     bt_resulttab1 = BtResultViewWidget()
+    #     bt_resulttab2 = BtPosViewWidget()
+    #     bt_resulttab3 = BtTxnViewWidget()
+    #     bt_topmiddle.addTab(bt_resulttab1, 'OverView and Returns')
+    #     bt_topmiddle.addTab(bt_resulttab2, 'Position')
+    #     bt_topmiddle.addTab(bt_resulttab3, 'Transactions')
+    # #  bottom middle:  data
+    #     bt_bottommiddle = QtWidgets.QTabWidget()
+    #     bt_bottommiddle.setFont(self._font)
+    #     bt_datatab1 = BtDataViewWidget()
+    #     bt_datatab2 = BtDataPGChart()
+    #     bt_bottommiddle.addTab(bt_datatab1, 'Data')
+    #     bt_bottommiddle.addTab(bt_datatab2, 'PGData')
       
-    #   bt  left: setting
-        bt_left = BtSettingWindow()
+    # #   bt  left: setting
+    #     bt_left = BtSettingWindow()
 
-    #-------------------------------- 
+    # #-------------------------------- 
  
-        bt_splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        bt_splitter1.addWidget(bt_topmiddle)
-        bt_splitter1.addWidget(bt_bottommiddle)
-        bt_splitter1.setSizes([400,400])
+    #     bt_splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+    #     bt_splitter1.addWidget(bt_topmiddle)
+    #     bt_splitter1.addWidget(bt_bottommiddle)
+    #     bt_splitter1.setSizes([400,400])
 
-        # bt_splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        # bt_splitter2.addWidget(bt_left)
-        # bt_splitter2.addWidget(bt_right)
-        # bt_splitter2.setSizes([1000, 600])
+    #     # bt_splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+    #     # bt_splitter2.addWidget(bt_left)
+    #     # bt_splitter2.addWidget(bt_right)
+    #     # bt_splitter2.setSizes([1000, 600])
 
-        bt_splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        bt_splitter3.addWidget(bt_left)
-        bt_splitter3.addWidget(bt_splitter1)
-        # bt_splitter3.addWidget(bt_right)
-        bt_splitter3.setSizes([300, 1200])
+    #     bt_splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+    #     bt_splitter3.addWidget(bt_left)
+    #     bt_splitter3.addWidget(bt_splitter1)
+    #     # bt_splitter3.addWidget(bt_right)
+    #     bt_splitter3.setSizes([300, 1200])
 
-        bt_hbox.addWidget(bt_splitter3)
-        backtestwidget.setLayout(bt_hbox)
+    #     bt_hbox.addWidget(bt_splitter3)
+    #     backtestwidget.setLayout(bt_hbox)
 
 
 #--------------------mainwindow----------------------
