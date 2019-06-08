@@ -80,9 +80,7 @@ class StrategyBase(metaclass=ABCMeta):
         self.get_contract = self.strategy_engine.get_contract
         self.get_all_active_orders = self.strategy_engine.get_all_active_orders
 
-    def get_active_orderids(self):
-        return self.strategy_engine.strategy_orderid_map[self.strategy_name]
-
+    
     def get_my_position_holding(self):
         holding = self.get_position_holding(self.account,self.full_symbol)
         self.long_pos = holding.long_pos
@@ -182,6 +180,14 @@ class StrategyBase(metaclass=ABCMeta):
         """
         #raise NotImplementedError("Should implement on_order()")
         pass
+   
+    @virtual
+    def on_order(self,order):
+        """
+        on order 
+        :return:
+        """
+        self.on_order_status(order)
 
     @virtual
     def on_cancel(self,event):

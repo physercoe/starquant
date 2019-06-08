@@ -23,7 +23,8 @@ from .ui_common_widget import (
     RecorderManager,
     ContractManager,
     StatusThread, 
-    CsvLoaderWidget, 
+    CsvLoaderWidget,
+    DataDownloaderWidget, 
     AboutWidget,
     WebWindow,
     GlobalDialog,
@@ -101,6 +102,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.contract_manager = ContractManager()
         self.recorder_manager = RecorderManager(contracts= self.contract_manager.contracts)
         self.recorder_manager.signal_recorder_out.connect(self._outgoing_general_request_handler)
+        self.data_downloader = DataDownloaderWidget()
+       
         ## 8. client mq
         self._client_mq = ClientMq(self._config_server,self._events_engine, self._outgoing_queue)
         
@@ -259,7 +262,9 @@ class MainWindow(QtWidgets.QMainWindow):
         tool_csvloader = QtWidgets.QAction('CSV Loader',self)
         tool_csvloader.triggered.connect(self.opencsvloader)
         toolMenu.addAction(tool_csvloader)
-
+        tool_datadownloader = QtWidgets.QAction('Data Downloader',self)
+        tool_datadownloader.triggered.connect(self.data_downloader.show)
+        toolMenu.addAction(tool_datadownloader)
 
         #help menu
         helpMenu = menubar.addMenu('Help')

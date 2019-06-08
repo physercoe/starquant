@@ -466,3 +466,10 @@ class EngineType(Enum):
 class BacktestingMode(Enum):
     BAR = 1
     TICK = 2
+
+class StopOrderStatus(Enum):
+    WAITING = "等待中"
+    CANCELLED = "已撤销"
+    TRIGGERED = "已触发"
+
+STOPORDER_PREFIX = "STOP"

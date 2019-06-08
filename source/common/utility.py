@@ -154,7 +154,12 @@ def round_to_pricetick(price: float, pricetick: float):
     rounded = round(price / pricetick, 0) * pricetick
     return rounded
 
-
+def round_to(value: float, target: float):
+    """
+    Round price to price tick value.
+    """
+    rounded = int(round(value / target)) * target
+    return rounded
 
 def virtual(func: "callable"):
     """

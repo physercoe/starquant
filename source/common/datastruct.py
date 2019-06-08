@@ -3,7 +3,7 @@
 from pandas import Timestamp
 from enum import Enum
 import pandas as pd
-from dataclasses import dataclass
+from dataclasses import dataclass,field
 from datetime import datetime
 from logging import INFO
 from typing import Any, Callable
@@ -686,7 +686,18 @@ class ContractData(BaseData):
 
 
 
-
+@dataclass
+class StopOrder:
+    full_symbol: str
+    direction: Direction
+    offset: Offset
+    price: float
+    volume: float
+    stop_orderid: str
+    strategy_name: str
+    lock: bool = False
+    vt_orderids: list = field(default_factory=list)
+    status: StopOrderStatus = StopOrderStatus.WAITING
 
 
 
@@ -1455,6 +1466,27 @@ class CancelRequest:
 
 OrderRequest = OrderData
 CancelAllRequest = SubscribeRequest
+
+
+
+@dataclass
+class HistoryRequest:
+    """
+    Request sending to specific gateway for querying history data.
+    """
+
+    symbol: str
+    exchange: Exchange
+    start: datetime
+    end: datetime = None
+    interval: Interval = None
+
+    def __post_init__(self):
+        """"""
+        self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
+
+
+
 
 # ############################# vnpy 's data #########################
 

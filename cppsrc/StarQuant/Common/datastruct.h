@@ -52,7 +52,7 @@ enum SymbolType {
     ST_Full = 0,
     ST_Ctp = 1
 };
-const std::char CurrencyTypeString[] = {
+const std::string CurrencyTypeString[] = {
     "USD",
     "AUD",
     "CAD",

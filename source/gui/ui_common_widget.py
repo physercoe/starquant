@@ -9,16 +9,18 @@ import psutil
 from PyQt5 import QtCore, QtGui, QtWidgets,QtWebEngineWidgets
 import yaml
 from typing import TextIO
-from datetime import datetime
+from datetime import datetime,timedelta
 from pathlib import Path
 import csv,json
 from copy import copy
 import webbrowser
+from threading import Thread
 
 from ..common.constant import *
 from ..common.datastruct import *
 from ..engine.iengine import EventEngine
 from source.data import database_manager
+from source.data.rqdata import rqdata_client
 from ..common.utility import load_json, save_json
 from ..common.config import SETTING_FILENAME, SETTINGS
 from ..api.ctp_constant import THOST_FTDC_PT_Net
@@ -269,6 +271,138 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 volume_head=volume_head,
                 datetime_format=datetime_format,
             )
+
+
+class DataDownloaderWidget(QtWidgets.QWidget):
+    """"""
+    log_signal = QtCore.pyqtSignal(str)
+
+    def __init__(self):
+        """"""
+        super().__init__()
+        self.thread = None
+
+        self.init_ui()
+
+    def init_ui(self):
+        """"""
+        self.setWindowTitle("数据下载")
+        # self.setFixedWidth(300)
+
+        self.datasource_combo = QtWidgets.QComboBox()
+        self.datasource_combo.addItems(['RQData','Tushare','JoinQuant'])
+
+        self.symbol_line = QtWidgets.QLineEdit("")
+        self.interval_combo = QtWidgets.QComboBox()
+        for inteval in Interval:
+            self.interval_combo.addItem(inteval.value)
+
+        end_dt = datetime.now()
+        start_dt = end_dt - timedelta(days=3 * 365)
+
+        self.start_date_edit = QtWidgets.QDateEdit(
+            QtCore.QDate(
+                start_dt.year,
+                start_dt.month,
+                start_dt.day
+            )
+        )
+        self.end_date_edit = QtWidgets.QDateEdit(
+            QtCore.QDate.currentDate()
+        )
+        self.downloading_button = QtWidgets.QPushButton("下载数据")
+        self.downloading_button.clicked.connect(self.start_downloading)
+
+        self.log = QtWidgets.QTextBrowser(self)
+        self.log_signal.connect(self.log.append)
+
+        form = QtWidgets.QFormLayout()
+        form.addRow("数据源", self.datasource_combo)
+        form.addRow("合约全称",self.symbol_line)
+        form.addRow("时间间隔",self.interval_combo)
+        form.addRow("开始日期", self.start_date_edit)
+        form.addRow("结束日期", self.end_date_edit)
+        form.addRow(self.downloading_button)
+        form.addRow(self.log)
+        self.setLayout(form)
+
+    def start_downloading(self):
+        """"""
+        data_source = self.datasource_combo.currentText()
+        full_symbol = self.symbol_line.text()
+        interval = self.interval_combo.currentText()
+        start = self.start_date_edit.date().toPyDate()
+        end = self.end_date_edit.date().toPyDate()
+
+        if self.thread:
+            QtWidgets.QMessageBox().information(
+                None, 'Info','已有数据在下载，请等待!',
+                QtWidgets.QMessageBox.Ok)
+            return False
+
+        self.thread = Thread(
+            target=self.run_downloading,
+            args=(
+                data_source,
+                full_symbol,
+                interval,
+                start,
+                end
+            )
+        )
+        self.thread.start()
+
+        return True
+
+    def run_downloading(
+        self,
+        data_source:str,
+        full_symbol: str,
+        interval: str,
+        start: datetime,
+        end: datetime
+    ):
+        """
+        Query bar data from RQData.
+        """
+        print('downloading')
+        self.write_log(f"{full_symbol}-{interval}开始从{data_source}下载历史数据")
+        
+        symbol, exchange = extract_full_symbol(full_symbol)
+        print('downloading2')
+        req = HistoryRequest(
+            symbol=symbol,
+            exchange=exchange,
+            interval=Interval(interval),
+            start=start,
+            end=end
+        )
+
+        if data_source == 'RQData':
+            data = rqdata_client.query_history(req)
+
+        elif data_source == 'Tushare':
+            QtWidgets.QMessageBox().information(
+                None, 'Info','待实现!',
+                QtWidgets.QMessageBox.Ok)
+            data = None
+        elif data_source == 'JoinQuant':
+            QtWidgets.QMessageBox().information(
+                None, 'Info','待实现!',
+                QtWidgets.QMessageBox.Ok)
+            data = None
+        if data:
+            database_manager.save_bar_data(data)
+            self.write_log(f"{full_symbol}-{interval}历史数据从{data_source}下载完成")
+        else:
+            self.write_log(f"无法从{data_source}获取{full_symbol}的历史数据")
+        # Clear thread object handler.
+        self.thread = None
+
+    def write_log(self,log:str):
+        logmsg = str(datetime.now()) + " : " + log
+        self.log_signal.emit(logmsg)
+
 
 
 class RecorderManager(QtWidgets.QWidget):
