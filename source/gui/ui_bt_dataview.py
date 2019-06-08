@@ -21,7 +21,7 @@ from dateutil.parser import parse
 from matplotlib.pylab import date2num
 import pyqtgraph as pg
 
-from .ui_basic import CandlestickItem
+from .ui_basic import CandlestickItem,VolumeItem
 from ..data.data_board import BarGenerator
 from ..common.datastruct import Event
 from ..common.utility import extract_full_symbol
@@ -224,22 +224,17 @@ class DateAxis2(pg.AxisItem):
         """"""
         super().__init__(*args, **kwargs)
         self.data = datalist
-        self.count = len(self.data) 
     def tickStrings(self, values, scale, spacing):
         """"""
         strings = []
-        for v in values:
-            if v > self.count:
+        xstart = 0  # 60*(self.data[0].datetime.hour - 9) + self.data[0].datetime.minute        
+        for value in values:
+            v = value - xstart
+            if v > len(self.data) -1 or v <0:
                 return strings
             dt = self.data[int(v)].datetime
-            strings.append(dt.strftime('%H:%M\n %d-%b '))
+            strings.append(dt.strftime('%H:%M\n %b-%d '))
         return strings
-    def on_bar(self,bar):
-        self.data.append(bar)
-        self.count += 1
-
-
-
 
 class PriceAxis(pg.AxisItem):
     def __init__(self):
@@ -251,10 +246,19 @@ class PriceAxis(pg.AxisItem):
         return [
             ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
         ]
+class VolumeAxis(pg.AxisItem):
+    def __init__(self):
+        super().__init__(orientation='right')
+        self.style.update({'textFillLimits': [(0, 0.8)]})
 
+    def tickStrings(self, vals, scale, spacing):
+        digts = max(0, np.ceil(-np.log10(spacing * scale)))
+        return [
+            ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
+        ]
 
-CHART_MARGINS = (0, 0, 20, 5)
-class QuotesChart(QtGui.QWidget):
+CHART_MARGINS = (0, 0, 20, 10)
+class BTQuotesChart(QtGui.QWidget):
     signal = QtCore.pyqtSignal(Event)
 
     long_pen = pg.mkPen('#006000')
@@ -264,41 +268,40 @@ class QuotesChart(QtGui.QWidget):
 
     zoomIsDisabled = QtCore.pyqtSignal(bool)
 
-    def __init__(self,symbol:str):
+    def __init__(self,symbol:str = ""):
         super().__init__()
         self.full_symbol = symbol
-        self.bg = BarGenerator(self.on_bar)
-        self.load_bar()
+        self.data = []
         self.layout = QtGui.QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
-        self.splitter = QtGui.QSplitter(QtCore.Qt.Vertical)
-        self.splitter.setHandleWidth(4)
-        self.layout.addWidget(self.splitter)
-        if self.data:
-            self.plot()
+        self.chart = None
+        self.charv = None
+        self.plot()
 
-    def reset(self,symbol:str):
+    def reset(self,symbol:str,start: datetime, end: datetime,interval: Interval = Interval.MINUTE):
         self.full_symbol = symbol
-        self.bg = BarGenerator(self.on_bar)
-        self.load_bar()
-        if self.data:
-            self.plot()
+        self.load_bar(start,end,interval)
+        self.klineitem.generatePicture()
+        self.volumeitem.generatePicture()
 
-    def plot(self):
-        self.xstart = 60*(self.data[0].datetime.hour - 9) + self.data[0].datetime.minute
+
+    def plot(self):       
         self.xaxis = DateAxis2(self.data, orientation='bottom')
         self.xaxis.setStyle(
-            tickTextOffset=7, textFillLimits=[(0, 0.80)], showValues=False
+            tickTextOffset=7, textFillLimits=[(0, 0.80)], showValues=True
         )
         self.klineitem = CandlestickItem(self.data)
+        self.volumeitem = VolumeItem(self.data)
         self.init_chart()
-        self.init_quotes_chart()
+        self.init_chart_item()
 
-    def load_bar(self,days:int =1,interval: Interval = Interval.MINUTE):
+    def load_bar(self,start: datetime,end: datetime,interval: Interval = Interval.MINUTE):
         symbol, exchange = extract_full_symbol(self.full_symbol)
-        end = datetime.now()
-        start = end - timedelta(days)
 
+        if start > end:
+            tmp = end
+            end = start
+            start = tmp 
         bars = database_manager.load_bar_data(
             symbol=symbol,
             exchange=exchange,
@@ -306,68 +309,39 @@ class QuotesChart(QtGui.QWidget):
             start=start,
             end=end,
         )
-        self.data = bars
+        self.data.clear()
+        self.data.extend(bars)
 
-    def on_bar(self,bar):
-        self.data.append(bar)
-        self.klineitem.on_bar(bar)
-    
-    def on_tick(self,tick):
-        if tick.full_symbol == self.full_symbol:
-            self.bg.update_tick(tick)
-
-    def init_quotes_chart(self):
-        self.chart.hideAxis('left')
-        self.chart.showAxis('right')
+    def init_chart_item(self):
         self.chart.addItem(self.klineitem)
-        barf = self.data[0]
-        bare = self.data[-1]
-        tmin = 60*(barf.datetime.hour - 9) + barf.datetime.minute
-        tmax = 60*(bare.datetime.hour - 9) + bare.datetime.minute
-        pmax = 0
-        pmin = 999999
-        for bar in self.data:
-            pmax = max(pmax,bar.high_price)
-            pmin = min(pmin,bar.low_price)
-        self.chart.setLimits(
-            xMin=tmin,
-            xMax=tmax,
-            minXRange=60,
-            yMin=pmin * 0.95,
-            yMax=pmax * 1.05,
-        )
-        self.chart.showGrid(x=True, y=True)
-        self.chart.setCursor(QtCore.Qt.BlankCursor)
-        self.chart.sigXRangeChanged.connect(self._update_yrange_limits)
-
-
-    def _update_yrange_limits(self):
-        vr = self.chart.viewRect()
-        lbar, rbar = max(0,int(vr.left())-self.xstart), min(len(self.data),int(vr.right())-self.xstart)
-        bars = self.data[lbar:rbar]
-        pmax = 0
-        pmin = 999999
-        pmean = 0
-        for bar in bars:
-            pmax = max(pmax,bar.high_price)
-            pmin = min(pmin,bar.low_price)
-            pmean += bar.close_price
-        pmean = pmean/(len(bars))
-        ylow = pmin * 0.95
-        yhigh = pmax * 1.05
-
-        self.chart.setLimits(yMin=ylow, yMax=yhigh, minYRange= 3*abs(pmax-pmean))
-        self.chart.setYRange(ylow, yhigh)
+        self.chartv.addItem(self.volumeitem)
 
 
     def init_chart(self):
+        self.splitter = QtGui.QSplitter(QtCore.Qt.Vertical)
+        self.splitter.setHandleWidth(0)
+        self.layout.addWidget(self.splitter)
         self.chart = pg.PlotWidget(
             parent=self.splitter,
             axisItems={'bottom': self.xaxis, 'right': PriceAxis()},
-            enableMenu=False,
+            enableMenu=True,
         )
-        self.chart.getPlotItem().setContentsMargins(*CHART_MARGINS)
+        self.chart.getPlotItem().setContentsMargins(0,0,20,0)
         self.chart.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
+        self.chart.hideAxis('left')
+        self.chart.showAxis('right')
+        self.chart.showGrid(x=True, y=True)
+
+        self.chartv = pg.PlotWidget(
+            parent=self.splitter,
+            axisItems={'bottom': self.xaxis, 'right': VolumeAxis()},
+            enableMenu=True,
+        )
+        self.chartv.getPlotItem().setContentsMargins(0,0,15,15)
+        self.chartv.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)       
+        self.chartv.hideAxis('left')
+        self.chartv.showAxis('right')      
+        self.chartv.setXLink(self.chart)
         
 
 

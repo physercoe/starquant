@@ -19,7 +19,7 @@ from source.engine.iengine import EventEngine
 from source.engine.backtest_engine import BacktestingEngine,OptimizationSetting
 from source.strategy.strategy_base import StrategyBase
 from source.gui.ui_bt_resultsoverview import BacktesterChart
-from source.gui.ui_bt_dataview import BtDataPGChart
+from source.gui.ui_bt_dataview import BtDataPGChart,BTQuotesChart
 from source.gui.ui_bt_posview import BtPosViewWidget
 from source.gui.ui_bt_txnview import BtTxnViewWidget
 
@@ -621,7 +621,7 @@ class BacktesterManager(QtWidgets.QWidget):
         self.class_combo.addItems(self.class_names)
 
         self.symbol_line = QtWidgets.QLineEdit("SHFE F RB 1910")
-
+        self.symbol_line.setMaximumWidth(160)
         self.interval_combo = QtWidgets.QComboBox()
         for inteval in Interval:
             self.interval_combo.addItem(inteval.value)
@@ -641,13 +641,17 @@ class BacktesterManager(QtWidgets.QWidget):
         )
 
         self.rate_line = QtWidgets.QLineEdit("0.000025")
-        self.slippage_line = QtWidgets.QLineEdit("0.2")
-        self.size_line = QtWidgets.QLineEdit("300")
-        self.pricetick_line = QtWidgets.QLineEdit("0.2")
+        self.slippage_line = QtWidgets.QLineEdit("1")
+        self.size_line = QtWidgets.QLineEdit("10")
+        self.pricetick_line = QtWidgets.QLineEdit("1")
         self.capital_line = QtWidgets.QLineEdit("1000000")
+        self.capital_line.setMaximumWidth(150)
 
         backtesting_button = QtWidgets.QPushButton("开始回测")
         backtesting_button.clicked.connect(self.start_backtesting)
+
+        datashow_button = QtWidgets.QPushButton("行情展示")
+        datashow_button.clicked.connect(self.show_data)
 
         optimization_button = QtWidgets.QPushButton("参数优化")
         optimization_button.clicked.connect(self.start_optimization)
@@ -661,55 +665,94 @@ class BacktesterManager(QtWidgets.QWidget):
         for button in [
             backtesting_button,
             optimization_button,
+            datashow_button,
             self.result_button
         ]:
             button.setFixedHeight(button.sizeHint().height() * 2)
 
-        form = QtWidgets.QFormLayout()
-        form.addRow("交易策略", self.class_combo)
-        form.addRow("代码全称", self.symbol_line)
-        form.addRow("K线周期", self.interval_combo)
-        form.addRow("开始日期", self.start_date_edit)
-        form.addRow("结束日期", self.end_date_edit)
-        form.addRow("手续费率", self.rate_line)
-        form.addRow("交易滑点", self.slippage_line)
-        form.addRow("合约乘数", self.size_line)
-        form.addRow("价格跳动", self.pricetick_line)
-        form.addRow("回测资金", self.capital_line)
-        form.addRow(backtesting_button)
 
-        left_vbox = QtWidgets.QVBoxLayout()
-        left_vbox.addLayout(form)
-        # left_vbox.addStretch()
-        left_vbox.addWidget(optimization_button)
-        left_vbox.addWidget(self.result_button)
+        hbox1 = QtWidgets.QHBoxLayout()
+        hbox1.addWidget(QtWidgets.QLabel('交易策略'))
+        hbox1.addWidget(self.class_combo)
+        hbox1.addWidget(QtWidgets.QLabel('回测资金'))
+        hbox1.addWidget(self.capital_line)
+
+        hbox2 = QtWidgets.QHBoxLayout()
+        hbox2.addWidget(QtWidgets.QLabel('合约全称'))
+        hbox2.addWidget(self.symbol_line)
+        hbox2.addWidget(QtWidgets.QLabel('K线周期'))
+        hbox2.addWidget(self.interval_combo)        
+
+        hbox3 = QtWidgets.QHBoxLayout()
+        hbox3.addWidget(QtWidgets.QLabel('开始日期'))
+        hbox3.addWidget(self.start_date_edit)
+        hbox3.addWidget(QtWidgets.QLabel('结束日期'))
+        hbox3.addWidget(self.end_date_edit)    
+
+        hbox4 = QtWidgets.QHBoxLayout()
+        hbox4.addWidget(QtWidgets.QLabel('手续费率'))
+        hbox4.addWidget(self.rate_line)
+        hbox4.addWidget(QtWidgets.QLabel('交易滑点'))
+        hbox4.addWidget(self.slippage_line)    
+
+        hbox5 = QtWidgets.QHBoxLayout()
+        hbox5.addWidget(QtWidgets.QLabel('合约乘数'))
+        hbox5.addWidget(self.size_line)
+        hbox5.addWidget(QtWidgets.QLabel('价格跳动'))
+        hbox5.addWidget(self.pricetick_line)  
+
+        hbox6 = QtWidgets.QHBoxLayout()
+        hbox6.addWidget(backtesting_button)
+        hbox6.addWidget(datashow_button)
+
+        hbox7 = QtWidgets.QHBoxLayout()
+        hbox7.addWidget(optimization_button)
+        hbox7.addWidget(self.result_button)
+
 
         # Result part
         self.statistics_monitor = StatisticsMonitor()
+        self.txnstatics_monitor = TxnStatisticsMonitor()
+
+        hbox8 = QtWidgets.QHBoxLayout()
+        hbox8.addWidget(self.statistics_monitor)
+        hbox8.addWidget(self.txnstatics_monitor)
 
         self.log_monitor = QtWidgets.QTextEdit()
+        # self.log_monitor.setSizePolicy(QtWidgets.QSizePolicy.Expanding,QtWidgets.QSizePolicy.Expanding)
+        policy = self.log_monitor.sizePolicy()
+        policy.setVerticalStretch(1)
+        self.log_monitor.setSizePolicy(policy)
         # self.log_monitor.setMaximumHeight(400)
+        form = QtWidgets.QFormLayout()
+        label1 = QtWidgets.QLabel('回测参数设置')
+        label1.setAlignment(QtCore.Qt.AlignCenter)
+        form.addWidget(label1)
+        form.addRow(hbox1)
+        form.addRow(hbox2)
+        form.addRow(hbox3)
+        form.addRow(hbox4)
+        form.addRow(hbox5) 
+        form.addRow(hbox6)       
+        form.addRow(hbox7)
+        label2 = QtWidgets.QLabel('回测结果总览')
+        label2.setAlignment(QtCore.Qt.AlignCenter)        
+        form.addWidget(label2)
+        form.addRow(hbox8)
+        label3 = QtWidgets.QLabel('回测日志')
+        label3.setAlignment(QtCore.Qt.AlignCenter)           
+        form.addWidget(label3)
+        form.addRow(self.log_monitor)
+        
 
-        #self.chart = BacktesterChart()
-        #self.chart.setMinimumWidth(1000)
-
-        # Layout
-        # vbox = QtWidgets.QVBoxLayout()
-        # vbox.addWidget(self.statistics_monitor)
-        # vbox.addWidget(self.log_monitor)
 
 
-        hbox = QtWidgets.QHBoxLayout()
-        hbox.addLayout(left_vbox)
-
-        bt_splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        bt_splitter2.addWidget(self.statistics_monitor)
-        bt_splitter2.addWidget(self.log_monitor)
-        bt_splitter2.setSizes([800,400])
-
-
+        bt_setting = QtWidgets.QWidget()
+        bt_setting.setLayout(form)
+        bt_setting.setMinimumWidth(400)
+        
         self.overviewchart = BacktesterChart()
-        self.overviewchart.setMinimumWidth(800)
+        self.overviewchart.setMinimumWidth(1000)
         self.overviewchart.setMinimumHeight(1200)
 
         self.scrolltop = QtWidgets.QScrollArea()
@@ -727,26 +770,24 @@ class BacktesterManager(QtWidgets.QWidget):
     #  bottom middle:  data
 
         bt_bottommiddle = QtWidgets.QTabWidget()
-        self.dataviewchart = BtDataPGChart()
-        bt_bottommiddle.addTab(self.dataviewchart, 'PGData')
+        self.dataviewchart = BTQuotesChart()
+        bt_bottommiddle.addTab(self.dataviewchart, 'MarketDataShow')
       
     #-------------------------------- 
  
         bt_splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         bt_splitter1.addWidget(bt_topmiddle)
         bt_splitter1.addWidget(bt_bottommiddle)
-        bt_splitter1.setSizes([400,400])
+        bt_splitter1.setSizes([500,500])
 
-        # bt_splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        # bt_splitter3.addWidget(bt_splitter2)
-        # bt_splitter3.addWidget(bt_splitter1)
-        # bt_splitter3.setSizes([300, 1200])
+        bt_splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        bt_splitter3.addWidget(bt_setting)
+        bt_splitter3.addWidget(bt_splitter1)
+        bt_splitter3.setSizes([300, 1200])
+        
 
-        hbox.addWidget(bt_splitter2)
-        hbox.addWidget(bt_splitter1)
-
-
-
+        hbox = QtWidgets.QHBoxLayout()
+        hbox.addWidget(bt_splitter3)
         self.setLayout(hbox)
 
     def register_event(self):
@@ -776,6 +817,7 @@ class BacktesterManager(QtWidgets.QWidget):
         """"""
         statistics = self.backtester_engine.get_result_statistics()
         self.statistics_monitor.set_data(statistics)
+        self.txnstatics_monitor.set_data(statistics)
 
         df = self.backtester_engine.get_result_df()
         self.overviewchart.set_data(df)
@@ -788,7 +830,7 @@ class BacktesterManager(QtWidgets.QWidget):
     def start_backtesting(self):
         """"""
         class_name = self.class_combo.currentText()
-        vt_symbol = self.symbol_line.text()
+        full_symbol = self.symbol_line.text()
         interval = self.interval_combo.currentText()
         start = self.start_date_edit.date().toPyDate()
         end = self.end_date_edit.date().toPyDate()
@@ -809,7 +851,7 @@ class BacktesterManager(QtWidgets.QWidget):
 
         result = self.backtester_engine.start_backtesting(
             class_name,
-            vt_symbol,
+            full_symbol,
             interval,
             start,
             end,
@@ -823,6 +865,7 @@ class BacktesterManager(QtWidgets.QWidget):
 
         if result:
             self.statistics_monitor.clear_data()
+            self.txnstatics_monitor.clear_data()
             self.overviewchart.clear_data()
 
     def start_optimization(self):
@@ -875,6 +918,14 @@ class BacktesterManager(QtWidgets.QWidget):
             self.target_display
         )
         dialog.exec_()
+
+    def show_data(self):
+        full_symbol = self.symbol_line.text()
+        interval = self.interval_combo.currentText()
+        start = self.start_date_edit.date().toPyDate()
+        end = self.end_date_edit.date().toPyDate()
+        self.dataviewchart.reset(full_symbol,start,end,Interval(interval))
+
 
     def show(self):
         """"""
@@ -1129,34 +1180,18 @@ class OptimizationResultMonitor(QtWidgets.QDialog):
 class StatisticsMonitor(QtWidgets.QTableWidget):
     """"""
     KEY_NAME_MAP = {
-        "start_date": "首个交易日",
-        "end_date": "最后交易日",
-
-        "total_days": "总交易日",
-        "profit_days": "盈利交易日",
-        "loss_days": "亏损交易日",
-
         "capital": "起始资金",
         "end_balance": "结束资金",
 
+        "total_net_pnl": "总盈亏",
         "total_return": "总收益率",
         "annual_return": "年化收益",
+        "daily_net_pnl": "日均盈亏",
+        "daily_return": "日均收益率",
+
         "max_drawdown": "最大回撤",
         "max_ddpercent": "百分比最大回撤",
 
-        "total_net_pnl": "总盈亏",
-        "total_commission": "总手续费",
-        "total_slippage": "总滑点",
-        "total_turnover": "总成交额",
-        "total_trade_count": "总成交笔数",
-
-        "daily_net_pnl": "日均盈亏",
-        "daily_commission": "日均手续费",
-        "daily_slippage": "日均滑点",
-        "daily_turnover": "日均成交额",
-        "daily_trade_count": "日均成交笔数",
-
-        "daily_return": "日均收益率",
         "return_std": "收益标准差",
         "sharpe_ratio": "夏普比率",
         "return_drawdown_ratio": "收益回撤比"
@@ -1186,6 +1221,8 @@ class StatisticsMonitor(QtWidgets.QTableWidget):
             cell = QtWidgets.QTableWidgetItem()
             self.setItem(row, 0, cell)
             self.cells[key] = cell
+        self.setMinimumHeight(450)
+        # self.setFixedWidth(200)
 
     def clear_data(self):
         """"""
@@ -1201,13 +1238,8 @@ class StatisticsMonitor(QtWidgets.QTableWidget):
         data["max_drawdown"] = f"{data['max_drawdown']:,.2f}"
         data["max_ddpercent"] = f"{data['max_ddpercent']:,.2f}%"
         data["total_net_pnl"] = f"{data['total_net_pnl']:,.2f}"
-        data["total_commission"] = f"{data['total_commission']:,.2f}"
-        data["total_slippage"] = f"{data['total_slippage']:,.2f}"
-        data["total_turnover"] = f"{data['total_turnover']:,.2f}"
+
         data["daily_net_pnl"] = f"{data['daily_net_pnl']:,.2f}"
-        data["daily_commission"] = f"{data['daily_commission']:,.2f}"
-        data["daily_slippage"] = f"{data['daily_slippage']:,.2f}"
-        data["daily_turnover"] = f"{data['daily_turnover']:,.2f}"
         data["daily_return"] = f"{data['daily_return']:,.2f}%"
         data["return_std"] = f"{data['return_std']:,.2f}%"
         data["sharpe_ratio"] = f"{data['sharpe_ratio']:,.2f}"
@@ -1218,7 +1250,73 @@ class StatisticsMonitor(QtWidgets.QTableWidget):
             cell.setText(str(value))
 
 
+class TxnStatisticsMonitor(QtWidgets.QTableWidget):
+    """"""
+    KEY_NAME_MAP = {
+        "start_date": "首个交易日",
+        "end_date": "最后交易日",
 
+        "total_days": "总交易日数",
+        "profit_days": "盈利交易日数",
+        "loss_days": "亏损交易日数",
+
+
+        "total_commission": "总手续费",
+        "total_slippage": "总滑点",
+        "total_turnover": "总成交额",
+        "total_trade_count": "总成交笔数",
+
+        "daily_commission": "日均手续费",
+        "daily_slippage": "日均滑点",
+        "daily_turnover": "日均成交额",
+        "daily_trade_count": "日均成交笔数",
+    }
+
+    def __init__(self):
+        """"""
+        super().__init__()
+
+        self.cells = {}
+
+        self.init_ui()
+
+    def init_ui(self):
+        """"""
+        self.setRowCount(len(self.KEY_NAME_MAP))
+        self.setVerticalHeaderLabels(list(self.KEY_NAME_MAP.values()))
+
+        self.setColumnCount(1)
+        self.horizontalHeader().setVisible(False)
+        self.horizontalHeader().setSectionResizeMode(
+            QtWidgets.QHeaderView.Stretch
+        )
+        self.setEditTriggers(self.NoEditTriggers)
+
+        for row, key in enumerate(self.KEY_NAME_MAP.keys()):
+            cell = QtWidgets.QTableWidgetItem()
+            self.setItem(row, 0, cell)
+            self.cells[key] = cell
+        self.setMinimumHeight(450)
+        # self.setFixedWidth(200)
+
+    def clear_data(self):
+        """"""
+        for cell in self.cells.values():
+            cell.setText("")
+
+    def set_data(self, data: dict):
+        """"""
+
+        data["total_commission"] = f"{data['total_commission']:,.2f}"
+        data["total_slippage"] = f"{data['total_slippage']:,.2f}"
+        data["total_turnover"] = f"{data['total_turnover']:,.2f}"
+        data["daily_commission"] = f"{data['daily_commission']:,.2f}"
+        data["daily_slippage"] = f"{data['daily_slippage']:,.2f}"
+        data["daily_turnover"] = f"{data['daily_turnover']:,.2f}"
+
+        for key, cell in self.cells.items():
+            value = data.get(key, "")
+            cell.setText(str(value))
 
 
 
