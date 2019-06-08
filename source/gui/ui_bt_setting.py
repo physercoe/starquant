@@ -311,7 +311,7 @@ class Backtester:
         # Redirect log from backtesting engine outside.
         self.backtesting_engine.output = self.write_log
 
-        self.write_log("策略文件加载完成")
+        self.write_log("回测引擎加载完成")
 
     def write_log(self, msg: str):
         """"""
@@ -322,8 +322,11 @@ class Backtester:
         else:            
             print(str)
 
+    def reload_strategy(self):
+        self.classes.clear()
+        self.load_strategy_class(True)
 
-    def load_strategy_class(self):
+    def load_strategy_class(self,reload:bool=False):
         """
         Load strategy class from source code.
         """
@@ -333,9 +336,9 @@ class Backtester:
         #     path1, "vnpy.app.cta_strategy.strategies")
 
         path2 = Path.cwd().joinpath("mystrategy")
-        self.load_strategy_class_from_folder(path2, "")
+        self.load_strategy_class_from_folder(path2, "",reload)
 
-    def load_strategy_class_from_folder(self, path: Path, module_name: str = ""):
+    def load_strategy_class_from_folder(self, path: Path, module_name: str = "",reload:bool=False):
         """
         Load strategy class from certain folder.
         """
@@ -344,15 +347,20 @@ class Backtester:
                 if filename.endswith(".py"):
                     strategy_module_name = "mystrategy.".join(
                         [module_name, filename.replace(".py", "")])
-                    self.load_strategy_class_from_module(strategy_module_name)
+                    self.load_strategy_class_from_module(strategy_module_name,reload)
 
-    def load_strategy_class_from_module(self, module_name: str):
+    def load_strategy_class_from_module(self, module_name: str,reload:bool=False):
         """
         Load strategy class from module file.
         """
         try:
             module = importlib.import_module(module_name)
-
+        # if reload delete old attribute
+            if reload:
+                for attr in dir(module):
+                    if attr not in ('__name__','__file__'):
+                        delattr(module,attr)
+                importlib.reload(module)
             for name in dir(module):
                 value = getattr(module, name)
                 if (isinstance(value, type) and issubclass(value, CtaTemplate) and value is not CtaTemplate):
@@ -619,10 +627,13 @@ class BacktesterManager(QtWidgets.QWidget):
         # Setting Part
         self.class_combo = QtWidgets.QComboBox()
         self.class_combo.addItems(self.class_names)
-
+        policy = self.class_combo.sizePolicy()
+        policy.setHorizontalStretch(1)
+        self.class_combo.setSizePolicy(policy)
         self.symbol_line = QtWidgets.QLineEdit("SHFE F RB 1910")
         self.symbol_line.setMaximumWidth(160)
         self.interval_combo = QtWidgets.QComboBox()
+        self.interval_combo.addItem('tick')
         for inteval in Interval:
             self.interval_combo.addItem(inteval.value)
 
@@ -645,7 +656,11 @@ class BacktesterManager(QtWidgets.QWidget):
         self.size_line = QtWidgets.QLineEdit("10")
         self.pricetick_line = QtWidgets.QLineEdit("1")
         self.capital_line = QtWidgets.QLineEdit("1000000")
-        self.capital_line.setMaximumWidth(150)
+        # self.capital_line.setMaximumWidth(150)
+        self.margin_line = QtWidgets.QLineEdit("0.1")
+
+        reload_button = QtWidgets.QPushButton("重新加载")
+        reload_button.clicked.connect(self.reload_strategy)
 
         backtesting_button = QtWidgets.QPushButton("开始回测")
         backtesting_button.clicked.connect(self.start_backtesting)
@@ -674,13 +689,12 @@ class BacktesterManager(QtWidgets.QWidget):
         hbox1 = QtWidgets.QHBoxLayout()
         hbox1.addWidget(QtWidgets.QLabel('交易策略'))
         hbox1.addWidget(self.class_combo)
-        hbox1.addWidget(QtWidgets.QLabel('回测资金'))
-        hbox1.addWidget(self.capital_line)
+        hbox1.addWidget(reload_button)
 
         hbox2 = QtWidgets.QHBoxLayout()
         hbox2.addWidget(QtWidgets.QLabel('合约全称'))
         hbox2.addWidget(self.symbol_line)
-        hbox2.addWidget(QtWidgets.QLabel('K线周期'))
+        hbox2.addWidget(QtWidgets.QLabel('时间尺度'))
         hbox2.addWidget(self.interval_combo)        
 
         hbox3 = QtWidgets.QHBoxLayout()
@@ -701,6 +715,13 @@ class BacktesterManager(QtWidgets.QWidget):
         hbox5.addWidget(QtWidgets.QLabel('价格跳动'))
         hbox5.addWidget(self.pricetick_line)  
 
+        hbox52 = QtWidgets.QHBoxLayout()
+        hbox52.addWidget(QtWidgets.QLabel('保证金率'))
+        hbox52.addWidget(self.margin_line)
+        hbox52.addWidget(QtWidgets.QLabel('回测资金'))
+        hbox52.addWidget(self.capital_line)  
+
+
         hbox6 = QtWidgets.QHBoxLayout()
         hbox6.addWidget(backtesting_button)
         hbox6.addWidget(datashow_button)
@@ -718,8 +739,7 @@ class BacktesterManager(QtWidgets.QWidget):
         hbox8.addWidget(self.statistics_monitor)
         hbox8.addWidget(self.txnstatics_monitor)
 
-        self.log_monitor = QtWidgets.QTextEdit()
-        # self.log_monitor.setSizePolicy(QtWidgets.QSizePolicy.Expanding,QtWidgets.QSizePolicy.Expanding)
+        self.log_monitor = QtWidgets.QTextEdit()        
         policy = self.log_monitor.sizePolicy()
         policy.setVerticalStretch(1)
         self.log_monitor.setSizePolicy(policy)
@@ -732,7 +752,8 @@ class BacktesterManager(QtWidgets.QWidget):
         form.addRow(hbox2)
         form.addRow(hbox3)
         form.addRow(hbox4)
-        form.addRow(hbox5) 
+        form.addRow(hbox5)
+        form.addRow(hbox52) 
         form.addRow(hbox6)       
         form.addRow(hbox7)
         label2 = QtWidgets.QLabel('回测结果总览')
@@ -826,6 +847,15 @@ class BacktesterManager(QtWidgets.QWidget):
         """"""
         self.write_log("请点击[优化结果]按钮查看")
         self.result_button.setEnabled(True)
+
+
+    def reload_strategy(self):
+        self.class_names.clear()
+        self.settings.clear()
+        self.backtester_engine.reload_strategy()
+        self.init_strategy_settings()
+        self.class_combo.clear()
+        self.class_combo.addItems(self.class_names)
 
     def start_backtesting(self):
         """"""
@@ -922,6 +952,8 @@ class BacktesterManager(QtWidgets.QWidget):
     def show_data(self):
         full_symbol = self.symbol_line.text()
         interval = self.interval_combo.currentText()
+        if interval == 'tick':
+            interval = '1m'
         start = self.start_date_edit.date().toPyDate()
         end = self.end_date_edit.date().toPyDate()
         self.dataviewchart.reset(full_symbol,start,end,Interval(interval))

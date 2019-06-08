@@ -154,43 +154,49 @@ class CtaManager(QtWidgets.QWidget):
         self.update_class_combo()
         self.refresh_strategies()
 
-    def load_strategy_class(self):
+    def load_strategy_class(self,reload:bool=False):
         """
         Load strategy class from source code.
         """
-        # path1 = Path(__file__).parent.joinpath("")
+        # app_path = Path(__file__).parent.parent
+        # path1 = app_path.joinpath("cta_strategy", "strategies")
         # self.load_strategy_class_from_folder(
-        #     path1, "mystrategy")
+        #     path1, "vnpy.app.cta_strategy.strategies")
 
         path2 = Path.cwd().joinpath("mystrategy")
-        self.load_strategy_class_from_folder(path2, "")
+        self.load_strategy_class_from_folder(path2, "",reload)
 
-    def load_strategy_class_from_folder(self, path: Path, module_name: str = ""):
+    def load_strategy_class_from_folder(self, path: Path, module_name: str = "",reload:bool=False):
         """
         Load strategy class from certain folder.
         """
-        for dirpath, dirnames, filenames in os.walk(str(path)):
+        for dirpath, dirnames, filenames in os.walk(path):
             for filename in filenames:
                 if filename.endswith(".py"):
                     strategy_module_name = "mystrategy.".join(
                         [module_name, filename.replace(".py", "")])
-                    self.load_strategy_class_from_module(strategy_module_name)
+                    self.load_strategy_class_from_module(strategy_module_name,reload)
 
-    def load_strategy_class_from_module(self, module_name: str):
+    def load_strategy_class_from_module(self, module_name: str,reload:bool=False):
         """
         Load strategy class from module file.
         """
         try:
             module = importlib.import_module(module_name)
-
+        # if reload delete old attribute
+            if reload:
+                for attr in dir(module):
+                    if attr not in ('__name__','__file__'):
+                        delattr(module,attr)
+                importlib.reload(module)
             for name in dir(module):
                 value = getattr(module, name)
-                if (isinstance(value, type) and issubclass(value, StrategyBase) and value is not StrategyBase):
+                if (isinstance(value, type) and issubclass(value, CtaTemplate) and value is not CtaTemplate):
                     self.classes[value.__name__] = value
         except:  # noqa
             msg = f"策略文件{module_name}加载失败，触发异常：\n{traceback.format_exc()}"
-            # self.write_log(msg)
             print(msg)
+            #self.write_log(msg)
 
     def get_all_strategy_class_names(self):
         """
@@ -375,7 +381,7 @@ class CtaManager(QtWidgets.QWidget):
     def reload_strategies(self):
         self.class_combo.clear()
         self.classes.clear()
-        self.load_strategy_class()
+        self.load_strategy_class(True)
         self.update_class_combo()
         m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RELOAD)
         self.signal_strategy_out.emit(m)      

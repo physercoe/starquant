@@ -182,7 +182,7 @@ class BacktestingEngine:
     def set_parameters(
         self,
         full_symbol: str,
-        interval: Interval,
+        interval: str,
         start: datetime,
         rate: float,
         slippage: float,
@@ -195,7 +195,11 @@ class BacktestingEngine:
         """"""
         self.mode = mode
         self.full_symbol = full_symbol
-        self.interval = Interval(interval)
+        if interval == 'tick':
+            self.interval = Interval.MINUTE
+            self.mode = BacktestingMode.TICK
+        else:
+            self.interval = Interval(interval)
         self.rate = rate
         self.slippage = slippage
         self.size = size
@@ -209,9 +213,9 @@ class BacktestingEngine:
 
         if end:
             self.end = end
+        else:
+            self.end = datetime.now()
 
-        if mode:
-            self.mode = mode
         contract = ContractData(
             full_symbol=self.full_symbol,
             size=self.size,
@@ -227,6 +231,8 @@ class BacktestingEngine:
         self.strategy = strategy_class(
             self, strategy_class.__name__, self.full_symbol, setting
         )
+        #redirect strategy write_log output
+        self.strategy.write_log = self.output
 
     def load_data(self):
         """"""
@@ -1088,7 +1094,7 @@ def optimize(
     strategy_class: CtaTemplate,
     setting: dict,
     full_symbol: str,
-    interval: Interval,
+    interval: str,
     start: datetime,
     rate: float,
     slippage: float,
