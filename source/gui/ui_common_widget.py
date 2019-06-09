@@ -110,13 +110,13 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         self.volume_edit = QtWidgets.QLineEdit("Volume")
 
 
-        self.tick_last_price = QtWidgets.QLineEdit("Last price")
+        self.tick_last_price = QtWidgets.QLineEdit("Lastprice")
         self.tick_volume = QtWidgets.QLineEdit("Volume")
-        self.tick_open_interest = QtWidgets.QLineEdit("Open interest")
-        self.tick_ask_price_1 = QtWidgets.QLineEdit("Ask price 1")
-        self.tick_ask_volume_1 = QtWidgets.QLineEdit("Ask volume 1")
-        self.tick_bid_price_1 = QtWidgets.QLineEdit("Bid price 1")
-        self.tick_bid_volume_1 = QtWidgets.QLineEdit("Bid volume 1")
+        self.tick_open_interest = QtWidgets.QLineEdit("Openinterest")
+        self.tick_ask_price_1 = QtWidgets.QLineEdit("Askprice1")
+        self.tick_ask_volume_1 = QtWidgets.QLineEdit("Askvolume1")
+        self.tick_bid_price_1 = QtWidgets.QLineEdit("Bidprice1")
+        self.tick_bid_volume_1 = QtWidgets.QLineEdit("Bidvolume1")
 
 
         self.format_edit = QtWidgets.QLineEdit("%Y-%m-%d %H:%M:%S")
@@ -167,6 +167,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         self.headwidget.addWidget(barwidget)
         self.headwidget.addWidget(tickwidget)
         self.headwidget.setCurrentIndex(1)
+        self.headwidget.setContentsMargins(0,0,0,0)
 
         form.addRow(self.headwidget)
         form.addRow(QtWidgets.QLabel())
@@ -221,15 +222,16 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 tick_bid_volume_1,
                 datetime_format
             )
-            msg = f"\
-            CSV载入Tick成功\n\
-            代码：{symbol}\n\
-            交易所：{exchange.value}\n\
-            起始：{start}\n\
-            结束：{end}\n\
-            总数量：{count}\n\
-            "
-            QtWidgets.QMessageBox.information(self, "载入成功！", msg)
+            if start and end and count:
+                msg = f"\
+                CSV载入Tick成功\n\
+                代码：{symbol}\n\
+                交易所：{exchange.value}\n\
+                起始：{start}\n\
+                结束：{end}\n\
+                总数量：{count}\n\
+                "
+                QtWidgets.QMessageBox.information(self, "载入成功！", msg)
 
         else:
             interval = self.interval_combo.currentData()
@@ -252,17 +254,17 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 volume_head,
                 datetime_format
             )
-
-            msg = f"\
-            CSV载入Bar成功\n\
-            代码：{symbol}\n\
-            交易所：{exchange.value}\n\
-            周期：{interval.value}\n\
-            起始：{start}\n\
-            结束：{end}\n\
-            总数量：{count}\n\
-            "
-            QtWidgets.QMessageBox.information(self, "载入成功！", msg)
+            if start and end and count:
+                msg = f"\
+                    CSV载入Bar成功\n\
+                    代码：{symbol}\n\
+                    交易所：{exchange.value}\n\
+                    周期：{interval.value}\n\
+                    起始：{start}\n\
+                    结束：{end}\n\
+                    总数量：{count}\n\
+                    "
+                QtWidgets.QMessageBox.information(self, "载入成功！", msg)
 
     def load_by_handle(
         self,
@@ -286,31 +288,39 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         bars = []
         start = None
         count = 0
-        for item in reader:
-            if datetime_format:
-                dt = datetime.strptime(item[datetime_head], datetime_format)
-            else:
-                dt = datetime.fromisoformat(item[datetime_head])
+        try:
+            for item in reader:
+                if datetime_format:
+                    dt = datetime.strptime(item[datetime_head], datetime_format)
+                else:
+                    dt = datetime.fromisoformat(item[datetime_head])
 
-            bar = BarData(
-                symbol=symbol,
-                exchange=exchange,
-                datetime=dt,
-                interval=interval,
-                volume=item[volume_head],
-                open_price=item[open_head],
-                high_price=item[high_head],
-                low_price=item[low_head],
-                close_price=item[close_head],
-                gateway_name="DB",
-            )
+                bar = BarData(
+                    symbol=symbol,
+                    exchange=exchange,
+                    datetime=dt,
+                    interval=interval,
+                    volume=item[volume_head],
+                    open_price=item[open_head],
+                    high_price=item[high_head],
+                    low_price=item[low_head],
+                    close_price=item[close_head],
+                    gateway_name="DB",
+                )
 
-            bars.append(bar)
+                bars.append(bar)
 
-            # do some statistics
-            count += 1
-            if not start:
-                start = bar.datetime
+                # do some statistics
+                count += 1
+                if not start:
+                    start = bar.datetime
+        except Exception as e:
+            msg = "Load csv error: {0}".format(str(e.args[0])).encode("utf-8")
+            QtWidgets.QMessageBox().information(
+                None, 'Error',msg,
+                QtWidgets.QMessageBox.Ok)
+            return  None,None,0
+
         end = bar.datetime
 
         # insert into database
@@ -340,33 +350,41 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         ticks = []
         start = None
         count = 0
-        for item in reader:
-            if datetime_format:
-                dt = datetime.strptime(item[datetime_head], datetime_format)
-            else:
-                dt = datetime.fromisoformat(item[datetime_head])
+        try:
+            for item in reader:
+                if datetime_format:
+                    dt = datetime.strptime(item[datetime_head], datetime_format)
+                else:
+                    dt = datetime.fromisoformat(item[datetime_head])
 
-            tick = TickData(
-                symbol=symbol,
-                exchange=exchange,
-                datetime=dt,
-                volume=item[volume_head],
-                last_price=item[lastprice_head],
-                open_interest=item[openinterest_head],
-                ask_price_1=item[askprice1_head],
-                ask_volume_1=item[askvolume1_head],
-                bid_price_1=item[bidprice1_head],
-                bid_volume_1=item[bidvolume1_head],
-                depth=1,                
-                gateway_name="DB",
-            )
+                tick = TickData(
+                    symbol=symbol,
+                    exchange=exchange,
+                    datetime=dt,
+                    volume=item[volume_head],
+                    last_price=item[lastprice_head],
+                    open_interest=item[openinterest_head],
+                    ask_price_1=item[askprice1_head],
+                    ask_volume_1=item[askvolume1_head],
+                    bid_price_1=item[bidprice1_head],
+                    bid_volume_1=item[bidvolume1_head],
+                    depth=1,                
+                    gateway_name="DB",
+                )
 
-            ticks.append(tick)
+                ticks.append(tick)
 
-            # do some statistics
-            count += 1
-            if not start:
-                start = tick.datetime
+                # do some statistics
+                count += 1
+                if not start:
+                    start = tick.datetime
+        except Exception as e:
+            msg = "Load csv error: {0}".format(str(e.args[0])).encode("utf-8")
+            QtWidgets.QMessageBox().information(
+                None, 'Error',msg,
+                QtWidgets.QMessageBox.Ok)
+            return  None,None,0
+
         end = tick.datetime
         # insert into database
         database_manager.save_tick_data(ticks)
