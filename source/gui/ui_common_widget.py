@@ -96,15 +96,28 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             self.exchange_combo.addItem(str(i.name), i)
 
         self.interval_combo = QtWidgets.QComboBox()
+        self.interval_combo.addItem('tick')
         for i in Interval:
             self.interval_combo.addItem(str(i.name), i)
+        self.interval_combo.currentIndexChanged.connect(self.change_head)
 
         self.datetime_edit = QtWidgets.QLineEdit("Datetime")
+
         self.open_edit = QtWidgets.QLineEdit("Open")
         self.high_edit = QtWidgets.QLineEdit("High")
         self.low_edit = QtWidgets.QLineEdit("Low")
         self.close_edit = QtWidgets.QLineEdit("Close")
         self.volume_edit = QtWidgets.QLineEdit("Volume")
+
+
+        self.tick_last_price = QtWidgets.QLineEdit("Last price")
+        self.tick_volume = QtWidgets.QLineEdit("Volume")
+        self.tick_open_interest = QtWidgets.QLineEdit("Open interest")
+        self.tick_ask_price_1 = QtWidgets.QLineEdit("Ask price 1")
+        self.tick_ask_volume_1 = QtWidgets.QLineEdit("Ask volume 1")
+        self.tick_bid_price_1 = QtWidgets.QLineEdit("Bid price 1")
+        self.tick_bid_volume_1 = QtWidgets.QLineEdit("Bid volume 1")
+
 
         self.format_edit = QtWidgets.QLineEdit("%Y-%m-%d %H:%M:%S")
 
@@ -123,15 +136,39 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         form.addRow(info_label)
         form.addRow("代码", self.symbol_edit)
         form.addRow("交易所", self.exchange_combo)
-        form.addRow("周期", self.interval_combo)
+        form.addRow("时间尺度", self.interval_combo)
         form.addRow(QtWidgets.QLabel())
         form.addRow(head_label)
         form.addRow("时间戳", self.datetime_edit)
-        form.addRow("开盘价", self.open_edit)
-        form.addRow("最高价", self.high_edit)
-        form.addRow("最低价", self.low_edit)
-        form.addRow("收盘价", self.close_edit)
-        form.addRow("成交量", self.volume_edit)
+
+        barwidget = QtWidgets.QWidget()
+        formbar = QtWidgets.QFormLayout()
+        formbar.addRow("开盘价", self.open_edit)
+        formbar.addRow("最高价", self.high_edit)
+        formbar.addRow("最低价", self.low_edit)
+        formbar.addRow("收盘价", self.close_edit)
+        formbar.addRow("成交量", self.volume_edit)
+        barwidget.setLayout(formbar)
+        barwidget.setContentsMargins(0,0,0,0)
+
+        tickwidget = QtWidgets.QWidget()
+        formtick = QtWidgets.QFormLayout()
+        formtick.addRow("最新价", self.tick_last_price)
+        formtick.addRow("总成交量", self.tick_volume)
+        formtick.addRow("总持仓量", self.tick_open_interest)
+        formtick.addRow("买一价", self.tick_ask_price_1)
+        formtick.addRow("买一量", self.tick_ask_volume_1)
+        formtick.addRow("卖一价", self.tick_bid_price_1)
+        formtick.addRow("卖一量", self.tick_bid_volume_1)        
+        tickwidget.setLayout(formtick)        
+        tickwidget.setContentsMargins(0,0,0,0)
+
+        self.headwidget = QtWidgets.QStackedWidget()
+        self.headwidget.addWidget(barwidget)
+        self.headwidget.addWidget(tickwidget)
+        self.headwidget.setCurrentIndex(1)
+
+        form.addRow(self.headwidget)
         form.addRow(QtWidgets.QLabel())
         form.addRow(format_label)
         form.addRow("时间格式", self.format_edit)
@@ -139,6 +176,12 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         form.addRow(load_button)
 
         self.setLayout(form)
+
+    def change_head(self,index):
+        if self.interval_combo.currentText() == 'tick':
+            self.headwidget.setCurrentIndex(1)
+        else:
+            self.headwidget.setCurrentIndex(0)
 
     def select_file(self):
         """"""
@@ -153,39 +196,73 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         file_path = self.file_edit.text()
         symbol = self.symbol_edit.text()
         exchange = self.exchange_combo.currentData()
-        interval = self.interval_combo.currentData()
         datetime_head = self.datetime_edit.text()
-        open_head = self.open_edit.text()
-        low_head = self.low_edit.text()
-        high_head = self.high_edit.text()
-        close_head = self.close_edit.text()
-        volume_head = self.volume_edit.text()
         datetime_format = self.format_edit.text()
+        if self.interval_combo.currentText() == 'tick':
+            tick_last_price = self.tick_last_price.text()
+            tick_volume = self.tick_volume.text()
+            tick_open_interest = self.tick_open_interest.text()
+            tick_ask_price_1 = self.tick_ask_price_1.text()
+            tick_ask_volume_1 = self.tick_ask_volume_1.text()
+            tick_bid_price_1 = self.tick_bid_price_1.text()
+            tick_bid_volume_1 = self.tick_bid_volume_1.text()
 
-        start, end, count = self.load(
-            file_path,
-            symbol,
-            exchange,
-            interval,
-            datetime_head,
-            open_head,
-            high_head,
-            low_head,
-            close_head,
-            volume_head,
-            datetime_format
-        )
+            start, end, count = self.load_tick(
+                file_path,
+                symbol,
+                exchange,
+                datetime_head,
+                tick_last_price,
+                tick_volume,
+                tick_open_interest,
+                tick_ask_price_1,
+                tick_ask_volume_1,
+                tick_bid_price_1,
+                tick_bid_volume_1,
+                datetime_format
+            )
+            msg = f"\
+            CSV载入Tick成功\n\
+            代码：{symbol}\n\
+            交易所：{exchange.value}\n\
+            起始：{start}\n\
+            结束：{end}\n\
+            总数量：{count}\n\
+            "
+            QtWidgets.QMessageBox.information(self, "载入成功！", msg)
 
-        msg = f"\
-        CSV载入成功\n\
-        代码：{symbol}\n\
-        交易所：{exchange.value}\n\
-        周期：{interval.value}\n\
-        起始：{start}\n\
-        结束：{end}\n\
-        总数量：{count}\n\
-        "
-        QtWidgets.QMessageBox.information(self, "载入成功！", msg)
+        else:
+            interval = self.interval_combo.currentData()
+            open_head = self.open_edit.text()
+            low_head = self.low_edit.text()
+            high_head = self.high_edit.text()
+            close_head = self.close_edit.text()
+            volume_head = self.volume_edit.text()
+
+            start, end, count = self.load(
+                file_path,
+                symbol,
+                exchange,
+                interval,
+                datetime_head,
+                open_head,
+                high_head,
+                low_head,
+                close_head,
+                volume_head,
+                datetime_format
+            )
+
+            msg = f"\
+            CSV载入Bar成功\n\
+            代码：{symbol}\n\
+            交易所：{exchange.value}\n\
+            周期：{interval.value}\n\
+            起始：{start}\n\
+            结束：{end}\n\
+            总数量：{count}\n\
+            "
+            QtWidgets.QMessageBox.information(self, "载入成功！", msg)
 
     def load_by_handle(
         self,
@@ -240,6 +317,65 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         database_manager.save_bar_data(bars)
         return start, end, count
 
+    def load_tick_by_handle(
+        self,
+        f: TextIO,
+        symbol: str,
+        exchange: Exchange,
+        datetime_head: str,
+        lastprice_head:str,
+        volume_head: str,
+        openinterest_head: str,
+        askprice1_head: str,
+        askvolume1_head: str,
+        bidprice1_head:str,
+        bidvolume1_head: str,
+        datetime_format: str,
+    ):
+        """
+        load by text mode file handle
+        """
+        reader = csv.DictReader(f)
+
+        ticks = []
+        start = None
+        count = 0
+        for item in reader:
+            if datetime_format:
+                dt = datetime.strptime(item[datetime_head], datetime_format)
+            else:
+                dt = datetime.fromisoformat(item[datetime_head])
+
+            tick = TickData(
+                symbol=symbol,
+                exchange=exchange,
+                datetime=dt,
+                volume=item[volume_head],
+                last_price=item[lastprice_head],
+                open_interest=item[openinterest_head],
+                ask_price_1=item[askprice1_head],
+                ask_volume_1=item[askvolume1_head],
+                bid_price_1=item[bidprice1_head],
+                bid_volume_1=item[bidvolume1_head],
+                depth=1,                
+                gateway_name="DB",
+            )
+
+            ticks.append(tick)
+
+            # do some statistics
+            count += 1
+            if not start:
+                start = tick.datetime
+        end = tick.datetime
+        # insert into database
+        database_manager.save_tick_data(ticks)
+        return start, end, count
+
+
+
+
+
     def load(
         self,
         file_path: str,
@@ -256,6 +392,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
     ):
         """
         load by filename
+
         """
         with open(file_path, "rt") as f:
             return self.load_by_handle(
@@ -271,6 +408,49 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 volume_head=volume_head,
                 datetime_format=datetime_format,
             )
+
+    def load_tick(
+        self,
+        file_path: str,
+        symbol: str,
+        exchange: Exchange,
+        datetime_head: str,
+        lastprice_head:str,
+        volume_head: str,
+        openinterest_head: str,
+        askprice1_head: str,
+        askvolume1_head: str,
+        bidprice1_head:str,
+        bidvolume1_head: str,
+        datetime_format: str,
+    ):
+        """
+        load by filename
+
+        """
+        with open(file_path, "rt") as f:
+            return self.load_tick_by_handle(
+                f,
+                symbol=symbol,
+                exchange=exchange,
+                datetime_head=datetime_head,
+                lastprice_head=lastprice_head,
+                volume_head=volume_head,
+                openinterest_head=openinterest_head,
+                askprice1_head=askprice1_head,
+                askvolume1_head=askvolume1_head,
+                bidprice1_head=bidprice1_head,
+                bidvolume1_head=bidvolume1_head,
+                datetime_format=datetime_format,
+            )
+
+
+
+
+
+
+
+
 
 
 class DataDownloaderWidget(QtWidgets.QWidget):

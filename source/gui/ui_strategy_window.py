@@ -16,7 +16,7 @@ from ..common.utility import *
 from ..common.constant import *
 from ..common.datastruct import Event
 from ..strategy.strategy_base import StrategyBase
-
+CtaTemplate = StrategyBase
 
 class StrategyWindow(QtWidgets.QTableWidget):
     position_signal = QtCore.pyqtSignal(Event)
