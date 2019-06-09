@@ -638,7 +638,7 @@ class BacktesterManager(QtWidgets.QWidget):
             self.interval_combo.addItem(inteval.value)
 
         end_dt = datetime.now()
-        start_dt = end_dt - timedelta(days=3 * 365)
+        start_dt = end_dt - timedelta(days=1 * 365)
 
         self.start_date_edit = QtWidgets.QDateEdit(
             QtCore.QDate(
@@ -956,8 +956,11 @@ class BacktesterManager(QtWidgets.QWidget):
             interval = '1m'
         start = self.start_date_edit.date().toPyDate()
         end = self.end_date_edit.date().toPyDate()
+        if (end - start) > timedelta(days=60) and interval == '1m':
+            mbox = QtWidgets.QMessageBox().question(None, 'Warning','Two many data will slow system performance, continue?',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
+            if mbox == QtWidgets.QMessageBox.Yes:
+                self.dataviewchart.reset(full_symbol,start,end,Interval(interval))
         self.dataviewchart.reset(full_symbol,start,end,Interval(interval))
-
 
     def show(self):
         """"""

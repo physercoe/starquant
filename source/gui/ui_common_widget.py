@@ -119,7 +119,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         self.tick_bid_volume_1 = QtWidgets.QLineEdit("Bidvolume1")
 
 
-        self.format_edit = QtWidgets.QLineEdit("%Y-%m-%d %H:%M:%S")
+        self.format_edit = QtWidgets.QLineEdit("%Y-%m-%d %H:%M:%S.%f")
 
         info_label = QtWidgets.QLabel("合约信息")
         info_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -181,8 +181,10 @@ class CsvLoaderWidget(QtWidgets.QWidget):
     def change_head(self,index):
         if self.interval_combo.currentText() == 'tick':
             self.headwidget.setCurrentIndex(1)
+            self.format_edit.setText("%Y-%m-%d %H:%M:%S.%f")
         else:
             self.headwidget.setCurrentIndex(0)
+            self.format_edit.setText("%Y-%m-%d %H:%M:%S")
 
     def select_file(self):
         """"""
