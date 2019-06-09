@@ -70,7 +70,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
     def __init__(self):
         """"""
         super().__init__()
-
+        self.thread = None
         self.init_ui()
 
     def init_ui(self):
@@ -199,6 +199,12 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         exchange = self.exchange_combo.currentData()
         datetime_head = self.datetime_edit.text()
         datetime_format = self.format_edit.text()
+        if self.thread:
+            QtWidgets.QMessageBox().information(
+                None, 'Info','已有数据在导入，请等待!',
+                QtWidgets.QMessageBox.Ok)
+            return
+
         if self.interval_combo.currentText() == 'tick':
             tick_last_price = self.tick_last_price.text()
             tick_volume = self.tick_volume.text()
@@ -207,32 +213,24 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             tick_ask_volume_1 = self.tick_ask_volume_1.text()
             tick_bid_price_1 = self.tick_bid_price_1.text()
             tick_bid_volume_1 = self.tick_bid_volume_1.text()
-
-            start, end, count = self.load_tick(
-                file_path,
-                symbol,
-                exchange,
-                datetime_head,
-                tick_last_price,
-                tick_volume,
-                tick_open_interest,
-                tick_ask_price_1,
-                tick_ask_volume_1,
-                tick_bid_price_1,
-                tick_bid_volume_1,
-                datetime_format
+            self.thread = Thread(
+                target=self.load_tick,
+                args=(
+                    file_path,
+                    symbol,
+                    exchange,
+                    datetime_head,
+                    tick_last_price,
+                    tick_volume,
+                    tick_open_interest,
+                    tick_ask_price_1,
+                    tick_ask_volume_1,
+                    tick_bid_price_1,
+                    tick_bid_volume_1,
+                    datetime_format
+                )
             )
-            if start and end and count:
-                msg = f"\
-                CSV载入Tick成功\n\
-                代码：{symbol}\n\
-                交易所：{exchange.value}\n\
-                起始：{start}\n\
-                结束：{end}\n\
-                总数量：{count}\n\
-                "
-                QtWidgets.QMessageBox.information(self, "载入成功！", msg)
-
+            self.thread.start()
         else:
             interval = self.interval_combo.currentData()
             open_head = self.open_edit.text()
@@ -240,31 +238,23 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             high_head = self.high_edit.text()
             close_head = self.close_edit.text()
             volume_head = self.volume_edit.text()
-
-            start, end, count = self.load(
-                file_path,
-                symbol,
-                exchange,
-                interval,
-                datetime_head,
-                open_head,
-                high_head,
-                low_head,
-                close_head,
-                volume_head,
-                datetime_format
+            self.thread = Thread(
+                target=self.load,
+                args=(
+                    file_path,
+                    symbol,
+                    exchange,
+                    interval,
+                    datetime_head,
+                    open_head,
+                    high_head,
+                    low_head,
+                    close_head,
+                    volume_head,
+                    datetime_format                    
+                )
             )
-            if start and end and count:
-                msg = f"\
-                    CSV载入Bar成功\n\
-                    代码：{symbol}\n\
-                    交易所：{exchange.value}\n\
-                    周期：{interval.value}\n\
-                    起始：{start}\n\
-                    结束：{end}\n\
-                    总数量：{count}\n\
-                    "
-                QtWidgets.QMessageBox.information(self, "载入成功！", msg)
+            self.thread.start()
 
     def load_by_handle(
         self,
@@ -314,18 +304,33 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 count += 1
                 if not start:
                     start = bar.datetime
+                if count % 100000 == 0:
+                    database_manager.save_bar_data(bars)
+                    bars.clear()
         except Exception as e:
             msg = "Load csv error: {0}".format(str(e.args[0])).encode("utf-8")
             QtWidgets.QMessageBox().information(
                 None, 'Error',msg,
                 QtWidgets.QMessageBox.Ok)
-            return  None,None,0
+            self.thread = None
+            return
 
         end = bar.datetime
-
         # insert into database
         database_manager.save_bar_data(bars)
-        return start, end, count
+        if start and end and count:
+            msg = f"\
+                CSV载入Bar成功\n\
+                代码：{symbol}\n\
+                交易所：{exchange.value}\n\
+                周期：{interval.value}\n\
+                起始：{start}\n\
+                结束：{end}\n\
+                总数量：{count}\n\
+                "
+            QtWidgets.QMessageBox.information(self, "载入成功！", msg)  
+        self.thread = None
+        return
 
     def load_tick_by_handle(
         self,
@@ -378,20 +383,31 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 count += 1
                 if not start:
                     start = tick.datetime
+                if count % 100000 == 0:
+                    database_manager.save_tick_data(ticks)
+                    ticks.clear()
         except Exception as e:
             msg = "Load csv error: {0}".format(str(e.args[0])).encode("utf-8")
             QtWidgets.QMessageBox().information(
                 None, 'Error',msg,
                 QtWidgets.QMessageBox.Ok)
-            return  None,None,0
+            self.thread = None
+            return
 
         end = tick.datetime
         # insert into database
         database_manager.save_tick_data(ticks)
-        return start, end, count
-
-
-
+        if start and end and count:
+            msg = f"\
+                CSV载入Tick成功\n\
+                代码：{symbol}\n\
+                交易所：{exchange.value}\n\
+                起始：{start}\n\
+                结束：{end}\n\
+                总数量：{count}\n\
+                "
+            QtWidgets.QMessageBox.information(self, "载入成功！", msg)
+        self.thread = None
 
 
     def load(
@@ -413,7 +429,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
 
         """
         with open(file_path, "rt") as f:
-            return self.load_by_handle(
+            self.load_by_handle(
                 f,
                 symbol=symbol,
                 exchange=exchange,
@@ -447,7 +463,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
 
         """
         with open(file_path, "rt") as f:
-            return self.load_tick_by_handle(
+            self.load_tick_by_handle(
                 f,
                 symbol=symbol,
                 exchange=exchange,
@@ -563,11 +579,11 @@ class DataDownloaderWidget(QtWidgets.QWidget):
         """
         Query bar data from RQData.
         """
-        print('downloading')
+
         self.write_log(f"{full_symbol}-{interval}开始从{data_source}下载历史数据")
         
         symbol, exchange = extract_full_symbol(full_symbol)
-        print('downloading2')
+
         req = HistoryRequest(
             symbol=symbol,
             exchange=exchange,
