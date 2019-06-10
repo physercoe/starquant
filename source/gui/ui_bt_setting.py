@@ -21,7 +21,7 @@ from source.strategy.strategy_base import StrategyBase
 from source.gui.ui_bt_resultsoverview import BacktesterChart
 from source.gui.ui_bt_dataview import BtDataPGChart,BTQuotesChart
 from source.gui.ui_bt_posview import BtPosViewWidget
-from source.gui.ui_bt_txnview import BtTxnViewWidget
+from source.gui.ui_bt_txnview import BtTxnViewWidget,TradesTable
 
 
 CtaTemplate = StrategyBase
@@ -297,6 +297,7 @@ class Backtester:
         # Backtesting reuslt
         self.result_df = None
         self.result_statistics = None
+        self.result_trades = []
 
         # Optimization result
         self.result_values = None
@@ -416,6 +417,7 @@ class Backtester:
         engine.run_backtesting()
         self.result_df = engine.calculate_result()
         self.result_statistics = engine.calculate_statistics(output=False)
+        self.result_trades = engine.get_all_trades()
 
         # Clear thread object handler.
         self.thread = None
@@ -475,6 +477,9 @@ class Backtester:
     def get_result_values(self):
         """"""
         return self.result_values
+
+    def get_result_trades(self):
+        return self.result_trades
 
     def get_default_setting(self, class_name: str):
         """"""
@@ -780,25 +785,27 @@ class BacktesterManager(QtWidgets.QWidget):
         self.scrolltop.setWidget(self.overviewchart)
         self.scrolltop.setWidgetResizable(True)
 
-        self.posviewchart = BtPosViewWidget()
-        self.txnviewchart = BtTxnViewWidget()
+        # self.posviewchart = BtPosViewWidget()
+        self.txnviewtable = TradesTable()
+        #TradesTable
 
         bt_topmiddle = QtWidgets.QTabWidget()
 
-        bt_topmiddle.addTab(self.scrolltop, 'OverView')
-        bt_topmiddle.addTab(self.posviewchart, 'Position')
-        bt_topmiddle.addTab(self.txnviewchart, 'Transactions')
+        bt_topmiddle.addTab(self.scrolltop, '盈亏情况')
+        bt_topmiddle.addTab(self.txnviewtable, '成交列表')
+        # bt_topmiddle.addTab(self.posviewchart, '持仓')
+
     #  bottom middle:  data
 
         bt_bottommiddle = QtWidgets.QTabWidget()
         self.dataviewchart = BTQuotesChart()
-        bt_bottommiddle.addTab(self.dataviewchart, 'MarketDataShow')
+        # bt_bottommiddle.addTab(self.dataviewchart, '历史行情')
       
     #-------------------------------- 
  
         bt_splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         bt_splitter1.addWidget(bt_topmiddle)
-        bt_splitter1.addWidget(bt_bottommiddle)
+        bt_splitter1.addWidget(self.dataviewchart)
         bt_splitter1.setSizes([500,500])
 
         bt_splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
@@ -842,6 +849,8 @@ class BacktesterManager(QtWidgets.QWidget):
 
         df = self.backtester_engine.get_result_df()
         self.overviewchart.set_data(df)
+        trades = self.backtester_engine.get_result_trades()
+        self.txnviewtable.set_data(trades)
 
     def process_optimization_finished_event(self, event: Event):
         """"""

@@ -43,5 +43,5 @@ target_link_libraries(starquant
   util
   m)
 set(SQSERVER_SRC  ./Services/sqserver.cpp )
-add_executable(sqserver.exe ${SQSERVER_SRC})
-TARGET_LINK_LIBRARIES(sqserver.exe starquant)
+add_executable(apiserver.exe ${SQSERVER_SRC})
+TARGET_LINK_LIBRARIES(apiserver.exe starquant)

@@ -23,22 +23,22 @@ namespace StarQuant
         bool alive_;
 
         // per order limit
-        int limitSizePerOrder_;
-        double limitCashPerOrder_;
+        int limitSizePerOrder_ = 100;
+        double limitCashPerOrder_ = 100000;
 
         // total limit everyday
-        int limitOrderCount_;
-        int limitCash_;
-        int limitOrderSize_;
+        int limitOrderCount_ = 100;
+        int limitCash_ = 100000;
+        int limitOrderSize_ = 100;
 
-        int totalOrderCount_;
-        double totalCash_;
-        int totalOrderSize_;
+        int totalOrderCount_ = 0;
+        double totalCash_ = 0;
+        int totalOrderSize_ = 0;
 
         //flow limit 
-        int limitOrderCountPerSec_;
+        int limitOrderCountPerSec_ = 10;
 
-        int orderCountPerSec_;
+        int orderCountPerSec_ = 0;
 
         //check order
         bool passOrder(std::shared_ptr<Order>);

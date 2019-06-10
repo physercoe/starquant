@@ -473,6 +473,8 @@ class TradeData(BaseData):
     account : str  = ""
     api :str  = ""
 
+    datatime:datetime = datetime(1990,1,1)
+
     def __post_init__(self):
         """"""
         self.vt_symbol = f"{self.symbol}.{self.exchange.value}"

@@ -1005,6 +1005,9 @@ class BacktestingEngine:
     def get_trade(self,vt_tradeid):
         return self.trades.get(vt_tradeid,None)
 
+    def get_all_trades(self):
+        return list(self.trades.values())
+
     def get_position(self,key):
         pass
     
