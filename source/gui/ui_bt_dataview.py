@@ -261,10 +261,11 @@ CHART_MARGINS = (0, 0, 20, 10)
 class BTQuotesChart(QtGui.QWidget):
     signal = QtCore.pyqtSignal(Event)
 
-    long_pen = pg.mkPen('#006000')
-    long_brush = pg.mkBrush('#00ff00')
-    short_pen = pg.mkPen('#600000')
-    short_brush = pg.mkBrush('#ff0000')
+    short_pen = pg.mkPen('#006000')
+    short_brush = pg.mkBrush('#00ff00')
+    long_pen = pg.mkPen('#600000')
+    long_brush = pg.mkBrush('#ff0000')
+    digits = 1
 
     zoomIsDisabled = QtCore.pyqtSignal(bool)
 
@@ -276,6 +277,12 @@ class BTQuotesChart(QtGui.QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)        
         self.chart = None
         self.charv = None
+        self.signals_group_arrow = None
+        self.signals_group_text = None
+        self.trades_count = 0
+        self.signals_text_items = np.empty(self.trades_count, dtype=object)
+        self.buy_count_at_x = np.zeros(len(self.data))
+        self.sell_count_at_x = np.zeros(len(self.data))
         self.signals_visible = False
         self.plot()
 
@@ -284,38 +291,48 @@ class BTQuotesChart(QtGui.QWidget):
         self.load_bar(start,end,interval)
         self.klineitem.generatePicture()
         self.volumeitem.generatePicture()
-        self.chart.removeItem(self.signals_group_arrow)
-        self.chart.removeItem(self.signals_group_text)
+        if self.signals_group_arrow:
+            self.chart.removeItem(self.signals_group_arrow)
+            del self.signals_group_arrow
+        if self.signals_group_text:            
+            self.chart.removeItem(self.signals_group_text)
+            del self.signals_group_text
         del self.signals_text_items
-        del self.signals_group_arrow
-        del self.signals_group_text
+
+
         self.signals_visible = False
 
 
     def add_trades(self,trades):
         if not self.data:
             return
+        self.buy_count_at_x = np.zeros(len(self.data))
+        self.sell_count_at_x = np.zeros(len(self.data))  
+
         self.signals_group_text = QtGui.QGraphicsItemGroup()
         self.signals_group_arrow = QtGui.QGraphicsItemGroup()
-        self.signals_text_items = np.empty(len(self.data), dtype=object)
+        self.trades_count = len(trades)
+        self.signals_text_items = np.empty(len(trades), dtype=object)
 
         #TODO:here only last signal in bar will show
 
         id_bar = 0   
-        for trade in trades:
+        for ix,trade in enumerate(trades):
             if trade.datetime < self.data[0].datetime:             
                 continue
             if trade.datetime > self.data[-1].datetime:
                 break
-            while self.data[id_bar] < trade.datetime :
+            while self.data[id_bar].datetime < trade.datetime :
                 id_bar = id_bar +1
             x = id_bar -1
             price = trade.price
             if trade.direction == Direction.LONG:
-                y = self.data[x].low_price * 0.99
+                self.buy_count_at_x[x] += 1
+                ya = self.data[x].low_price * 0.999
+                yt = self.data[x].low_price * (1 -0.001*self.buy_count_at_x[x])
                 pg.ArrowItem(
                     parent=self.signals_group_arrow,
-                    pos=(x, y),
+                    pos=(x, ya),
                     pen=self.long_pen,
                     brush=self.long_brush,
                     angle=90,
@@ -324,7 +341,7 @@ class BTQuotesChart(QtGui.QWidget):
                 )
                 text_sig = CenteredTextItem(
                     parent=self.signals_group_text,
-                    pos=(x, y),
+                    pos=(x, yt),
                     pen=self.long_pen,
                     brush=self.long_brush,
                     text=('{:.%df}' % self.digits).format(price),
@@ -332,10 +349,12 @@ class BTQuotesChart(QtGui.QWidget):
                 )
                 text_sig.hide()
             else:
-                y = self.data[x].high_price * 1.01
+                self.sell_count_at_x[x] += 1
+                ya = self.data[x].high_price * 1.001
+                yt = self.data[x].low_price * (1 + 0.001*self.sell_count_at_x[x])
                 pg.ArrowItem(
                     parent=self.signals_group_arrow,
-                    pos=(x, y),
+                    pos=(x, ya),
                     pen=self.short_pen,
                     brush=self.short_brush,
                     angle=-90,
@@ -344,7 +363,7 @@ class BTQuotesChart(QtGui.QWidget):
                 )
                 text_sig = CenteredTextItem(
                     parent=self.signals_group_text,
-                    pos=(x, y),
+                    pos=(x, yt),
                     pen=self.short_pen,
                     brush=self.short_brush,
                     text=('{:.%df}' % self.digits).format(price),
@@ -352,7 +371,7 @@ class BTQuotesChart(QtGui.QWidget):
                 )
                 text_sig.hide()
 
-            self.signals_text_items[x] = text_sig       
+            self.signals_text_items[ix] = text_sig       
         self.chart.addItem(self.signals_group_arrow)
         self.chart.addItem(self.signals_group_text)
         self.signals_visible = True
@@ -360,11 +379,13 @@ class BTQuotesChart(QtGui.QWidget):
     def show_text_signals(self, lbar=0, rbar=0):
         if rbar == 0:
             rbar = len(self.data)
-        signals = [
-            sig
-            for sig in self.signals_text_items[lbar:rbar]
-            if isinstance(sig, CenteredTextItem)
-        ]
+        signals = []
+        for sig in self.signals_text_items:
+            if isinstance(sig, CenteredTextItem):                
+                x = sig.pos().x()
+                if x > lbar and x < rbar:
+                    signals.append(sig)
+
         if len(signals) <= 50:
             for sig in signals:
                 sig.show()
@@ -372,7 +393,11 @@ class BTQuotesChart(QtGui.QWidget):
             for sig in signals:
                 sig.hide()
 
-
+    def update_yrange_limits(self):
+        vr = self.chart.viewRect()
+        lbar, rbar = int(vr.left()), int(vr.right())
+        if self.signals_visible:
+            self.show_text_signals(lbar, rbar) 
 
 
     def plot(self):       
@@ -407,6 +432,7 @@ class BTQuotesChart(QtGui.QWidget):
         self.chartv.addItem(self.volumeitem)
 
 
+
     def init_chart(self):
         self.splitter = QtGui.QSplitter(QtCore.Qt.Vertical)
         self.splitter.setHandleWidth(0)
@@ -421,7 +447,7 @@ class BTQuotesChart(QtGui.QWidget):
         self.chart.hideAxis('left')
         self.chart.showAxis('right')
         self.chart.showGrid(x=True, y=True)
-
+        self.chart.sigXRangeChanged.connect(self.update_yrange_limits)
         self.chartv = pg.PlotWidget(
             parent=self.splitter,
             axisItems={'bottom': self.xaxis, 'right': VolumeAxis()},

@@ -859,6 +859,7 @@ class BacktesterManager(QtWidgets.QWidget):
         trades = self.backtester_engine.get_result_trades()
         self.txnviewtable.set_data(trades)
 
+
     def process_optimization_finished_event(self, event: Event):
         """"""
         self.write_log("请点击[优化结果]按钮查看")
@@ -974,6 +975,7 @@ class BacktesterManager(QtWidgets.QWidget):
         start = self.start_date_edit.date().toPyDate()
         end = self.end_date_edit.date().toPyDate()
         trades = self.backtester_engine.get_result_trades()
+        addtrade = bool(trades) and full_symbol == trades[0].full_symbol
         if (end - start) > timedelta(days=60) and interval == '1m':
             mbox = QtWidgets.QMessageBox().question(None, 'Warning','Two many data will slow system performance, continue?',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
             if mbox == QtWidgets.QMessageBox.No:
@@ -982,13 +984,13 @@ class BacktesterManager(QtWidgets.QWidget):
             if self.bt_bottommiddle.tabText(i) == full_symbol:
                 widget = self.bt_bottommiddle.widget(i)
                 widget.reset(full_symbol,start,end,Interval(interval))                
-                if trades:
+                if addtrade:
                     widget.add_trades(trades)
                     widget.show_text_signals()
                 return                    
         dataviewchart = BTQuotesChart()
         dataviewchart.reset(full_symbol,start,end,Interval(interval)) 
-        if trades:
+        if addtrade:
             dataviewchart.add_trades(trades)
             dataviewchart.show_text_signals()
         self.bt_bottommiddle.addTab(dataviewchart,full_symbol)
