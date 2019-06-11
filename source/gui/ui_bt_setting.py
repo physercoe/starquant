@@ -4,7 +4,7 @@
 import sys
 import os
 
-from PyQt5 import QtCore, QtWidgets, QtGui
+from PyQt5 import QtCore, QtWidgets, QtGui,Qt
 import importlib
 import traceback
 from datetime import datetime,timedelta
@@ -18,6 +18,7 @@ from source.data import database_manager
 from source.engine.iengine import EventEngine
 from source.engine.backtest_engine import BacktestingEngine,OptimizationSetting
 from source.strategy.strategy_base import StrategyBase
+from source.gui.ui_basic import VerticalTabBar
 from source.gui.ui_bt_resultsoverview import BacktesterChart
 from source.gui.ui_bt_dataview import BtDataPGChart,BTQuotesChart
 from source.gui.ui_bt_posview import BtPosViewWidget
@@ -790,22 +791,28 @@ class BacktesterManager(QtWidgets.QWidget):
         #TradesTable
 
         bt_topmiddle = QtWidgets.QTabWidget()
-
+        # bt_topmiddle.setTabBar(VerticalTabBar(bt_topmiddle))
+        bt_topmiddle.setTabPosition(QtWidgets.QTabWidget.West)
         bt_topmiddle.addTab(self.scrolltop, '盈亏情况')
         bt_topmiddle.addTab(self.txnviewtable, '成交列表')
         # bt_topmiddle.addTab(self.posviewchart, '持仓')
 
     #  bottom middle:  data
 
-        bt_bottommiddle = QtWidgets.QTabWidget()
-        self.dataviewchart = BTQuotesChart()
-        # bt_bottommiddle.addTab(self.dataviewchart, '历史行情')
+        self.bt_bottommiddle = QtWidgets.QTabWidget()
+        self.bt_bottommiddle.setTabsClosable(True)
+        self.bt_bottommiddle.setMovable(True)
+
+        self.bt_bottommiddle.tabCloseRequested.connect(self.bt_bottommiddle.removeTab)
+        self.bt_bottommiddle.setTabPosition(QtWidgets.QTabWidget.West)
+        # self.dataviewchart = BTQuotesChart()
+        # self.bt_bottommiddle.addTab(self.dataviewchart, '历史行情')
       
     #-------------------------------- 
  
         bt_splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         bt_splitter1.addWidget(bt_topmiddle)
-        bt_splitter1.addWidget(self.dataviewchart)
+        bt_splitter1.addWidget(self.bt_bottommiddle)
         bt_splitter1.setSizes([500,500])
 
         bt_splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
@@ -959,6 +966,7 @@ class BacktesterManager(QtWidgets.QWidget):
         dialog.exec_()
 
     def show_data(self):
+        
         full_symbol = self.symbol_line.text()
         interval = self.interval_combo.currentText()
         if interval == 'tick':
@@ -967,9 +975,16 @@ class BacktesterManager(QtWidgets.QWidget):
         end = self.end_date_edit.date().toPyDate()
         if (end - start) > timedelta(days=60) and interval == '1m':
             mbox = QtWidgets.QMessageBox().question(None, 'Warning','Two many data will slow system performance, continue?',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
-            if mbox == QtWidgets.QMessageBox.Yes:
-                self.dataviewchart.reset(full_symbol,start,end,Interval(interval))
-        self.dataviewchart.reset(full_symbol,start,end,Interval(interval))
+            if mbox == QtWidgets.QMessageBox.No:
+                return
+        for i in range(self.bt_bottommiddle.count()):
+            if self.bt_bottommiddle.tabText(i) == full_symbol:
+                widget = self.bt_bottommiddle.widget(i)
+                widget.reset(full_symbol,start,end,Interval(interval))
+                return                    
+        dataviewchart = BTQuotesChart()
+        dataviewchart.reset(full_symbol,start,end,Interval(interval))  
+        self.bt_bottommiddle.addTab(dataviewchart,full_symbol)
 
     def show(self):
         """"""

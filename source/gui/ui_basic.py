@@ -27,6 +27,36 @@ COLOR_ASK = QtGui.QColor(160, 255, 160)
 COLOR_BLACK = QtGui.QColor("black")
 
 
+
+
+class VerticalTabBar(QtWidgets.QTabBar):
+    # def tabSizeHint(self,index):
+    #     s = QtWidgets.QTabBar.tabSizeHint(self,index)
+    #     s.transpose()
+    #     return s
+
+    def paintEvent(self,event):
+        painter = QtWidgets.QStylePainter(self)
+        opt = QtWidgets.QStyleOptionTab()
+        for i in range(self.count()):
+            self.initStyleOption(opt, i)
+            painter.drawControl(QtWidgets.QStyle.CE_TabBarTabShape, opt)
+            painter.save()
+
+            s = opt.rect.size()
+            # s.transpose()
+            r = QtCore.QRect(QtCore.QPoint(), s)
+            r.moveCenter(opt.rect.center())
+            opt.rect = r
+
+            c = self.tabRect(i).center()
+            painter.translate(c)
+            painter.rotate(180)
+            painter.translate(-c)
+            painter.drawControl(QtWidgets.QStyle.CE_TabBarTabLabel, opt)
+            painter.restore()
+
+
 class BaseCell(QtWidgets.QTableWidgetItem):
     """
     General cell used in tablewidgets.
