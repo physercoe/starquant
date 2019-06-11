@@ -794,7 +794,7 @@ class BacktesterManager(QtWidgets.QWidget):
         # bt_topmiddle.setTabBar(VerticalTabBar(bt_topmiddle))
         bt_topmiddle.setTabPosition(QtWidgets.QTabWidget.West)
         bt_topmiddle.addTab(self.scrolltop, '盈亏情况')
-        bt_topmiddle.addTab(self.txnviewtable, '成交列表')
+        bt_topmiddle.addTab(self.txnviewtable, '成交明细')
         # bt_topmiddle.addTab(self.posviewchart, '持仓')
 
     #  bottom middle:  data

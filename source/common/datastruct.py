@@ -473,7 +473,18 @@ class TradeData(BaseData):
     account : str  = ""
     api :str  = ""
 
-    datatime:datetime = datetime(1990,1,1)
+    datetime:datetime = datetime(1990,1,1)
+
+# Backtest use
+    commission : float = 0.0
+    slippage:float = 0.0
+    turnover:float = 0.0
+    long_pos : int = 0
+    long_price:float = 0
+    long_pnl : float = 0
+    short_pos: int = 0
+    short_price:float = 0
+    short_pnl: float = 0
 
     def __post_init__(self):
         """"""
@@ -559,6 +570,14 @@ class PositionData(BaseData):
             self.timestamp = v[11]
         except:
             pass
+
+BacktestTradeData = TradeData
+
+
+
+
+
+
 
 @dataclass
 class AccountData(BaseData):

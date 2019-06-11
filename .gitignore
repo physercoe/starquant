@@ -66,6 +66,8 @@ extra_dump.py
 /data/*
 /etc/*
 /result/*
+/Result/*
+/Research/*
 /log/*
 /docs/*
 /mystrategy/*

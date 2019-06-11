@@ -3,6 +3,7 @@
 from queue import Queue, Empty
 from datetime import datetime, timedelta,date
 from time import time
+from typing import Union
 import os,sys
 import yaml
 from collections import defaultdict
@@ -24,7 +25,7 @@ from deap import creator, base, tools, algorithms
 from ..common.constant import (Direction, Offset, Exchange, 
                                 Interval, Status, EngineType, 
                                 BacktestingMode,STOPORDER_PREFIX,StopOrderStatus)
-from ..common.datastruct import OrderData, TradeData, BarData, TickData, StopOrder,ContractData
+from ..common.datastruct import OrderData, TradeData, BacktestTradeData, BarData, TickData, StopOrder,ContractData
 from ..common.utility import *
 from ..strategy.strategy_base import StrategyBase
 from ..data.rqdata import rqdata_client
@@ -688,8 +689,13 @@ class BacktestingEngine:
         daily_result = self.daily_results.get(d, None)
         if daily_result:
             daily_result.close_price = price
+            self.holding.last_price = price
         else:
             self.daily_results[d] = DailyResult(d, price)
+            #逐日盯市，改变持仓成本价格
+            self.holding.long_price = self.holding.last_price
+            self.holding.short_price = self.holding.last_price
+            self.holding.last_price = price
 
     def new_bar(self, bar: BarData):
         """"""
@@ -750,6 +756,16 @@ class BacktestingEngine:
             if not long_cross and not short_cross:
                 continue
 
+            if order.offset == Offset.CLOSE:
+                noshortpos = (order.direction == Direction.LONG) and (self.holding.short_pos < order.volume)
+                nolongpos = (order.direction == Direction.SHORT) and (self.holding.long_pos < order.volume)
+                if nolongpos or noshortpos:
+                    order.status = Status.REJECTED
+                    self.active_limit_orders.pop(order.client_order_id)
+                    # Push update to strategy.
+                    self.strategy.on_order(order)
+                    continue
+
             # Push order udpate with status "all traded" (filled).
             order.traded = order.volume
             order.status = Status.ALLTRADED
@@ -767,9 +783,12 @@ class BacktestingEngine:
                 trade_price = max(order.price, short_best_price)
                 pos_change = -order.volume
 
-            trade = TradeData(
+            turnover = trade_price*order.volume*self.size
+            commission = turnover*self.rate
+            slippage = order.volume*self.size*self.slippage
+
+            trade = BacktestTradeData(
                 full_symbol=order.full_symbol,
-                account="PAPER",
                 symbol=order.symbol,
                 exchange=order.exchange,
                 client_order_id=order.client_order_id,
@@ -778,17 +797,31 @@ class BacktestingEngine:
                 offset=order.offset,
                 price=trade_price,
                 volume=order.volume,
+                turnover=turnover,
+                commission=commission,
+                slippage=slippage,
+                datetime=self.datetime,        
                 time=self.datetime.strftime("%H:%M:%S"),
                 gateway_name=self.gateway_name,
             )
-            trade.datetime = self.datetime
+            if trade.offset == Offset.CLOSE :  #平仓不会影响持仓成本价格
+                if trade.direction == Direction.LONG:
+                    trade.short_pnl = trade.volume*(self.holding.short_price - trade.price)
+                else:
+                    trade.long_pnl = trade.volume*(trade.price - self.holding.long_price)
+            self.holding.update_trade(trade)
+            trade.long_pos = self.holding.long_pos
+            trade.long_price = self.holding.long_price
+            trade.short_pos = self.holding.short_pos
+            trade.short_price = self.holding.short_price
+
 
             self.strategy.pos += pos_change
             self.strategy.on_trade(trade)
 
             self.trades[trade.vt_tradeid] = trade
 
-            self.holding.update_trade(trade)
+
 
 
     def cross_stop_order(self):
@@ -821,7 +854,20 @@ class BacktestingEngine:
             if not long_cross and not short_cross:
                 continue
 
-            # Create order data.
+            # close order must satisfy conditon that there are enough positions to close.
+            if stop_order.offset == Offset.CLOSE:
+                noshortpos = (stop_order.direction == Direction.LONG) and (self.holding.short_pos < stop_order.volume)
+                nolongpos = (stop_order.direction == Direction.SHORT) and (self.holding.long_pos < stop_order.volume)
+                if nolongpos or noshortpos:
+                    stop_order.status = Status.REJECTED
+                    self.limit_order_count += 1
+                    self.limit_orders[stop_order.client_order_id] = stop_order
+                    self.active_stop_orders.pop(stop_order.client_order_id)
+                    # Push update to strategy.
+                    self.strategy.on_stop_order(stop_order)
+                    self.strategy.on_order(stop_order)
+                    continue
+
             self.limit_order_count += 1
             stop_order.status = Status.ALLTRADED
 
@@ -837,10 +883,14 @@ class BacktestingEngine:
 
             self.trade_count += 1
 
-            trade = TradeData(
+
+            turnover = trade_price*stop_order.volume*self.size
+            commission = turnover*self.rate
+            slippage = stop_order.volume*self.size*self.slippage
+
+            trade = BacktestTradeData(
                 full_symbol=stop_order.full_symbol,
                 symbol=stop_order.symbol,
-                account="PAPER",
                 exchange=stop_order.exchange,
                 client_order_id=stop_order.client_order_id,
                 tradeid=str(self.trade_count),
@@ -848,10 +898,24 @@ class BacktestingEngine:
                 offset=stop_order.offset,
                 price=trade_price,
                 volume=stop_order.volume,
+                turnover=turnover,
+                commission=commission,
+                slippage=slippage,
+                datetime=self.datetime,        
                 time=self.datetime.strftime("%H:%M:%S"),
                 gateway_name=self.gateway_name,
             )
-            trade.datetime = self.datetime
+            if trade.offset == Offset.CLOSE :  #平仓不会影响持仓成本价格
+                if trade.direction == Direction.LONG:
+                    trade.short_pnl = trade.volume*(self.holding.short_price - trade.price)
+                else:
+                    trade.long_pnl = trade.volume*(trade.price - self.holding.long_price)
+            self.holding.update_trade(trade)
+            trade.long_pos = self.holding.long_pos
+            trade.long_price = self.holding.long_price
+            trade.short_pos = self.holding.short_pos
+            trade.short_price = self.holding.short_price
+
 
             self.trades[trade.vt_tradeid] = trade
 
@@ -866,7 +930,6 @@ class BacktestingEngine:
             self.strategy.pos += pos_change
             self.strategy.on_trade(trade)
 
-            self.holding.update_trade(trade)
 
     def load_bar(
         self, full_symbol: str, days: int, interval: Interval, callback: Callable
@@ -1048,7 +1111,7 @@ class DailyResult:
         self.total_pnl = 0
         self.net_pnl = 0
 
-    def add_trade(self, trade: TradeData):
+    def add_trade(self, trade: Union[TradeData,BacktestTradeData]):
         """"""
         self.trades.append(trade)
 

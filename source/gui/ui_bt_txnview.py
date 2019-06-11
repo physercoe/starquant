@@ -94,12 +94,22 @@ class TradesTable(QtWidgets.QTableWidget):
             ('买卖方向', 'direction'),
             ('开平方向', 'offset'),
             ('成交价格', 'price'),                 
-            ('成交量', 'volume'),
+            ('成交数量', 'volume'),
+            ('成交金额', 'turnover'),
+            ('手续费用', 'commission'),            
+            ('滑点费用', 'slippage'),
+            ('多仓数量', 'long_pos'), 
+            ('多仓成本', 'long_price'),
+            ('平多盈亏', 'long_pnl'), 
+            ('空仓数量', 'short_pos'), 
+            ('空仓成本', 'short_price'),
+            ('平空盈亏', 'short_pnl'),                        
         ]
     )
     colored_cols = (
         'direction',
-        'offset'
+        'long_pnl',
+        'short_pnl'
     )
     fg_positive_color = pg.mkColor('#0000cc')
     fg_negative_color = pg.mkColor('#cc0000')
@@ -159,11 +169,14 @@ class TradesTable(QtWidgets.QTableWidget):
 
                 if col in self.colored_cols:
                     if fg_color is None:
-                        fg_color = (
-                            QtGui.QColor("red")
-                            if trade.offset == Offset.OPEN
-                            else QtGui.QColor("green")
-                        )
+                        if trade.offset == Offset.CLOSE:
+                            fg_color = (
+                                QtGui.QColor("red")
+                                if val > 0
+                                else QtGui.QColor("green")
+                            )
+                        else:
+                            fg_color = QtGui.QColor("white")
                     item.setForeground(fg_color)
                 self.setItem(irow, icol, item)
         self.resizeColumnsToContents()

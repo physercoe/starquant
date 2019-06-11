@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 from copy import copy
 from functools import lru_cache
+from typing import Union
+
 from ..api.ctp_constant import THOST_FTDC_OF_Open,THOST_FTDC_OF_Close,THOST_FTDC_OF_CloseToday,THOST_FTDC_OF_CloseYesterday
 from ..common.datastruct import *
 from ..common.config import marginrate
@@ -277,6 +279,8 @@ class PositionHolding:
         self.short_yd_frozen = 0
         self.short_td_frozen = 0
 
+        self.last_price = 0
+
     def update_position(self, position: PositionData):
         """"""
         if position.direction == Direction.LONG:
@@ -312,7 +316,7 @@ class PositionHolding:
 
         self.calculate_frozen()
 
-    def update_trade(self, trade: TradeData):
+    def update_trade(self, trade: Union[TradeData,BacktestTradeData]):
         """"""
         old_long_pos = self.long_pos
         old_short_pos = self.short_pos
