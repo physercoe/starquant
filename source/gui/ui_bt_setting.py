@@ -973,6 +973,7 @@ class BacktesterManager(QtWidgets.QWidget):
             interval = '1m'
         start = self.start_date_edit.date().toPyDate()
         end = self.end_date_edit.date().toPyDate()
+        trades = self.backtester_engine.get_result_trades()
         if (end - start) > timedelta(days=60) and interval == '1m':
             mbox = QtWidgets.QMessageBox().question(None, 'Warning','Two many data will slow system performance, continue?',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
             if mbox == QtWidgets.QMessageBox.No:
@@ -980,10 +981,16 @@ class BacktesterManager(QtWidgets.QWidget):
         for i in range(self.bt_bottommiddle.count()):
             if self.bt_bottommiddle.tabText(i) == full_symbol:
                 widget = self.bt_bottommiddle.widget(i)
-                widget.reset(full_symbol,start,end,Interval(interval))
+                widget.reset(full_symbol,start,end,Interval(interval))                
+                if trades:
+                    widget.add_trades(trades)
+                    widget.show_text_signals()
                 return                    
         dataviewchart = BTQuotesChart()
-        dataviewchart.reset(full_symbol,start,end,Interval(interval))  
+        dataviewchart.reset(full_symbol,start,end,Interval(interval)) 
+        if trades:
+            dataviewchart.add_trades(trades)
+            dataviewchart.show_text_signals()
         self.bt_bottommiddle.addTab(dataviewchart,full_symbol)
 
     def show(self):

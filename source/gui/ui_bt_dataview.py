@@ -26,7 +26,7 @@ from ..data.data_board import BarGenerator
 from ..common.datastruct import Event
 from ..common.utility import extract_full_symbol
 from ..data import database_manager
-from ..common.constant import Interval
+from ..common.constant import Interval,Direction
 
 sys.path.insert(0,"..")
 from pyfolio import plotting
@@ -273,9 +273,10 @@ class BTQuotesChart(QtGui.QWidget):
         self.full_symbol = symbol
         self.data = []
         self.layout = QtGui.QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setContentsMargins(0, 0, 0, 0)        
         self.chart = None
         self.charv = None
+        self.signals_visible = False
         self.plot()
 
     def reset(self,symbol:str,start: datetime, end: datetime,interval: Interval = Interval.MINUTE):
@@ -283,6 +284,95 @@ class BTQuotesChart(QtGui.QWidget):
         self.load_bar(start,end,interval)
         self.klineitem.generatePicture()
         self.volumeitem.generatePicture()
+        self.chart.removeItem(self.signals_group_arrow)
+        self.chart.removeItem(self.signals_group_text)
+        del self.signals_text_items
+        del self.signals_group_arrow
+        del self.signals_group_text
+        self.signals_visible = False
+
+
+    def add_trades(self,trades):
+        if not self.data:
+            return
+        self.signals_group_text = QtGui.QGraphicsItemGroup()
+        self.signals_group_arrow = QtGui.QGraphicsItemGroup()
+        self.signals_text_items = np.empty(len(self.data), dtype=object)
+
+        #TODO:here only last signal in bar will show
+
+        id_bar = 0   
+        for trade in trades:
+            if trade.datetime < self.data[0].datetime:             
+                continue
+            if trade.datetime > self.data[-1].datetime:
+                break
+            while self.data[id_bar] < trade.datetime :
+                id_bar = id_bar +1
+            x = id_bar -1
+            price = trade.price
+            if trade.direction == Direction.LONG:
+                y = self.data[x].low_price * 0.99
+                pg.ArrowItem(
+                    parent=self.signals_group_arrow,
+                    pos=(x, y),
+                    pen=self.long_pen,
+                    brush=self.long_brush,
+                    angle=90,
+                    headLen=12,
+                    tipAngle=50,
+                )
+                text_sig = CenteredTextItem(
+                    parent=self.signals_group_text,
+                    pos=(x, y),
+                    pen=self.long_pen,
+                    brush=self.long_brush,
+                    text=('{:.%df}' % self.digits).format(price),
+                    valign=QtCore.Qt.AlignBottom,
+                )
+                text_sig.hide()
+            else:
+                y = self.data[x].high_price * 1.01
+                pg.ArrowItem(
+                    parent=self.signals_group_arrow,
+                    pos=(x, y),
+                    pen=self.short_pen,
+                    brush=self.short_brush,
+                    angle=-90,
+                    headLen=12,
+                    tipAngle=50,
+                )
+                text_sig = CenteredTextItem(
+                    parent=self.signals_group_text,
+                    pos=(x, y),
+                    pen=self.short_pen,
+                    brush=self.short_brush,
+                    text=('{:.%df}' % self.digits).format(price),
+                    valign=QtCore.Qt.AlignTop,
+                )
+                text_sig.hide()
+
+            self.signals_text_items[x] = text_sig       
+        self.chart.addItem(self.signals_group_arrow)
+        self.chart.addItem(self.signals_group_text)
+        self.signals_visible = True
+
+    def show_text_signals(self, lbar=0, rbar=0):
+        if rbar == 0:
+            rbar = len(self.data)
+        signals = [
+            sig
+            for sig in self.signals_text_items[lbar:rbar]
+            if isinstance(sig, CenteredTextItem)
+        ]
+        if len(signals) <= 50:
+            for sig in signals:
+                sig.show()
+        else:
+            for sig in signals:
+                sig.hide()
+
+
 
 
     def plot(self):       
@@ -344,7 +434,43 @@ class BTQuotesChart(QtGui.QWidget):
         self.chartv.setXLink(self.chart)
         
 
+class CenteredTextItem(QtGui.QGraphicsTextItem):
+    def __init__(
+        self,
+        text='',
+        parent=None,
+        pos=(0, 0),
+        pen=None,
+        brush=None,
+        valign=None,
+        opacity=0.1,
+    ):
+        super().__init__(text, parent)
 
+        self.pen = pen
+        self.brush = brush
+        self.opacity = opacity
+        self.valign = valign
+        self.text_flags = QtCore.Qt.AlignCenter
+        self.setPos(*pos)
+        self.setFlag(self.ItemIgnoresTransformations)
+
+    def boundingRect(self):  # noqa
+        r = super().boundingRect()
+        if self.valign == QtCore.Qt.AlignTop:
+            return QtCore.QRectF(-r.width() / 2, -37, r.width(), r.height())
+        elif self.valign == QtCore.Qt.AlignBottom:
+            return QtCore.QRectF(-r.width() / 2, 15, r.width(), r.height())
+
+    def paint(self, p, option, widget):
+        p.setRenderHint(p.Antialiasing, False)
+        p.setRenderHint(p.TextAntialiasing, True)
+        p.setPen(self.pen)
+        if self.brush.style() != QtCore.Qt.NoBrush:
+            p.setOpacity(self.opacity)
+            p.fillRect(option.rect, self.brush)
+            p.setOpacity(1)
+        p.drawText(option.rect, self.text_flags, self.toPlainText())
 
 
 

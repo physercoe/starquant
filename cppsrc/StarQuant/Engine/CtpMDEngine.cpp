@@ -11,6 +11,7 @@
 #include <boost/locale.hpp>
 #include <boost/algorithm/string.hpp>
 #include <fmt/format.h>
+#include <algorithm>
 
 #include <Engine/CtpMDEngine.h>
 #include <APIs/Ctp/ThostFtdcMdApi.h>
@@ -277,6 +278,7 @@ namespace StarQuant
             return;
         string sout;
         char* insts[nCount];
+        char* inststest[1]; // one by one instead of arrays
         for (int i = 0; i < nCount; i++)
         {
             string ctpticker = symbol[i];
@@ -284,14 +286,20 @@ namespace StarQuant
                 ctpticker = DataManager::instance().full2Ctp_[ctpticker];	
             }
             insts[i] = (char*)ctpticker.c_str();
+            inststest[0] = (char*)ctpticker.c_str();
             sout += insts[i] +string("|");
-            lastsubs_.push_back(ctpticker);	
+            if (find(lastsubs_.begin(),lastsubs_.end(),ctpticker) == lastsubs_.end())           
+                lastsubs_.push_back(ctpticker);	
+            error = this->api_->SubscribeMarketData(inststest, 1);
+            if (error != 0){
+                LOG_ERROR(logger,name_ <<" subscribe  error "<<error);
+            }
         }
         LOG_INFO(logger,name_ <<" subcribe "<<nCount<<"|"<<sout<<".");
-        error = this->api_->SubscribeMarketData(insts, nCount);
-        if (error != 0){
-            LOG_ERROR(logger,name_ <<" subscribe  error "<<error);
-        }
+        // error = this->api_->SubscribeMarketData(insts, nCount);
+        // if (error != 0){
+        //     LOG_ERROR(logger,name_ <<" subscribe  error "<<error);
+        // }
                 
     }
 
@@ -303,15 +311,21 @@ namespace StarQuant
             return;		
         string sout;
         char* insts[nCount];
+        char* inststest[1];  // one by one instead of arrays
         for (int i = 0; i < nCount; i++)
         {
             string ctpticker = symbol[i];
             if (st == ST_Full){
                 ctpticker = DataManager::instance().full2Ctp_[ctpticker];
             }
-
             insts[i] = (char*)ctpticker.c_str();
             sout += insts[i] +string("|");
+            inststest[0] = (char*)ctpticker.c_str();
+            error = this->api_->UnSubscribeMarketData(inststest, 1);
+            if (error != 0){
+                LOG_ERROR(logger,name_ <<"  unsubscribe  error "<<error);
+            }	
+            // remove last subcriptions
             for(auto it = lastsubs_.begin();it != lastsubs_.end();){
                 if (*it == ctpticker){
                     it = lastsubs_.erase(it);
@@ -323,10 +337,7 @@ namespace StarQuant
             }		
         }
         LOG_INFO(logger,name_ <<"  unsubcribe "<<nCount<<"|"<<sout<<".");
-        error = this->api_->UnSubscribeMarketData(insts, nCount);
-        if (error != 0){
-            LOG_ERROR(logger,name_ <<"  unsubscribe  error "<<error);
-        }		
+	
     }
 
     // TODO: bar generate,data process,etc
