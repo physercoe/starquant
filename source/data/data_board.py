@@ -142,7 +142,8 @@ class BarGenerator:
 
         if not self.bar:
             new_minute = True
-        elif self.bar.datetime.minute != tick.datetime.minute:
+        # in backtest when switching day there should be a new bar     
+        elif self.bar.datetime.minute != tick.datetime.minute or self.bar.datetime.hour != tick.datetime.hour:
             self.bar.datetime = self.bar.datetime.replace(
                 second=0, microsecond=0
             )
@@ -425,8 +426,8 @@ class ArrayManager(object):
 
         TempHigh = np.max(self.high)
         TempLow = np.min(self.low)
-        TempHighTime = np.where(self.high == TempHigh)[0][-1]
-        TempLowTime = np.where(self.low == TempLow)[0][0]
+        TempHighTime = np.where(self.high == TempHigh)[0][-1] #最后一个高点位置
+        TempLowTime = np.where(self.low == TempLow)[0][0] #第一个低点位置
         TempLowMin1 = self.low[TempHighTime:]
         TempHighMin1 = self.high[TempLowTime:]
         if self.high[-1] == TempHigh and TempHigh > HighPoint:
@@ -442,9 +443,9 @@ class ArrayManager(object):
         if self.low[-1] == TempLow and TempLow < LowPoint :
             TempHigh1 = np.max(TempHighMin1)
             TempHigh1Time = np.where(TempHighMin1 == TempHigh1)[0][-1]
-            TempIfTimeBC2 = len(TempHighMin1) - TempHigh1Time > 2 
-            TempIfTimeAB2 = TempHigh1Time > 2 
-            TempIfPriceAB2 = TempHigh1 - TempLow > LowerRatio * LowPoint and TempHigh1 - TempLow < HigherRatio * LowPoint
+            TempIfTimeBC2 = (len(TempHighMin1) - TempHigh1Time > 2) 
+            TempIfTimeAB2 = (TempHigh1Time > 2 )
+            TempIfPriceAB2 = (TempHigh1 - TempLow > LowerRatio * LowPoint) and (TempHigh1 - TempLow < HigherRatio * LowPoint)
             if TempIfTimeBC2 and TempIfTimeAB2 and TempIfPriceAB2:
                 PriceBFired2 = True
                 PriceA2 = TempLow

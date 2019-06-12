@@ -887,6 +887,11 @@ class BacktesterManager(QtWidgets.QWidget):
         pricetick = float(self.pricetick_line.text())
         capital = float(self.capital_line.text())
 
+        if (end - start) > timedelta(days=90) and interval == 'tick':
+            mbox = QtWidgets.QMessageBox().question(None, 'Warning','Two many data will slow system performance, continue?',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
+            if mbox == QtWidgets.QMessageBox.No:
+                return
+
         old_setting = self.settings[class_name]
         dialog = BacktestingSettingEditor(class_name, old_setting)
         i = dialog.exec()
@@ -927,6 +932,11 @@ class BacktesterManager(QtWidgets.QWidget):
         size = float(self.size_line.text())
         pricetick = float(self.pricetick_line.text())
         capital = float(self.capital_line.text())
+
+        if (end - start) > timedelta(days=90) and interval == 'tick':
+            mbox = QtWidgets.QMessageBox().question(None, 'Warning','Two many data will slow system performance, continue?',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
+            if mbox == QtWidgets.QMessageBox.No:
+                return
 
         parameters = self.settings[class_name]
         dialog = OptimizationSettingEditor(class_name, parameters)

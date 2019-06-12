@@ -695,8 +695,15 @@ class BacktestingEngine:
 
     def update_daily_close(self, price: float):
         """"""
-        d = self.datetime.date()
+        #每天下午5点结算，晚上算另外一个交易日,周五算到下周一
 
+        d = self.datetime.date()
+        t = self.datetime.time()
+        if t > datetime.time(hour=17,min=0):
+            if d.weekday() == 4:
+                d = d + timedelta(days=3)
+            else:
+                d = d + timedelta(days=1)
         daily_result = self.daily_results.get(d, None)
         if daily_result:
             daily_result.close_price = price

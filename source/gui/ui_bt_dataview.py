@@ -297,7 +297,7 @@ class BTQuotesChart(QtGui.QWidget):
         if self.signals_group_text:            
             self.chart.removeItem(self.signals_group_text)
             del self.signals_group_text
-        del self.signals_text_items
+        # del self.signals_text_items
 
 
         self.signals_visible = False
