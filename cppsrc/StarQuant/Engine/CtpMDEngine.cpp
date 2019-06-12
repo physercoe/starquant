@@ -272,30 +272,50 @@ namespace StarQuant
     }
 
     void CtpMDEngine::subscribe(const vector<string>& symbol,SymbolType st) {
-        int error;
-        int nCount = symbol.size();
+        const int nCount = symbol.size();        
         if (nCount == 0)
             return;
+        vector<string> tmpsymbol(symbol);
+        int error;
         string sout;
-        char* insts[nCount];
-        char* inststest[1]; // one by one instead of arrays
-        for (int i = 0; i < nCount; i++)
-        {
-            string ctpticker = symbol[i];
-            if (st == ST_Full ){
-                ctpticker = DataManager::instance().full2Ctp_[ctpticker];	
-            }
-            insts[i] = (char*)ctpticker.c_str();
-            inststest[0] = (char*)ctpticker.c_str();
-            sout += insts[i] +string("|");
-            if (find(lastsubs_.begin(),lastsubs_.end(),ctpticker) == lastsubs_.end())           
-                lastsubs_.push_back(ctpticker);	
-            error = this->api_->SubscribeMarketData(inststest, 1);
-            if (error != 0){
-                LOG_ERROR(logger,name_ <<" subscribe  error "<<error);
+        if (st == ST_Full ) {
+            for (int i = 0; i < nCount; i++){
+                tmpsymbol[i] = DataManager::instance().full2Ctp_[tmpsymbol[i]];
             }
         }
+        char** insts = new char*[nCount];
+        for (int i = 0; i < nCount; i++){
+            insts[i] = (char*)tmpsymbol[i].c_str();
+            if (find(lastsubs_.begin(),lastsubs_.end(),tmpsymbol[i]) == lastsubs_.end())           
+                lastsubs_.push_back(tmpsymbol[i]);
+            sout += tmpsymbol[i] +string("|");	
+        }
+        error = this->api_->SubscribeMarketData(insts, nCount);
+        if (error != 0) {
+            LOG_ERROR(logger,name_ <<" subscribe  error "<<error);
+        }
+        delete[] insts;
         LOG_INFO(logger,name_ <<" subcribe "<<nCount<<"|"<<sout<<".");
+       
+        // char* insts[nCount];
+        // char* inststest[1]; // one by one instead of arrays
+        // for (int i = 0; i < nCount; i++)
+        // {
+        //     string ctpticker = symbol[i];
+        //     if (st == ST_Full ){
+        //         ctpticker = DataManager::instance().full2Ctp_[ctpticker];	
+        //     }
+        //     insts[i] = (char*)ctpticker.c_str();
+        //     inststest[0] = (char*)ctpticker.c_str();
+        //     sout += insts[i] +string("|");
+        //     if (find(lastsubs_.begin(),lastsubs_.end(),ctpticker) == lastsubs_.end())           
+        //         lastsubs_.push_back(ctpticker);	
+        //     error = this->api_->SubscribeMarketData(inststest, 1);
+        //     if (error != 0){
+        //         LOG_ERROR(logger,name_ <<" subscribe  error "<<error);
+        //     }
+        // }
+        // LOG_INFO(logger,name_ <<" subcribe "<<nCount<<"|"<<sout<<".");
         // error = this->api_->SubscribeMarketData(insts, nCount);
         // if (error != 0){
         //     LOG_ERROR(logger,name_ <<" subscribe  error "<<error);
@@ -304,39 +324,74 @@ namespace StarQuant
     }
 
     void CtpMDEngine::unsubscribe(const vector<string>& symbol,SymbolType st) {
-
-        int error;
-        int nCount = symbol.size();
+        const int nCount = symbol.size();        
         if (nCount == 0)
-            return;		
+            return;
+        vector<string> tmpsymbol(symbol);
+        int error;
         string sout;
-        char* insts[nCount];
-        char* inststest[1];  // one by one instead of arrays
-        for (int i = 0; i < nCount; i++)
-        {
-            string ctpticker = symbol[i];
-            if (st == ST_Full){
-                ctpticker = DataManager::instance().full2Ctp_[ctpticker];
+        if (st == ST_Full ) {
+            for (int i = 0; i < nCount; i++){
+                tmpsymbol[i] = DataManager::instance().full2Ctp_[tmpsymbol[i]];
             }
-            insts[i] = (char*)ctpticker.c_str();
-            sout += insts[i] +string("|");
-            inststest[0] = (char*)ctpticker.c_str();
-            error = this->api_->UnSubscribeMarketData(inststest, 1);
-            if (error != 0){
-                LOG_ERROR(logger,name_ <<"  unsubscribe  error "<<error);
-            }	
+        }
+        char** insts = new char*[nCount];
+        for (int i = 0; i < nCount; i++){
+            insts[i] = (char*)tmpsymbol[i].c_str();
+            sout += tmpsymbol[i] +string("|");
             // remove last subcriptions
-            for(auto it = lastsubs_.begin();it != lastsubs_.end();){
-                if (*it == ctpticker){
+            for(auto it = lastsubs_.begin();it != lastsubs_.end();) {
+                if (*it == tmpsymbol[i]) {
                     it = lastsubs_.erase(it);
-                }
-                else
-                {
+                } else {
                     ++it;
                 }
-            }		
+            }
         }
-        LOG_INFO(logger,name_ <<"  unsubcribe "<<nCount<<"|"<<sout<<".");
+        error = this->api_->UnSubscribeMarketData(insts, nCount);
+        if (error != 0) {
+            LOG_ERROR(logger,name_ <<" unsubscribe  error "<<error);
+        }
+        delete[] insts;
+        LOG_INFO(logger,name_ <<" unsubcribe "<<nCount<<"|"<<sout<<".");
+
+
+
+
+
+
+        // int error;
+        // int nCount = symbol.size();
+        // if (nCount == 0)
+        //     return;
+        // string sout;
+        // char* insts[nCount];
+        // char* inststest[1];  // one by one instead of arrays
+        // for (int i = 0; i < nCount; i++)
+        // {
+        //     string ctpticker = symbol[i];
+        //     if (st == ST_Full){
+        //         ctpticker = DataManager::instance().full2Ctp_[ctpticker];
+        //     }
+        //     insts[i] = (char*)ctpticker.c_str();
+        //     sout += insts[i] +string("|");
+        //     inststest[0] = (char*)ctpticker.c_str();
+        //     error = this->api_->UnSubscribeMarketData(inststest, 1);
+        //     if (error != 0){
+        //         LOG_ERROR(logger,name_ <<"  unsubscribe  error "<<error);
+        //     }
+        //     // remove last subcriptions
+        //     for(auto it = lastsubs_.begin();it != lastsubs_.end();) {
+        //         if (*it == ctpticker){
+        //             it = lastsubs_.erase(it);
+        //         }
+        //         else
+        //         {
+        //             ++it;
+        //         }
+        //     }
+        // }
+        // LOG_INFO(logger,name_ <<"  unsubcribe "<<nCount<<"|"<<sout<<".");
 	
     }
 

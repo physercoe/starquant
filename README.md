@@ -94,7 +94,7 @@ mystrategy为相应的策略文件夹，其中策略可以单独运行
 ![ ](demos/live4.png  "实盘实际运行展示")
 
 ![ ](demos/bt3.png  "回测结果总体展示")
-![ ](demos/bt4.png  "回测结果明细和行情买卖标记展示")
+![ ](demos/bt4.png  "回测结果明细和行情、买卖标记展示")
 
 ## TODO
 
