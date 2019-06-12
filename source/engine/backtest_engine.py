@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from queue import Queue, Empty
-from datetime import datetime, timedelta,date
-from time import time
+from datetime import datetime, timedelta,date,time
+from time import time as ttime
 from typing import Union
 import os,sys
 import yaml
@@ -315,7 +315,7 @@ class BacktestingEngine:
         for trade in self.trades.values():
             d = trade.datetime.date()
             t = trade.datetime.time()
-            if t > datetime.time(hour=17,minute=0):
+            if t > time(hour=17,minute=0):
                 if d.weekday() == 4:
                     d = d + timedelta(days=3)
                 else:
@@ -671,7 +671,7 @@ class BacktestingEngine:
         self.output(f"交叉概率：{cxpb:.0%}")
         self.output(f"突变概率：{mutpb:.0%}")
 
-        start = time()
+        start = ttime()
 
         algorithms.eaMuPlusLambda(
             pop, 
@@ -685,7 +685,7 @@ class BacktestingEngine:
             halloffame=hof
         )    
         
-        end = time()
+        end = ttime()
         cost = int((end - start))
 
         self.output(f"遗传算法优化完成，耗时{cost}秒")
@@ -706,7 +706,7 @@ class BacktestingEngine:
 
         d = self.datetime.date()
         t = self.datetime.time()
-        if t > datetime.time(hour=17,minute=0):
+        if t > time(hour=17,minute=0):
             if d.weekday() == 4:
                 d = d + timedelta(days=3)
             else:
@@ -831,9 +831,9 @@ class BacktestingEngine:
             )
             if trade.offset == Offset.CLOSE :  #平仓不会影响持仓成本价格
                 if trade.direction == Direction.LONG:
-                    trade.short_pnl = trade.volume*(self.holding.short_price - trade.price)
+                    trade.short_pnl = trade.volume*(self.holding.short_price - trade.price)*self.size
                 else:
-                    trade.long_pnl = trade.volume*(trade.price - self.holding.long_price)
+                    trade.long_pnl = trade.volume*(trade.price - self.holding.long_price)*self.size
             self.holding.update_trade(trade)
             trade.long_pos = self.holding.long_pos
             trade.long_price = self.holding.long_price
@@ -932,9 +932,9 @@ class BacktestingEngine:
             )
             if trade.offset == Offset.CLOSE :  #平仓不会影响持仓成本价格
                 if trade.direction == Direction.LONG:
-                    trade.short_pnl = trade.volume*(self.holding.short_price - trade.price)
+                    trade.short_pnl = trade.volume*(self.holding.short_price - trade.price)*self.size
                 else:
-                    trade.long_pnl = trade.volume*(trade.price - self.holding.long_price)
+                    trade.long_pnl = trade.volume*(trade.price - self.holding.long_price)*self.size
             self.holding.update_trade(trade)
             trade.long_pos = self.holding.long_pos
             trade.long_price = self.holding.long_price
