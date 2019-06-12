@@ -133,8 +133,11 @@ class BacktestingEngine:
         self.interval = None
         self.days = 0
         self.callback = None
+        self.historybar_callback = None  #used in tick mode called by strategy load_bar
+        self.historytick_callback = None   #used in tick mode called by strategy load_tick
         self.history_data = []
-
+        self.history_bar = []  #used in tick mode called by strategy load_bar
+        self.history_tick = [] #used in tick mode called by strategy load_tick
         self.order_count = 0
 
         self.stop_order_count = 0
@@ -267,17 +270,25 @@ class BacktestingEngine:
         self.strategy.on_init()
 
         # Use the first [days] of history data for initializing strategy
-        day_count = 0
-        ix = 0
+        # day_count = 0
+        # ix = 0
         
-        for ix, data in enumerate(self.history_data):
-            if self.datetime and data.datetime.day != self.datetime.day:
-                day_count += 1
-                if day_count >= self.days:
-                    break
+        # using load_bar/tick for  initializing strategy
+        if self.historybar_callback:
+            for data in self.history_bar:
+                self.historybar_callback(data)
+        if self.historytick_callback:
+            for data in self.history_tick:
+                self.historytick_callback(data)
 
-            self.datetime = data.datetime
-            self.callback(data)
+        # for ix, data in enumerate(self.history_data):
+        #     if self.datetime and data.datetime.day != self.datetime.day:
+        #         day_count += 1
+        #         if day_count >= self.days:
+        #             break
+
+        #     self.datetime = data.datetime
+        #     self.callback(data)
 
         self.strategy.inited = True
         self.output("策略初始化完成")
@@ -287,7 +298,7 @@ class BacktestingEngine:
         self.output("开始回放历史数据")
 
         # Use the rest of history data for running backtesting
-        for data in self.history_data[ix:]:
+        for data in self.history_data:
             func(data)
 
         self.output("历史数据回放结束")
@@ -937,16 +948,39 @@ class BacktestingEngine:
         """
         called by strategy
         """
+        start = self.start - timedelta(days=days)
+        end = self.start            
+        self.history_bar = load_bar_data(
+            self.symbol,
+            self.exchange,
+            interval,
+            start,
+            end
+        )
+        self.historybar_callback = callback
 
-        self.days = days
-        self.callback = callback
+        # self.days = days
+        # self.callback = callback
 
     def load_tick(self, full_symbol: str, days: int, callback: Callable):
         """
         called by strategy
         """
-        self.days = days
-        self.callback = callback
+        start = self.start - timedelta(days=days)
+        end = self.start            
+        self.history_tick = load_tick_data(
+            self.symbol,
+            self.exchange,
+            start,
+            end
+        )
+        self.historytick_callback = callback        
+
+        
+        
+        
+        # self.days = days
+        # self.callback = callback
 
     def send_order(
         self,
@@ -1082,8 +1116,9 @@ class BacktestingEngine:
         active_orders.extend(self.active_stop_orders.values())
         return active_orders
 
-
-
+    def get_strategy_active_orderids(self,strategy_name:str):
+        active_orders = set(self.active_limit_orders.values())
+        return active_orders
 
 
 

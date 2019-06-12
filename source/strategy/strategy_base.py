@@ -80,7 +80,10 @@ class StrategyBase(metaclass=ABCMeta):
         self.get_contract = self.strategy_engine.get_contract
         self.get_all_active_orders = self.strategy_engine.get_all_active_orders
 
-    
+    def get_my_active_orderids(self):
+        oidset = self.strategy_engine.get_strategy_active_orderids(self.strategy_name)
+        return oidset
+
     def get_my_position_holding(self):
         holding = self.get_position_holding(self.account,self.full_symbol)
         self.long_pos = holding.long_pos

@@ -877,6 +877,11 @@ class StrategyEngine(BaseEngine):
     def get_position_holding(self, acc:str, full_symbol:str):
         return self.offset_converter.get_position_holding(acc,full_symbol)
 
+    def get_strategy_active_orderids(self,strategy_name:str):
+        oidset = self.strategy_orderid_map[strategy_name]
+        return oidset
+ 
+
 
   #order, cancel
     def send_order(
