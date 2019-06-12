@@ -314,6 +314,13 @@ class BacktestingEngine:
         # Add trade data into daily reuslt.
         for trade in self.trades.values():
             d = trade.datetime.date()
+            t = trade.datetime.time()
+            if t > datetime.time(hour=17,minute=0):
+                if d.weekday() == 4:
+                    d = d + timedelta(days=3)
+                else:
+                    d = d + timedelta(days=1)
+
             daily_result = self.daily_results[d]
             daily_result.add_trade(trade)
 
@@ -699,7 +706,7 @@ class BacktestingEngine:
 
         d = self.datetime.date()
         t = self.datetime.time()
-        if t > datetime.time(hour=17,min=0):
+        if t > datetime.time(hour=17,minute=0):
             if d.weekday() == 4:
                 d = d + timedelta(days=3)
             else:
