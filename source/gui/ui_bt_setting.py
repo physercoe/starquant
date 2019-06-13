@@ -387,7 +387,8 @@ class Backtester:
         size: int,
         pricetick: float,
         capital: int,
-        setting: dict
+        setting: dict,
+        datasource:str = "DataBase"
     ):
         """"""
         self.result_df = None
@@ -414,7 +415,7 @@ class Backtester:
             setting
         )
 
-        engine.load_data()
+        engine.load_data(datasource)
         engine.run_backtesting()
         self.result_df = engine.calculate_result()
         self.result_statistics = engine.calculate_statistics(output=False)
@@ -440,7 +441,8 @@ class Backtester:
         size: int,
         pricetick: float,
         capital: int,
-        setting: dict
+        setting: dict,
+        datasource:str = "DataBase"
     ):
         if self.thread:
             self.write_log("已有任务在运行中，请等待完成")
@@ -460,7 +462,8 @@ class Backtester:
                 size,
                 pricetick,
                 capital,
-                setting
+                setting,
+                datasource
             )
         )
         self.thread.start()
@@ -638,7 +641,7 @@ class BacktesterManager(QtWidgets.QWidget):
         self.class_combo.setSizePolicy(policy)
 
         self.data_source = QtWidgets.QComboBox()
-        self.data_source.addItems(['DataBase','CSV File','HDF5 File'])
+        self.data_source.addItems(['DataBase','Memory'])
         loaddatafile_btn =  QtWidgets.QPushButton("读取本地数据文件")
         loaddatafile_btn.clicked.connect(self.load_data_file)
 
@@ -766,6 +769,7 @@ class BacktesterManager(QtWidgets.QWidget):
         label1.setAlignment(QtCore.Qt.AlignCenter)
         form.addWidget(label1)
         form.addRow(hbox1)
+        form.addRow(hbox11)
         form.addRow(hbox2)
         form.addRow(hbox3)
         form.addRow(hbox4)
@@ -881,12 +885,12 @@ class BacktesterManager(QtWidgets.QWidget):
         full_sym = self.symbol_line.text()
         if self.interval_combo.currentText() == 'tick':
             if sqglobal.history_tick[full_sym]:
-                self.write_log(f"has alread read {full_sym} tick")
+                QtWidgets.QMessageBox().information(None, 'Info','already has data in memory!',QtWidgets.QMessageBox.Ok)
                 return
             if self.data_source.currentText() == 'CSV File':
                 QtWidgets.QMessageBox().information(None, 'Info','Please load data from Tools/csv loader!',QtWidgets.QMessageBox.Ok)
                 return
-        QtWidgets.QMessageBox().information(None, 'Info','Unsuppoted yet or pleas load from database!',QtWidgets.QMessageBox.Ok)  
+        QtWidgets.QMessageBox().information(None, 'Info','not implemented yet or pleas load from database!',QtWidgets.QMessageBox.Ok)  
 
 
     def reload_strategy(self):
@@ -909,6 +913,7 @@ class BacktesterManager(QtWidgets.QWidget):
         size = float(self.size_line.text())
         pricetick = float(self.pricetick_line.text())
         capital = float(self.capital_line.text())
+        datasource = self.data_source.currentText()
 
         if (end - start) > timedelta(days=90) and interval == 'tick':
             mbox = QtWidgets.QMessageBox().question(None, 'Warning','Two many data will slow system performance, continue?',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
@@ -935,7 +940,8 @@ class BacktesterManager(QtWidgets.QWidget):
             size,
             pricetick,
             capital,
-            new_setting
+            new_setting,
+            datasource
         )
 
         if result:

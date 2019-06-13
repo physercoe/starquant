@@ -21,6 +21,7 @@ import seaborn as sns
 from pandas import DataFrame
 from deap import creator, base, tools, algorithms
 
+import source.common.sqglobal as sqglobal
 
 from ..common.constant import (Direction, Offset, Exchange, 
                                 Interval, Status, EngineType, 
@@ -238,30 +239,78 @@ class BacktestingEngine:
         #redirect strategy write_log output
         self.strategy.write_log = self.output
 
-    def load_data(self):
+    def load_data(self,datasource:str = "DataBase"):
         """"""
         self.output("开始加载历史数据")
 
         if self.mode == BacktestingMode.BAR:
-            self.history_data = load_bar_data(
-                self.symbol,
-                self.exchange,
-                self.interval,
-                self.start,
-                self.end
-            )
+            if datasource == "DataBase":
+                self.history_data = load_bar_data(
+                    self.symbol,
+                    self.exchange,
+                    self.interval,
+                    self.start,
+                    self.end
+                )
+            elif datasource == "Memory":
+                startix = 0
+                endix = 0
+                totalbarlist = sqglobal.history_bar[self.full_symbol]
+                if not totalbarlist:
+                    self.output('数据为空，请先读入')
+                    return
+                totalbars = len(totalbarlist)
+                for i in range(totalbars):
+                    if totalbarlist[i].datetime.date() < self.start:
+                        continue
+                    startix = i
+                    break
+                for i in reversed(range(totalbars)):
+                    if totalbarlist[i].datetime.date() > self.end:
+                        continue
+                    endix = i
+                    break                
+                endix = min(endix+1,totalbars)
+                self.history_data = totalbarlist[startix:endix]
         else:
-            self.history_data = load_tick_data(
-                self.symbol,
-                self.exchange,
-                self.start,
-                self.end
-            )
+            if datasource == "DataBase":
+                self.history_data = load_tick_data(
+                    self.symbol,
+                    self.exchange,
+                    self.start,
+                    self.end
+                )
+            elif datasource == "Memory":
+                startix = 0
+                endix = 0
+                totalticklist = sqglobal.history_tick[self.full_symbol]
+                if not totalticklist:
+                    self.output('数据为空，请先读入')
+                    return                
+                totalticks = len(totalticklist)
+                for i in range(totalticks):
+                    if totalticklist[i].datetime.date() < self.start:
+                        continue
+                    startix = i
+                    break
+                for i in reversed(range(totalticks)):
+                    if totalticklist[i].datetime.date() > self.end:
+                        continue
+                    endix = i
+                    break                
+                endix = min(endix+1,totalticks)
+                self.history_data = totalticklist[startix:endix]
+            
 
         self.output(f"历史数据加载完成，数据量：{len(self.history_data)}")
 
     def run_backtesting(self):
+
         """"""
+        if not self.history_data:
+            self.output('回测数据为空，直接结束回测')
+            return
+        
         if self.mode == BacktestingMode.BAR:
             func = self.new_bar
         else:

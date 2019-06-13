@@ -15,6 +15,7 @@ import csv,json
 from copy import copy
 import webbrowser
 from threading import Thread
+from time import time as ttime
 
 from ..common.constant import *
 from ..common.datastruct import *
@@ -288,6 +289,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         full_sym = generate_full_symbol(exchange,symbol)
         alreadyhas = bool(sqglobal.history_bar[full_sym])
         saveto = self.saveto_combo.currentText()
+        starttime = ttime()
         try:
             for item in reader:
                 if datetime_format:
@@ -300,11 +302,11 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                     exchange=exchange,
                     datetime=dt,
                     interval=interval,
-                    volume=item[volume_head],
-                    open_price=item[open_head],
-                    high_price=item[high_head],
-                    low_price=item[low_head],
-                    close_price=item[close_head],
+                    volume=int(item[volume_head]),
+                    open_price=float(item[open_head]),
+                    high_price=float(item[high_head]),
+                    low_price=float(item[low_head]),
+                    close_price=float(item[close_head]),
                     gateway_name="DB",
                 )
 
@@ -333,7 +335,8 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             sqglobal.history_bar[full_sym].extend(bars)
         elif saveto == 'DataBase': 
             database_manager.save_bar_data(bars)
-
+        endtime = ttime()
+        totalloadtime = int(endtime-starttime)
         if start and end and count:
             msg = f"\
                 CSV载入Bar成功\n\
@@ -343,6 +346,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 起始：{start}\n\
                 结束：{end}\n\
                 总数量：{count}\n\
+                耗时：{totalloadtime}s\n\
                 "
             QtWidgets.QMessageBox.information(self, "载入成功！", msg)  
         self.thread = None
@@ -374,6 +378,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         full_sym = generate_full_symbol(exchange,symbol)
         alreadyhas = bool(sqglobal.history_tick[full_sym])
         saveto = self.saveto_combo.currentText()
+        starttime = ttime()
         try:
             for item in reader:
                 if datetime_format:
@@ -385,13 +390,13 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                     symbol=symbol,
                     exchange=exchange,
                     datetime=dt,
-                    volume=item[volume_head],
-                    last_price=item[lastprice_head],
-                    open_interest=item[openinterest_head],
-                    ask_price_1=item[askprice1_head],
-                    ask_volume_1=item[askvolume1_head],
-                    bid_price_1=item[bidprice1_head],
-                    bid_volume_1=item[bidvolume1_head],
+                    volume=int(item[volume_head]),
+                    last_price=float(item[lastprice_head]),
+                    open_interest=int(item[openinterest_head]),
+                    ask_price_1=float(item[askprice1_head]),
+                    ask_volume_1=int(item[askvolume1_head]),
+                    bid_price_1=float(item[bidprice1_head]),
+                    bid_volume_1=int(item[bidvolume1_head]),
                     depth=1,                
                     gateway_name="DB",
                 )
@@ -419,7 +424,8 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             sqglobal.history_tick[full_sym].extend(ticks) 
         elif saveto == 'DataBase': 
             database_manager.save_tick_data(ticks)         
-
+        endtime = ttime()
+        totalloadtime = int(endtime-starttime)
         if start and end and count:
             msg = f"\
                 CSV载入Tick成功\n\
@@ -428,6 +434,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 起始：{start}\n\
                 结束：{end}\n\
                 总数量：{count}\n\
+                耗时：{totalloadtime}s\n\
                 "
             QtWidgets.QMessageBox.information(self, "载入成功！", msg)
         self.thread = None
