@@ -259,9 +259,9 @@ namespace StarQuant
                     if (!apiinited_){
                         this->api_->SubscribePrivateTopic(privatetype);
                         this->api_->SubscribePublicTopic(publictype);
-                        for (auto it:ctpacc_.td_ip){
-                            string ctp_td_address = it + ":" + to_string(ctpacc_.td_port);	
-                            this->api_->RegisterFront((char*)ctp_td_address.c_str());
+                        for (auto it:ctpacc_.td_address){
+                            // string ctp_td_address = it + ":" + to_string(ctpacc_.td_port);	
+                            this->api_->RegisterFront((char*)it.c_str());
                         }						
                         this->api_->Init();	
                         apiinited_ = true;					

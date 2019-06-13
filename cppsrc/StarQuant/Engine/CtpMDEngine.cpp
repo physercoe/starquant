@@ -197,9 +197,9 @@ namespace StarQuant
             switch(estate_){
                 case EState::DISCONNECTED:
                     if (!apiinited_){
-                        for (auto it:ctpacc_.md_ip){
-                            string ctp_data_address = it + ":" + to_string(ctpacc_.md_port);	
-                            this->api_->RegisterFront((char*)ctp_data_address.c_str());
+                        for (auto it:ctpacc_.md_address){
+                            // string ctp_data_address = it + ":" + to_string(ctpacc_.md_port);	
+                            this->api_->RegisterFront((char*)it.c_str());
                         }
                         this->api_->Init();
                         apiinited_ = true;

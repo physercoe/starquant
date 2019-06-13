@@ -326,10 +326,8 @@ struct Gateway{
     string password;
     string auth_code;
     string productinfo;
-    vector<std::string> md_ip;
-    uint16_t md_port;
-    vector<std::string> td_ip;
-    uint16_t td_port;
+    vector<std::string> md_address;
+    vector<std::string> td_address;
     string appid;
     string publicstream;
     string privatestream;
