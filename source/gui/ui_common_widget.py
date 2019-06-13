@@ -76,12 +76,15 @@ class CsvLoaderWidget(QtWidgets.QWidget):
 
     def init_ui(self):
         """"""
-        self.setWindowTitle("CSV载入")
+        self.setWindowTitle("数据载入")
         self.setFixedWidth(300)
 
         self.setWindowFlags(
             (self.windowFlags() | QtCore.Qt.CustomizeWindowHint)
             & ~QtCore.Qt.WindowMaximizeButtonHint)
+
+        self.fileformat_combo = QtWidgets.QComboBox()
+        self.fileformat_combo.addItems(['csv','hdf5'])
 
         file_button = QtWidgets.QPushButton("选择文件")
         file_button.clicked.connect(self.select_file)
@@ -136,6 +139,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         format_label.setAlignment(QtCore.Qt.AlignCenter)
 
         form = QtWidgets.QFormLayout()
+        form.addRow("文件格式",self.fileformat_combo)
         form.addRow(file_button, self.file_edit)
         form.addRow("存储位置",self.saveto_combo)
         form.addRow(QtWidgets.QLabel())

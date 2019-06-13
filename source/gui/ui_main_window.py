@@ -259,7 +259,7 @@ class MainWindow(QtWidgets.QMainWindow):
         tool_recorder = QtWidgets.QAction('Data Recorder',self)
         tool_recorder.triggered.connect(self.recorder_manager.show)
         toolMenu.addAction(tool_recorder)
-        tool_csvloader = QtWidgets.QAction('CSV Loader',self)
+        tool_csvloader = QtWidgets.QAction('Data Loader',self)
         tool_csvloader.triggered.connect(self.opencsvloader)
         toolMenu.addAction(tool_csvloader)
         tool_datadownloader = QtWidgets.QAction('Data Downloader',self)

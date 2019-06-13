@@ -46,7 +46,8 @@ namespace StarQuant
 
     void CtpMDEngine::releaseapi(){	
         if (api_ != nullptr){
-            this->api_->Join();
+            // this->api_->Join();
+            msleep(1000);
             this->api_->RegisterSpi(nullptr);
             if (apiinited_) 
                 this->api_->Release();// api must init() or will segfault
