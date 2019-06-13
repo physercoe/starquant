@@ -934,7 +934,7 @@ class BacktestingEngine:
                 if trade.direction == Direction.LONG:
                     trade.short_pnl = trade.volume*(self.holding.short_price - trade.price)*self.size
                 else:
-                    trade.long_pnl = trade.volume*(trade.price - self.holding.long_price)*self.size
+                    trade.long_pnl = trade.volume*(trade.price - self.holding.long_price)*self.si
             self.holding.update_trade(trade)
             trade.long_pos = self.holding.long_pos
             trade.long_price = self.holding.long_price
@@ -1131,8 +1131,8 @@ class BacktestingEngine:
         return active_orders
 
     def get_strategy_active_orderids(self,strategy_name:str):
-        active_orders = set(self.active_limit_orders.values())
-        return active_orders
+        active_orderids = set(self.active_limit_orders.keys())
+        return active_orderids
 
 
 

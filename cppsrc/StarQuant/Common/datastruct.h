@@ -759,7 +759,7 @@ public:
 
     PositionDetail data_;
 
-    virtual string serialize(){};
+    virtual string serialize(){return string();};
     // virtual void deserialize(const string& msgin);
     void set(std::shared_ptr<PositionDetail>){};
 };

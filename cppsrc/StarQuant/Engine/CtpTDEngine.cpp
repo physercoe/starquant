@@ -49,6 +49,7 @@ namespace StarQuant
 
     void CtpTDEngine::releaseapi(){	
         if (api_ != nullptr){
+            this->api_->Join();
             this->api_->RegisterSpi(nullptr);
             if (apiinited_)
                 this->api_->Release();// api must init() or will segfault
@@ -93,7 +94,7 @@ namespace StarQuant
         apiinited_ = false;
         autoconnect_ = CConfig::instance().autoconnect;
         autoqry_ = CConfig::instance().autoqry;
-        LOG_DEBUG(logger, name_ <<" inited, api version:"<<this->api_->GetApiVersion());
+        LOG_DEBUG(logger, name_ <<" inited, api version:"<<CThostFtdcTraderApi::GetApiVersion());
     }
     void CtpTDEngine::stop(){
         int tmp = disconnect();

@@ -28,6 +28,7 @@ namespace StarQuant
 
     CtpMDEngine ::CtpMDEngine() 
         : loginReqId_(0)
+        , reqId_(0)
         , apiinited_(false)
         , inconnectaction_(false)
         , autoconnect_(false)
@@ -45,6 +46,7 @@ namespace StarQuant
 
     void CtpMDEngine::releaseapi(){	
         if (api_ != nullptr){
+            this->api_->Join();
             this->api_->RegisterSpi(nullptr);
             if (apiinited_) 
                 this->api_->Release();// api must init() or will segfault
@@ -65,6 +67,7 @@ namespace StarQuant
         // 	lock_guard<mutex> g(IEngine::sendlock_);
         // 	IEngine::msgq_send_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
         // }
+        reqId_ = 0;
         lastsubs_.clear();
         if(logger == nullptr){
             logger = SQLogger::getLogger("MDEngine.CTP");
@@ -88,7 +91,7 @@ namespace StarQuant
         messenger_->send(pmsgs);
         apiinited_ = false;
         autoconnect_ = CConfig::instance().autoconnect;
-        LOG_DEBUG(logger,name_ <<" inited, api version:"<<this->api_->GetApiVersion());
+        LOG_DEBUG(logger,name_ <<" inited, api version:"<<CThostFtdcMdApi::GetApiVersion());
     }
 
     void CtpMDEngine::stop(){
@@ -219,7 +222,7 @@ namespace StarQuant
                     // strcpy(loginField.UserID, ctpacc_.userid.c_str());
                     // strcpy(loginField.Password, ctpacc_.password.c_str());
                     ///用户登录请求
-                    error = this->api_->ReqUserLogin(&loginField, loginReqId_);	
+                    error = this->api_->ReqUserLogin(&loginField, ++reqId_);	
                     count++;
                     estate_ = EState::LOGINING;
                     if (error != 0){
@@ -256,7 +259,7 @@ namespace StarQuant
             CThostFtdcUserLogoutField logoutField = CThostFtdcUserLogoutField();
             // strcpy(logoutField.BrokerID, ctpacc_.brokerid.c_str());
             // strcpy(logoutField.UserID, ctpacc_.userid.c_str());
-            int error = this->api_->ReqUserLogout(&logoutField, loginReqId_);
+            int error = this->api_->ReqUserLogout(&logoutField, ++reqId_);
             estate_ = EState::LOGOUTING;
             if (error != 0){
                 LOG_ERROR(logger,name_ <<"  logout error:"<<error);//TODO: send error msg to client
@@ -297,30 +300,6 @@ namespace StarQuant
         delete[] insts;
         LOG_INFO(logger,name_ <<" subcribe "<<nCount<<"|"<<sout<<".");
        
-        // char* insts[nCount];
-        // char* inststest[1]; // one by one instead of arrays
-        // for (int i = 0; i < nCount; i++)
-        // {
-        //     string ctpticker = symbol[i];
-        //     if (st == ST_Full ){
-        //         ctpticker = DataManager::instance().full2Ctp_[ctpticker];	
-        //     }
-        //     insts[i] = (char*)ctpticker.c_str();
-        //     inststest[0] = (char*)ctpticker.c_str();
-        //     sout += insts[i] +string("|");
-        //     if (find(lastsubs_.begin(),lastsubs_.end(),ctpticker) == lastsubs_.end())           
-        //         lastsubs_.push_back(ctpticker);	
-        //     error = this->api_->SubscribeMarketData(inststest, 1);
-        //     if (error != 0){
-        //         LOG_ERROR(logger,name_ <<" subscribe  error "<<error);
-        //     }
-        // }
-        // LOG_INFO(logger,name_ <<" subcribe "<<nCount<<"|"<<sout<<".");
-        // error = this->api_->SubscribeMarketData(insts, nCount);
-        // if (error != 0){
-        //     LOG_ERROR(logger,name_ <<" subscribe  error "<<error);
-        // }
-                
     }
 
     void CtpMDEngine::unsubscribe(const vector<string>& symbol,SymbolType st) {
@@ -354,45 +333,6 @@ namespace StarQuant
         }
         delete[] insts;
         LOG_INFO(logger,name_ <<" unsubcribe "<<nCount<<"|"<<sout<<".");
-
-
-
-
-
-
-        // int error;
-        // int nCount = symbol.size();
-        // if (nCount == 0)
-        //     return;
-        // string sout;
-        // char* insts[nCount];
-        // char* inststest[1];  // one by one instead of arrays
-        // for (int i = 0; i < nCount; i++)
-        // {
-        //     string ctpticker = symbol[i];
-        //     if (st == ST_Full){
-        //         ctpticker = DataManager::instance().full2Ctp_[ctpticker];
-        //     }
-        //     insts[i] = (char*)ctpticker.c_str();
-        //     sout += insts[i] +string("|");
-        //     inststest[0] = (char*)ctpticker.c_str();
-        //     error = this->api_->UnSubscribeMarketData(inststest, 1);
-        //     if (error != 0){
-        //         LOG_ERROR(logger,name_ <<"  unsubscribe  error "<<error);
-        //     }
-        //     // remove last subcriptions
-        //     for(auto it = lastsubs_.begin();it != lastsubs_.end();) {
-        //         if (*it == ctpticker){
-        //             it = lastsubs_.erase(it);
-        //         }
-        //         else
-        //         {
-        //             ++it;
-        //         }
-        //     }
-        // }
-        // LOG_INFO(logger,name_ <<"  unsubcribe "<<nCount<<"|"<<sout<<".");
-	
     }
 
     // TODO: bar generate,data process,etc
