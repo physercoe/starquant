@@ -636,6 +636,12 @@ class BacktesterManager(QtWidgets.QWidget):
         policy = self.class_combo.sizePolicy()
         policy.setHorizontalStretch(1)
         self.class_combo.setSizePolicy(policy)
+
+        self.data_source = QtWidgets.QComboBox()
+        self.data_source.addItems(['DataBase','CSV File','HDF5 File'])
+        loaddatafile_btn =  QtWidgets.QPushButton("读取本地数据文件")
+        loaddatafile_btn.clicked.connect(self.load_data_file)
+
         self.symbol_line = QtWidgets.QLineEdit("SHFE F RB 1910")
         self.symbol_line.setMaximumWidth(160)
         self.interval_combo = QtWidgets.QComboBox()
@@ -696,6 +702,11 @@ class BacktesterManager(QtWidgets.QWidget):
         hbox1.addWidget(QtWidgets.QLabel('交易策略'))
         hbox1.addWidget(self.class_combo)
         hbox1.addWidget(reload_button)
+
+        hbox11 = QtWidgets.QHBoxLayout()
+        hbox11.addWidget(QtWidgets.QLabel('数据来源'))
+        hbox11.addWidget(self.data_source)
+        hbox11.addWidget(loaddatafile_btn)
 
         hbox2 = QtWidgets.QHBoxLayout()
         hbox2.addWidget(QtWidgets.QLabel('合约全称'))
@@ -864,6 +875,18 @@ class BacktesterManager(QtWidgets.QWidget):
         """"""
         self.write_log("请点击[优化结果]按钮查看")
         self.result_button.setEnabled(True)
+
+    def load_data_file(self):
+        import source.common.sqglobal as sqglobal
+        full_sym = self.symbol_line.text()
+        if self.interval_combo.currentText() == 'tick':
+            if sqglobal.history_tick[full_sym]:
+                self.write_log(f"has alread read {full_sym} tick")
+                return
+            if self.data_source.currentText() == 'CSV File':
+                QtWidgets.QMessageBox().information(None, 'Info','Please load data from Tools/csv loader!',QtWidgets.QMessageBox.Ok)
+                return
+        QtWidgets.QMessageBox().information(None, 'Info','Unsuppoted yet or pleas load from database!',QtWidgets.QMessageBox.Ok)  
 
 
     def reload_strategy(self):

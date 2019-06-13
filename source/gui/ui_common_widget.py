@@ -24,7 +24,7 @@ from source.data.rqdata import rqdata_client
 from ..common.utility import load_json, save_json
 from ..common.config import SETTING_FILENAME, SETTINGS
 from ..api.ctp_constant import THOST_FTDC_PT_Net
-
+from source.common import sqglobal
 from .ui_basic import *
 
 class WebWindow(QtWidgets.QFrame):
@@ -89,6 +89,10 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         load_button.clicked.connect(self.load_data)
 
         self.file_edit = QtWidgets.QLineEdit()
+
+        self.saveto_combo =  QtWidgets.QComboBox()
+        self.saveto_combo.addItems(['DataBase','Memory'])
+
         self.symbol_edit = QtWidgets.QLineEdit()
 
         self.exchange_combo = QtWidgets.QComboBox()
@@ -132,6 +136,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
 
         form = QtWidgets.QFormLayout()
         form.addRow(file_button, self.file_edit)
+        form.addRow("存储位置",self.saveto_combo)
         form.addRow(QtWidgets.QLabel())
         form.addRow(info_label)
         form.addRow("代码", self.symbol_edit)
@@ -280,6 +285,9 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         bars = []
         start = None
         count = 0
+        full_sym = generate_full_symbol(exchange,symbol)
+        alreadyhas = bool(sqglobal.history_bar[full_sym])
+        saveto = self.saveto_combo.currentText()
         try:
             for item in reader:
                 if datetime_format:
@@ -307,8 +315,9 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 if not start:
                     start = bar.datetime
                 if count % 100000 == 0:
-                    database_manager.save_bar_data(bars)
-                    bars.clear()
+                    if saveto == 'DataBase': 
+                        database_manager.save_bar_data(bars)
+                        bars.clear()
         except Exception as e:
             msg = "Load csv error: {0}".format(str(e.args[0])).encode("utf-8")
             QtWidgets.QMessageBox().information(
@@ -319,7 +328,12 @@ class CsvLoaderWidget(QtWidgets.QWidget):
 
         end = bar.datetime
         # insert into database
-        database_manager.save_bar_data(bars)
+
+        if saveto == 'Memory' and not alreadyhas:
+            sqglobal.history_bar[full_sym].extend(bars)
+        elif saveto == 'DataBase': 
+            database_manager.save_bar_data(bars)
+
         if start and end and count:
             msg = f"\
                 CSV载入Bar成功\n\
@@ -357,6 +371,9 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         ticks = []
         start = None
         count = 0
+        full_sym = generate_full_symbol(exchange,symbol)
+        alreadyhas = bool(sqglobal.history_tick[full_sym])
+        saveto = self.saveto_combo.currentText()
         try:
             for item in reader:
                 if datetime_format:
@@ -386,8 +403,9 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 if not start:
                     start = tick.datetime
                 if count % 100000 == 0:
-                    database_manager.save_tick_data(ticks)
-                    ticks.clear()
+                    if saveto == 'DataBase': 
+                        database_manager.save_tick_data(ticks)
+                        ticks.clear()
         except Exception as e:
             msg = "Load csv error: {0}".format(str(e.args[0])).encode("utf-8")
             QtWidgets.QMessageBox().information(
@@ -397,8 +415,11 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             return
 
         end = tick.datetime
-        # insert into database
-        database_manager.save_tick_data(ticks)
+        if saveto == 'Memory' and not alreadyhas:
+            sqglobal.history_tick[full_sym].extend(ticks) 
+        elif saveto == 'DataBase': 
+            database_manager.save_tick_data(ticks)         
+
         if start and end and count:
             msg = f"\
                 CSV载入Tick成功\n\

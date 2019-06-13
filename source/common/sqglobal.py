@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+from collections import defaultdict
 class dotdict(dict):
     """dot.notation access to dictionary attributes"""
     __getattr__ = dict.get
@@ -9,5 +9,7 @@ class dotdict(dict):
 
 context = dotdict()
 
+history_bar = defaultdict(list)
+history_tick = defaultdict(list)
 
 wxcmd = ''
