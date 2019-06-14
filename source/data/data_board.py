@@ -416,7 +416,7 @@ class ArrayManager(object):
             return up, down
         return up[-1], down[-1]
 
-    def highlow(self, HighPoint, LowPoint, HigherRatio,LowerRatio):
+    def highlow(self, currentHigh,currentLow,HighPoint, LowPoint, HigherRatio,LowerRatio):
         PriceBFired = False
         PriceA = 0.0
         PriceB = 0.0
@@ -430,7 +430,7 @@ class ArrayManager(object):
         TempLowTime = np.where(self.low == TempLow)[0][0] #第一个低点位置
         TempLowMin1 = self.low[TempHighTime:]
         TempHighMin1 = self.high[TempLowTime:]
-        if self.high[-1] == TempHigh and TempHigh > HighPoint:
+        if currentHigh == TempHigh and TempHigh > HighPoint:
             TempLow1 = np.min(TempLowMin1)
             TempLow1Time = np.where(TempLowMin1 == TempLow1)[0][-1]
             TempIfTimeBC = len(TempLowMin1) - TempLow1Time > 2
@@ -440,7 +440,7 @@ class ArrayManager(object):
                 PriceBFired = True
                 PriceA = TempHigh
                 PriceB = TempLow1
-        if self.low[-1] == TempLow and TempLow < LowPoint :
+        if currentLow == TempLow and TempLow < LowPoint :
             TempHigh1 = np.max(TempHighMin1)
             TempHigh1Time = np.where(TempHighMin1 == TempHigh1)[0][-1]
             TempIfTimeBC2 = (len(TempHighMin1) - TempHigh1Time > 2) 

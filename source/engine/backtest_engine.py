@@ -573,7 +573,7 @@ class BacktestingEngine:
 
         plt.show()
 
-    def run_optimization(self, optimization_setting: OptimizationSetting, output=True):
+    def run_optimization(self, optimization_setting: OptimizationSetting, output=True, datasource:str='DataBase'):
         """"""
         # Get optimization setting and target
         settings = optimization_setting.generate_setting()
@@ -605,7 +605,8 @@ class BacktestingEngine:
                 self.pricetick,
                 self.capital,
                 self.end,
-                self.mode
+                self.mode,
+                datasource
             )))
             results.append(result)
 
@@ -623,7 +624,7 @@ class BacktestingEngine:
 
         return result_values
 
-    def run_ga_optimization(self, optimization_setting: OptimizationSetting, population_size=100, ngen_size=30, output=True):
+    def run_ga_optimization(self, optimization_setting: OptimizationSetting, population_size=100, ngen_size=30, output=True,datasource:str='DataBase'):
         """"""
         # Get optimization setting and target
         settings = optimization_setting.generate_setting_ga()
@@ -744,7 +745,7 @@ class BacktestingEngine:
 
         for parameter_values in hof:
             setting = dict(parameter_values)
-            target_value = ga_optimize(parameter_values)[0]
+            target_value = ga_optimize(parameter_values,datasource)[0]
             results.append((setting, target_value, {}))
         
         return results
@@ -1266,7 +1267,8 @@ def optimize(
     pricetick: float,
     capital: int,
     end: datetime,
-    mode: BacktestingMode
+    mode: BacktestingMode,
+    datasource:str = "DataBase"
 ):
     """
     Function for running in multiprocessing.pool
@@ -1287,7 +1289,7 @@ def optimize(
     )
 
     engine.add_strategy(strategy_class, setting)
-    engine.load_data()
+    engine.load_data(datasource)
     engine.run_backtesting()
     engine.calculate_result()
     statistics = engine.calculate_statistics(output=False)
@@ -1297,7 +1299,7 @@ def optimize(
 
 
 @lru_cache(maxsize=1000000)
-def _ga_optimize(parameter_values: tuple):
+def _ga_optimize(parameter_values: tuple,datasource:str='DataBase'):
     """"""
     setting = dict(parameter_values)
 
@@ -1314,14 +1316,15 @@ def _ga_optimize(parameter_values: tuple):
         ga_pricetick,
         ga_capital,
         ga_end,
-        ga_mode
+        ga_mode,
+        datasource
     )
     return (result[1],)
 
 
-def ga_optimize(parameter_values: list):
+def ga_optimize(parameter_values: list,datasource:str='DataBase'):
     """"""
-    return _ga_optimize(tuple(parameter_values))
+    return _ga_optimize(tuple(parameter_values),datasource)
 
 
 @lru_cache(maxsize=10)

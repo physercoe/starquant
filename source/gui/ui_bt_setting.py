@@ -503,7 +503,8 @@ class Backtester:
         pricetick: float,
         capital: int,
         optimization_setting: OptimizationSetting,
-        use_ga: bool
+        use_ga: bool,
+        datasource:str = 'DataBase'
     ):
         """"""
         if use_ga:
@@ -537,12 +538,14 @@ class Backtester:
         if use_ga:
             self.result_values = engine.run_ga_optimization(
                 optimization_setting,
-                output=False
+                output=False,
+                datasource=datasource
             )
         else:
             self.result_values = engine.run_optimization(
                 optimization_setting,
-                output=False
+                output=False,
+                datasource=datasource
             )
 
         # Clear thread object handler.
@@ -567,7 +570,8 @@ class Backtester:
         pricetick: float,
         capital: int,
         optimization_setting: OptimizationSetting,
-        use_ga: bool
+        use_ga: bool,
+        datasource:str = 'DataBase'
     ):
         if self.thread:
             self.write_log("已有任务在运行中，请等待完成")
@@ -588,7 +592,8 @@ class Backtester:
                 pricetick,
                 capital,
                 optimization_setting,
-                use_ga
+                use_ga,
+                datasource
             )
         )
         self.thread.start()
@@ -961,6 +966,7 @@ class BacktesterManager(QtWidgets.QWidget):
         size = float(self.size_line.text())
         pricetick = float(self.pricetick_line.text())
         capital = float(self.capital_line.text())
+        datasource = self.data_source.currentText()
 
         if (end - start) > timedelta(days=90) and interval == 'tick':
             mbox = QtWidgets.QMessageBox().question(None, 'Warning','Two many data will slow system performance, continue?',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
@@ -988,7 +994,8 @@ class BacktesterManager(QtWidgets.QWidget):
             pricetick,
             capital,
             optimization_setting,
-            use_ga
+            use_ga,
+            datasource
         )
 
         self.result_button.setEnabled(False)

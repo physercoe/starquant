@@ -352,7 +352,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 总数量：{count}\n\
                 耗时：{totalloadtime}s\n\
                 "
-            QtWidgets.QMessageBox.information(self, "载入成功！", msg)  
+            QtWidgets.QMessageBox.information(None, "载入成功！", msg,QtWidgets.QMessageBox.Ok)  
         self.thread = None
         return
 
@@ -440,7 +440,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 总数量：{count}\n\
                 耗时：{totalloadtime}s\n\
                 "
-            QtWidgets.QMessageBox.information(self, "载入成功！", msg)
+            QtWidgets.QMessageBox.information(None, "载入成功！", msg,QtWidgets.QMessageBox.Ok)
         self.thread = None
 
 
