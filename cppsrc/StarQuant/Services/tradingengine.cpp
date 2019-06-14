@@ -108,9 +108,9 @@ namespace StarQuant
             msleep(1 * 1000);
     // switch day, at 20:30 everyday,  reset td engine, needconfirmation
             time(&timer);
-            tm_info = *localtime(&timer);
-            // at weekend do nothing
-            if ((tm_info.tm_wday == 5) || (tm_info.tm_wday == 6)){
+            tm_info = *localtime(&timer);            
+            // at weekend do nothing 0=sunday 6=saturday
+            if ((tm_info.tm_wday == 0) || (tm_info.tm_wday == 6)){
                 continue;
             } 
             if (tm_info.tm_hour == 20 && tm_info.tm_min == 30 && tm_info.tm_sec == 0){
@@ -128,6 +128,7 @@ namespace StarQuant
                 msg_relay_->send(pmsg);
             }
             if (tm_info.tm_hour == 20 && tm_info.tm_min == 45 && tm_info.tm_sec == 0){
+
                 std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0",MSG_TYPE_ENGINE_CONNECT);
                 msg_relay_->send(pmsg);
             }
