@@ -65,13 +65,229 @@ class WebWindow(QtWidgets.QFrame):
         self.setLayout(weblayout)
 
 
+class CsvTickLoader(QtCore.QObject):
+    startsig = QtCore.pyqtSignal()
+    finishmsg = QtCore.pyqtSignal(str)
+    def __init__(self,
+        file_path: str,
+        symbol: str,
+        exchange: Exchange,
+        datetime_head: str,
+        lastprice_head:str,
+        volume_head: str,
+        openinterest_head: str,
+        askprice1_head: str,
+        askvolume1_head: str,
+        bidprice1_head:str,
+        bidvolume1_head: str,
+        datetime_format: str,
+        saveto:str='DataBase'):
+        super(CsvTickLoader,self).__init__()
+        self.file_path = file_path
+        self.symbol = symbol
+        self.exchange = exchange
+        self.datetime_head = datetime_head
+        self.lastprice_head = lastprice_head
+        self.volume_head = volume_head
+        self.openinterest_head = openinterest_head
+        self.askprice1_head = askprice1_head
+        self.askvolume1_head = askvolume1_head
+        self.bidprice1_head = bidprice1_head
+        self.bidvolume1_head = bidvolume1_head
+        self.datetime_format = datetime_format
+        self.saveto = saveto
+        self.startsig.connect(self.run)
+
+    @QtCore.pyqtSlot()
+    def run(self):
+        with open(self.file_path, "rt") as f:
+            self.load_tick_by_handle(f)
+
+    def load_tick_by_handle(self, f: TextIO):
+        """
+        load by text mode file handle
+        """
+        reader = csv.DictReader(f)
+
+        ticks = []
+        start = None
+        count = 0
+        full_sym = generate_full_symbol(self.exchange,self.symbol)
+        alreadyhas = bool(sqglobal.history_tick[full_sym])        
+        starttime = ttime()
+        try:
+            for item in reader:
+                if self.datetime_format:
+                    dt = datetime.strptime(item[self.datetime_head], self.datetime_format)
+                else:
+                    dt = datetime.fromisoformat(item[self.datetime_head])
+
+                tick = TickData(
+                    symbol=self.symbol,
+                    exchange=self.exchange,
+                    datetime=dt,
+                    volume=int(item[self.volume_head]),
+                    last_price=float(item[self.lastprice_head]),
+                    open_interest=int(item[self.openinterest_head]),
+                    ask_price_1=float(item[self.askprice1_head]),
+                    ask_volume_1=int(item[self.askvolume1_head]),
+                    bid_price_1=float(item[self.bidprice1_head]),
+                    bid_volume_1=int(item[self.bidvolume1_head]),
+                    depth=1,                
+                    gateway_name="DB",
+                )
+                ticks.append(tick)
+
+                # do some statistics
+                count += 1
+                if not start:
+                    start = tick.datetime
+                if count % 100000 == 0:
+                    if self.saveto == 'DataBase': 
+                        database_manager.save_tick_data(ticks)
+                        ticks.clear()
+        except Exception as e:
+            msg = "Load csv error: {0}".format(str(e.args[0])).encode("utf-8")
+            self.finishmsg.emit(msg)
+            return
+
+        end = tick.datetime
+        if self.saveto == 'Memory' and not alreadyhas:
+            sqglobal.history_tick[full_sym].extend(ticks) 
+        elif self.saveto == 'DataBase': 
+            database_manager.save_tick_data(ticks)         
+        endtime = ttime()
+        totalloadtime = int(endtime-starttime)
+        if start and end and count:
+            msg = f"\
+                CSV载入Tick成功\n\
+                代码：{self.symbol}\n\
+                交易所：{self.exchange.value}\n\
+                起始：{start}\n\
+                结束：{end}\n\
+                总数量：{count}\n\
+                耗时：{totalloadtime}s\n\
+                "
+            self.finishmsg.emit(msg)
+
+
+class CsvBarLoader(QtCore.QObject):
+    startsig = QtCore.pyqtSignal()
+    finishmsg = QtCore.pyqtSignal(str)
+    def __init__(self,
+        file_path: str,
+        symbol: str,
+        exchange: Exchange,
+        interval: Interval,
+        datetime_head: str,
+        open_head: str,
+        high_head: str,
+        low_head: str,
+        close_head: str,
+        volume_head: str,
+        datetime_format: str,
+        saveto:str='DataBase'):
+        super(CsvBarLoader,self).__init__()
+        self.file_path = file_path
+        self.symbol = symbol
+        self.exchange = exchange
+        self.interval = interval
+        self.datetime_head = datetime_head
+        self.open_head = open_head
+        self.high_head = high_head
+        self.low_head = low_head
+        self.close_head = close_head
+        self.volume_head = volume_head
+        self.datetime_format = datetime_format
+        self.saveto = saveto
+        self.startsig.connect(self.run)
+
+    @QtCore.pyqtSlot()
+    def run(self):
+        with open(self.file_path, "rt") as f:
+            self.load_by_handle(f)
+
+    def load_by_handle(self, f: TextIO):
+        """
+        load by text mode file handle
+        """
+        reader = csv.DictReader(f)
+
+        bars = []
+        start = None
+        count = 0
+        full_sym = generate_full_symbol(self.exchange,self.symbol)
+        alreadyhas = bool(sqglobal.history_bar[full_sym])        
+        starttime = ttime()
+        try:
+            for item in reader:
+                if self.datetime_format:
+                    dt = datetime.strptime(item[self.datetime_head], self.datetime_format)
+                else:
+                    dt = datetime.fromisoformat(item[self.datetime_head])
+
+                bar = BarData(
+                    symbol=self.symbol,
+                    exchange=self.exchange,
+                    datetime=dt,
+                    interval=self.interval,
+                    volume=int(item[self.volume_head]),
+                    open_price=float(item[self.open_head]),
+                    high_price=float(item[self.high_head]),
+                    low_price=float(item[self.low_head]),
+                    close_price=float(item[self.close_head]),
+                    gateway_name="DB",
+                )
+
+                bars.append(bar)
+
+                # do some statistics
+                count += 1
+                if not start:
+                    start = bar.datetime
+                if count % 100000 == 0:
+                    if self.saveto == 'DataBase': 
+                        database_manager.save_bar_data(bars)
+                        bars.clear()
+        except Exception as e:
+            msg = "Load csv error: {0}".format(str(e.args[0])).encode("utf-8")
+            self.finishmsg.emit(msg)
+            return
+
+        end = bar.datetime
+        # insert into database
+
+        if self.saveto == 'Memory' and not alreadyhas:
+            sqglobal.history_bar[full_sym].extend(bars)
+        elif self.saveto == 'DataBase': 
+            database_manager.save_bar_data(bars)
+        endtime = ttime()
+        totalloadtime = int(endtime-starttime)
+        if start and end and count:
+            msg = f"\
+                CSV载入Bar成功\n\
+                代码：{self.symbol}\n\
+                交易所：{self.exchange.value}\n\
+                周期：{self.interval.value}\n\
+                起始：{start}\n\
+                结束：{end}\n\
+                总数量：{count}\n\
+                耗时：{totalloadtime}s\n\
+                "
+            self.finishmsg.emit(msg)              
+
+
+
 class CsvLoaderWidget(QtWidgets.QWidget):
     """"""
 
     def __init__(self):
         """"""
         super().__init__()
-        self.thread = None
+        self.isbusy = False
+        self.thread = QtCore.QThread()
+        self.thread.start() 
+        self.worker = None
         self.init_ui()
 
     def init_ui(self):
@@ -211,7 +427,8 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         exchange = self.exchange_combo.currentData()
         datetime_head = self.datetime_edit.text()
         datetime_format = self.format_edit.text()
-        if self.thread:
+        saveto = self.saveto_combo.currentText()
+        if self.isbusy:
             QtWidgets.QMessageBox().information(
                 None, 'Info','已有数据在导入，请等待!',
                 QtWidgets.QMessageBox.Ok)
@@ -225,24 +442,28 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             tick_ask_volume_1 = self.tick_ask_volume_1.text()
             tick_bid_price_1 = self.tick_bid_price_1.text()
             tick_bid_volume_1 = self.tick_bid_volume_1.text()
-            self.thread = Thread(
-                target=self.load_tick,
-                args=(
-                    file_path,
-                    symbol,
-                    exchange,
-                    datetime_head,
-                    tick_last_price,
-                    tick_volume,
-                    tick_open_interest,
-                    tick_ask_price_1,
-                    tick_ask_volume_1,
-                    tick_bid_price_1,
-                    tick_bid_volume_1,
-                    datetime_format
-                )
+            self.isbusy = True
+            self.worker = CsvTickLoader(
+                file_path,
+                symbol,
+                exchange,
+                datetime_head,
+                tick_last_price,
+                tick_volume,
+                tick_open_interest,
+                tick_ask_price_1,
+                tick_ask_volume_1,
+                tick_bid_price_1,
+                tick_bid_volume_1,
+                datetime_format,
+                saveto
             )
-            self.thread.start()
+            self.worker.moveToThread(self.thread)
+            self.worker.finishmsg.connect(self.load_finished)
+            self.worker.startsig.emit()            
+            # self.thread.started.connect(self.worker.load_data)
+            #self.thread.finished.connect(self.worker.deleteLater)
+                  
         else:
             interval = self.interval_combo.currentData()
             open_head = self.open_edit.text()
@@ -250,276 +471,34 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             high_head = self.high_edit.text()
             close_head = self.close_edit.text()
             volume_head = self.volume_edit.text()
-            self.thread = Thread(
-                target=self.load,
-                args=(
-                    file_path,
-                    symbol,
-                    exchange,
-                    interval,
-                    datetime_head,
-                    open_head,
-                    high_head,
-                    low_head,
-                    close_head,
-                    volume_head,
-                    datetime_format                    
-                )
+            self.isbusy = True
+            self.worker = CsvBarLoader(
+                file_path,
+                symbol,
+                exchange,
+                interval,
+                datetime_head,
+                open_head,
+                high_head,
+                low_head,
+                close_head,
+                volume_head,
+                datetime_format,
+                saveto                    
             )
-            self.thread.start()
+            self.worker.moveToThread(self.thread)
+            self.worker.finishmsg.connect(self.load_finished)
+            self.worker.startsig.emit()
+            # self.thread.started.connect(self.worker.load_data)
+            # self.thread.finished.connect(self.worker.deleteLater)
+            # self.thread.start()
 
-    def load_by_handle(
-        self,
-        f: TextIO,
-        symbol: str,
-        exchange: Exchange,
-        interval: Interval,
-        datetime_head: str,
-        open_head: str,
-        high_head: str,
-        low_head: str,
-        close_head: str,
-        volume_head: str,
-        datetime_format: str,
-    ):
-        """
-        load by text mode file handle
-        """
-        reader = csv.DictReader(f)
-
-        bars = []
-        start = None
-        count = 0
-        full_sym = generate_full_symbol(exchange,symbol)
-        alreadyhas = bool(sqglobal.history_bar[full_sym])
-        saveto = self.saveto_combo.currentText()
-        starttime = ttime()
-        try:
-            for item in reader:
-                if datetime_format:
-                    dt = datetime.strptime(item[datetime_head], datetime_format)
-                else:
-                    dt = datetime.fromisoformat(item[datetime_head])
-
-                bar = BarData(
-                    symbol=symbol,
-                    exchange=exchange,
-                    datetime=dt,
-                    interval=interval,
-                    volume=int(item[volume_head]),
-                    open_price=float(item[open_head]),
-                    high_price=float(item[high_head]),
-                    low_price=float(item[low_head]),
-                    close_price=float(item[close_head]),
-                    gateway_name="DB",
-                )
-
-                bars.append(bar)
-
-                # do some statistics
-                count += 1
-                if not start:
-                    start = bar.datetime
-                if count % 100000 == 0:
-                    if saveto == 'DataBase': 
-                        database_manager.save_bar_data(bars)
-                        bars.clear()
-        except Exception as e:
-            msg = "Load csv error: {0}".format(str(e.args[0])).encode("utf-8")
-            QtWidgets.QMessageBox().information(
-                None, 'Error',msg,
-                QtWidgets.QMessageBox.Ok)
-            self.thread = None
-            return
-
-        end = bar.datetime
-        # insert into database
-
-        if saveto == 'Memory' and not alreadyhas:
-            sqglobal.history_bar[full_sym].extend(bars)
-        elif saveto == 'DataBase': 
-            database_manager.save_bar_data(bars)
-        endtime = ttime()
-        totalloadtime = int(endtime-starttime)
-        if start and end and count:
-            msg = f"\
-                CSV载入Bar成功\n\
-                代码：{symbol}\n\
-                交易所：{exchange.value}\n\
-                周期：{interval.value}\n\
-                起始：{start}\n\
-                结束：{end}\n\
-                总数量：{count}\n\
-                耗时：{totalloadtime}s\n\
-                "
-            QtWidgets.QMessageBox.information(None, "载入成功！", msg,QtWidgets.QMessageBox.Ok)  
-        self.thread = None
-        return
-
-    def load_tick_by_handle(
-        self,
-        f: TextIO,
-        symbol: str,
-        exchange: Exchange,
-        datetime_head: str,
-        lastprice_head:str,
-        volume_head: str,
-        openinterest_head: str,
-        askprice1_head: str,
-        askvolume1_head: str,
-        bidprice1_head:str,
-        bidvolume1_head: str,
-        datetime_format: str,
-    ):
-        """
-        load by text mode file handle
-        """
-        reader = csv.DictReader(f)
-
-        ticks = []
-        start = None
-        count = 0
-        full_sym = generate_full_symbol(exchange,symbol)
-        alreadyhas = bool(sqglobal.history_tick[full_sym])
-        saveto = self.saveto_combo.currentText()
-        starttime = ttime()
-        try:
-            for item in reader:
-                if datetime_format:
-                    dt = datetime.strptime(item[datetime_head], datetime_format)
-                else:
-                    dt = datetime.fromisoformat(item[datetime_head])
-
-                tick = TickData(
-                    symbol=symbol,
-                    exchange=exchange,
-                    datetime=dt,
-                    volume=int(item[volume_head]),
-                    last_price=float(item[lastprice_head]),
-                    open_interest=int(item[openinterest_head]),
-                    ask_price_1=float(item[askprice1_head]),
-                    ask_volume_1=int(item[askvolume1_head]),
-                    bid_price_1=float(item[bidprice1_head]),
-                    bid_volume_1=int(item[bidvolume1_head]),
-                    depth=1,                
-                    gateway_name="DB",
-                )
-
-                ticks.append(tick)
-
-                # do some statistics
-                count += 1
-                if not start:
-                    start = tick.datetime
-                if count % 100000 == 0:
-                    if saveto == 'DataBase': 
-                        database_manager.save_tick_data(ticks)
-                        ticks.clear()
-        except Exception as e:
-            msg = "Load csv error: {0}".format(str(e.args[0])).encode("utf-8")
-            QtWidgets.QMessageBox().information(
-                None, 'Error',msg,
-                QtWidgets.QMessageBox.Ok)
-            self.thread = None
-            return
-
-        end = tick.datetime
-        if saveto == 'Memory' and not alreadyhas:
-            sqglobal.history_tick[full_sym].extend(ticks) 
-        elif saveto == 'DataBase': 
-            database_manager.save_tick_data(ticks)         
-        endtime = ttime()
-        totalloadtime = int(endtime-starttime)
-        if start and end and count:
-            msg = f"\
-                CSV载入Tick成功\n\
-                代码：{symbol}\n\
-                交易所：{exchange.value}\n\
-                起始：{start}\n\
-                结束：{end}\n\
-                总数量：{count}\n\
-                耗时：{totalloadtime}s\n\
-                "
-            QtWidgets.QMessageBox.information(None, "载入成功！", msg,QtWidgets.QMessageBox.Ok)
-        self.thread = None
-
-
-    def load(
-        self,
-        file_path: str,
-        symbol: str,
-        exchange: Exchange,
-        interval: Interval,
-        datetime_head: str,
-        open_head: str,
-        high_head: str,
-        low_head: str,
-        close_head: str,
-        volume_head: str,
-        datetime_format: str,
-    ):
-        """
-        load by filename
-
-        """
-        with open(file_path, "rt") as f:
-            self.load_by_handle(
-                f,
-                symbol=symbol,
-                exchange=exchange,
-                interval=interval,
-                datetime_head=datetime_head,
-                open_head=open_head,
-                high_head=high_head,
-                low_head=low_head,
-                close_head=close_head,
-                volume_head=volume_head,
-                datetime_format=datetime_format,
-            )
-
-    def load_tick(
-        self,
-        file_path: str,
-        symbol: str,
-        exchange: Exchange,
-        datetime_head: str,
-        lastprice_head:str,
-        volume_head: str,
-        openinterest_head: str,
-        askprice1_head: str,
-        askvolume1_head: str,
-        bidprice1_head:str,
-        bidvolume1_head: str,
-        datetime_format: str,
-    ):
-        """
-        load by filename
-
-        """
-        with open(file_path, "rt") as f:
-            self.load_tick_by_handle(
-                f,
-                symbol=symbol,
-                exchange=exchange,
-                datetime_head=datetime_head,
-                lastprice_head=lastprice_head,
-                volume_head=volume_head,
-                openinterest_head=openinterest_head,
-                askprice1_head=askprice1_head,
-                askvolume1_head=askvolume1_head,
-                bidprice1_head=bidprice1_head,
-                bidvolume1_head=bidvolume1_head,
-                datetime_format=datetime_format,
-            )
-
-
-
-
-
-
-
-
-
+    def load_finished(self,msg):
+        QtWidgets.QMessageBox().information(
+            None, 'Info',msg,
+            QtWidgets.QMessageBox.Ok)
+        # self.thread.wait()
+        self.isbusy = False
 
 class DataDownloaderWidget(QtWidgets.QWidget):
     """"""
