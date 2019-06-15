@@ -650,6 +650,8 @@ class BacktesterManager(QtWidgets.QWidget):
         loaddatafile_btn =  QtWidgets.QPushButton("内存数据情况")
         loaddatafile_btn.clicked.connect(self.load_data_file)
 
+        cleardata_btn = QtWidgets.QPushButton("清空内存")
+
         self.symbol_line = QtWidgets.QLineEdit("SHFE F RB 1910")
         self.symbol_line.setMaximumWidth(160)
         self.interval_combo = QtWidgets.QComboBox()

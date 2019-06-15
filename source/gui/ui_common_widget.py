@@ -16,7 +16,8 @@ from copy import copy
 import webbrowser
 from threading import Thread
 from time import time as ttime
-
+import gzip
+import io
 from ..common.constant import *
 from ..common.datastruct import *
 from ..engine.iengine import EventEngine
@@ -66,7 +67,7 @@ class WebWindow(QtWidgets.QFrame):
 
 
 class CsvTickLoader(QtCore.QObject):
-    startsig = QtCore.pyqtSignal()
+    startsig = QtCore.pyqtSignal(str)
     finishmsg = QtCore.pyqtSignal(str)
     def __init__(self,
         file_path: str,
@@ -98,10 +99,14 @@ class CsvTickLoader(QtCore.QObject):
         self.saveto = saveto
         self.startsig.connect(self.run)
 
-    @QtCore.pyqtSlot()
-    def run(self):
-        with open(self.file_path, "rt") as f:
-            self.load_tick_by_handle(f)
+    # @QtCore.pyqtSlot()
+    def run(self,suffix:str = 'csv'):
+        if suffix == 'csv':
+            with open(self.file_path, "rt") as f:
+                self.load_tick_by_handle(f)
+        elif suffix == 'csv.gz':
+            with gzip.open(self.file_path,'rt') as f:
+                self.load_tick_by_handle(f)
 
     def load_tick_by_handle(self, f: TextIO):
         """
@@ -116,7 +121,7 @@ class CsvTickLoader(QtCore.QObject):
         alreadyhas = bool(sqglobal.history_tick[full_sym])        
         starttime = ttime()
         try:
-            for item in reader:
+            for item in reader:                
                 if self.datetime_format:
                     dt = datetime.strptime(item[self.datetime_head], self.datetime_format)
                 else:
@@ -147,7 +152,7 @@ class CsvTickLoader(QtCore.QObject):
                         database_manager.save_tick_data(ticks)
                         ticks.clear()
         except Exception as e:
-            msg = "Load csv error: {0}".format(str(e.args[0])).encode("utf-8")
+            msg = "Load csv error: {0}".format(str(e.args[0]))
             self.finishmsg.emit(msg)
             return
 
@@ -172,7 +177,7 @@ class CsvTickLoader(QtCore.QObject):
 
 
 class CsvBarLoader(QtCore.QObject):
-    startsig = QtCore.pyqtSignal()
+    startsig = QtCore.pyqtSignal(str)
     finishmsg = QtCore.pyqtSignal(str)
     def __init__(self,
         file_path: str,
@@ -202,10 +207,14 @@ class CsvBarLoader(QtCore.QObject):
         self.saveto = saveto
         self.startsig.connect(self.run)
 
-    @QtCore.pyqtSlot()
-    def run(self):
-        with open(self.file_path, "rt") as f:
-            self.load_by_handle(f)
+    # @QtCore.pyqtSlot()
+    def run(self,suffix:str = 'csv'):
+        if suffix == 'csv':
+            with open(self.file_path, "rt") as f:
+                self.load_by_handle(f)
+        elif suffix == 'csv.gz':
+            with gzip.open(self.file_path,"rt") as f:
+                self.load_by_handle(f)
 
     def load_by_handle(self, f: TextIO):
         """
@@ -250,7 +259,7 @@ class CsvBarLoader(QtCore.QObject):
                         database_manager.save_bar_data(bars)
                         bars.clear()
         except Exception as e:
-            msg = "Load csv error: {0}".format(str(e.args[0])).encode("utf-8")
+            msg = "Load csv error: {0}".format(str(e.args[0]))
             self.finishmsg.emit(msg)
             return
 
@@ -300,7 +309,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             & ~QtCore.Qt.WindowMaximizeButtonHint)
 
         self.fileformat_combo = QtWidgets.QComboBox()
-        self.fileformat_combo.addItems(['csv','hdf5'])
+        self.fileformat_combo.addItems(['csv','csv.gz','hdf5'])
 
         file_button = QtWidgets.QPushButton("选择文件")
         file_button.clicked.connect(self.select_file)
@@ -415,13 +424,14 @@ class CsvLoaderWidget(QtWidgets.QWidget):
     def select_file(self):
         """"""
         result: str = QtWidgets.QFileDialog.getOpenFileName(
-            self, filter="CSV (*.csv)")
+            self, filter="CSV (*.csv);;CSV GZ(*.csv.gz);;HDF5(*.hdf5);;H5(*.h5)")
         filename = result[0]
         if filename:
             self.file_edit.setText(filename)
 
     def load_data(self):
         """"""
+        fileformat = self.fileformat_combo.currentText()
         file_path = self.file_edit.text()
         symbol = self.symbol_edit.text()
         exchange = self.exchange_combo.currentData()
@@ -460,7 +470,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             )
             self.worker.moveToThread(self.thread)
             self.worker.finishmsg.connect(self.load_finished)
-            self.worker.startsig.emit()            
+            self.worker.startsig.emit(fileformat)            
             # self.thread.started.connect(self.worker.load_data)
             #self.thread.finished.connect(self.worker.deleteLater)
                   
@@ -488,7 +498,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             )
             self.worker.moveToThread(self.thread)
             self.worker.finishmsg.connect(self.load_finished)
-            self.worker.startsig.emit()
+            self.worker.startsig.emit(fileformat)
             # self.thread.started.connect(self.worker.load_data)
             # self.thread.finished.connect(self.worker.deleteLater)
             # self.thread.start()
