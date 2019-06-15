@@ -497,6 +497,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         QtWidgets.QMessageBox().information(
             None, 'Info',msg,
             QtWidgets.QMessageBox.Ok)
+        self.worker.deleteLater()
         # self.thread.wait()
         self.isbusy = False
 

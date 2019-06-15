@@ -30,7 +30,7 @@ CtaTemplate = StrategyBase
 sys.path.insert(0,"../..")
 from mystrategy import strategy_list,strategy_list_reload,startstrategy
 
-
+import source.common.sqglobal as sqglobal
 
 
 class BtSettingWindow(QtWidgets.QFrame):
@@ -647,7 +647,7 @@ class BacktesterManager(QtWidgets.QWidget):
 
         self.data_source = QtWidgets.QComboBox()
         self.data_source.addItems(['DataBase','Memory'])
-        loaddatafile_btn =  QtWidgets.QPushButton("读取本地数据文件")
+        loaddatafile_btn =  QtWidgets.QPushButton("内存数据情况")
         loaddatafile_btn.clicked.connect(self.load_data_file)
 
         self.symbol_line = QtWidgets.QLineEdit("SHFE F RB 1910")
@@ -886,16 +886,23 @@ class BacktesterManager(QtWidgets.QWidget):
         self.result_button.setEnabled(True)
 
     def load_data_file(self):
-        import source.common.sqglobal as sqglobal
+        if not self.data_source.currentText() == 'Memory':
+            return
+        
         full_sym = self.symbol_line.text()
         if self.interval_combo.currentText() == 'tick':
             if sqglobal.history_tick[full_sym]:
                 QtWidgets.QMessageBox().information(None, 'Info','already has data in memory!',QtWidgets.QMessageBox.Ok)
                 return
-            if self.data_source.currentText() == 'CSV File':
-                QtWidgets.QMessageBox().information(None, 'Info','Please load data from Tools/csv loader!',QtWidgets.QMessageBox.Ok)
+            QtWidgets.QMessageBox().information(None, 'Info','Please load data to from Tools/Data loader!',QtWidgets.QMessageBox.Ok)
+            return
+        elif self.interval_combo.currentText() == '1m':
+            if sqglobal.history_bar[full_sym]:
+                QtWidgets.QMessageBox().information(None, 'Info','already has data in memory!',QtWidgets.QMessageBox.Ok)
                 return
-        QtWidgets.QMessageBox().information(None, 'Info','not implemented yet or pleas load from database!',QtWidgets.QMessageBox.Ok)  
+            QtWidgets.QMessageBox().information(None, 'Info','Please load data to from Tools/Data loader!',QtWidgets.QMessageBox.Ok)
+            return                            
+        QtWidgets.QMessageBox().information(None, 'Info','not implemented yet!',QtWidgets.QMessageBox.Ok)  
 
 
     def reload_strategy(self):
@@ -1016,6 +1023,8 @@ class BacktesterManager(QtWidgets.QWidget):
         
         full_symbol = self.symbol_line.text()
         interval = self.interval_combo.currentText()
+        datasource = self.data_source.currentText()
+
         if interval == 'tick':
             interval = '1m'
         start = self.start_date_edit.date().toPyDate()
@@ -1029,13 +1038,13 @@ class BacktesterManager(QtWidgets.QWidget):
         for i in range(self.bt_bottommiddle.count()):
             if self.bt_bottommiddle.tabText(i) == full_symbol:
                 widget = self.bt_bottommiddle.widget(i)
-                widget.reset(full_symbol,start,end,Interval(interval))                
+                widget.reset(full_symbol,start,end,Interval(interval),datasource)                
                 if addtrade:
                     widget.add_trades(trades)
                     widget.show_text_signals()
                 return                    
         dataviewchart = BTQuotesChart()
-        dataviewchart.reset(full_symbol,start,end,Interval(interval)) 
+        dataviewchart.reset(full_symbol,start,end,Interval(interval),datasource) 
         if addtrade:
             dataviewchart.add_trades(trades)
             dataviewchart.show_text_signals()

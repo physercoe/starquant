@@ -31,6 +31,7 @@ from ..common.constant import Interval,Direction
 sys.path.insert(0,"..")
 from pyfolio import plotting
 from pyfolio.utils import (to_utc, to_series)
+import source.common.sqglobal as sqglobal
 
 # def mydate(x,pos=None):
 # 	tt=np.clip(int(x+0.5),0,len(list_ktime)-1)
@@ -286,9 +287,9 @@ class BTQuotesChart(QtGui.QWidget):
         self.signals_visible = False
         self.plot()
 
-    def reset(self,symbol:str,start: datetime, end: datetime,interval: Interval = Interval.MINUTE):
+    def reset(self,symbol:str,start: datetime, end: datetime,interval: Interval = Interval.MINUTE, datasource:str = 'DataBase'):
         self.full_symbol = symbol
-        self.load_bar(start,end,interval)
+        self.load_bar(start,end,interval,datasource)
         self.klineitem.generatePicture()
         self.volumeitem.generatePicture()
         if self.signals_group_arrow:
@@ -410,20 +411,44 @@ class BTQuotesChart(QtGui.QWidget):
         self.init_chart()
         self.init_chart_item()
 
-    def load_bar(self,start: datetime,end: datetime,interval: Interval = Interval.MINUTE):
+    def load_bar(self,start: datetime,end: datetime,interval: Interval = Interval.MINUTE, datasource:str = 'DataBase'):
         symbol, exchange = extract_full_symbol(self.full_symbol)
 
         if start > end:
             tmp = end
             end = start
-            start = tmp 
-        bars = database_manager.load_bar_data(
-            symbol=symbol,
-            exchange=exchange,
-            interval=interval,
-            start=start,
-            end=end,
-        )
+            start = tmp
+
+        bars = []
+        if datasource == 'DataBase': 
+            bars = database_manager.load_bar_data(
+                symbol=symbol,
+                exchange=exchange,
+                interval=interval,
+                start=start,
+                end=end,
+            )
+        elif datasource == 'Memory':
+            startix = 0
+            endix = 0
+            totalbarlist = sqglobal.history_bar[self.full_symbol]
+            if not totalbarlist:
+                QtWidgets.QMessageBox().information(None, 'Info','No data in memory!',QtWidgets.QMessageBox.Ok)
+                return
+            totalbars = len(totalbarlist)
+            for i in range(totalbars):
+                if totalbarlist[i].datetime.date() < start:
+                    continue
+                startix = i
+                break
+            for i in reversed(range(totalbars)):
+                if totalbarlist[i].datetime.date() > end:
+                    continue
+                endix = i
+                break                
+            endix = min(endix+1,totalbars)
+            bars = totalbarlist[startix:endix]
+
         self.data.clear()
         self.data.extend(bars)
 
