@@ -767,10 +767,18 @@ class StrategyEngine(BaseEngine):
         callback: Callable[[BarData], None]
     ):
         """"""
-        symbol, exchange = extract_full_symbol(full_symbol)
-        end = datetime.now()
-        start = end - timedelta(days)
 
+        tradedays = abs(days)
+        weekday = datetime.now().weekday()
+        adddays = 2 if (days-weekday > 0) else 0
+        if weekday == 6:
+            tradedays = days + 1
+        else:
+            tradedays = days + adddays
+
+        symbol, exchange = extract_full_symbol(full_symbol)
+        end = datetime.now()  
+        start = end - timedelta(tradedays)
         # Query bars from RQData by default, if not found, load from database.
         bars = self.query_bar_from_rq(symbol, exchange, interval, start, end)
         if not bars:
@@ -784,7 +792,27 @@ class StrategyEngine(BaseEngine):
 
         for bar in bars:
             callback(bar)
-    
+
+    def load_tick(self, full_symbol: str, days: int, callback: Callable):   
+        tradedays = abs(days)
+        weekday = datetime.now().weekday()
+        adddays = 2 if (days-weekday > 0) else 0
+        if weekday == 6:
+            tradedays = days + 1
+        else:
+            tradedays = days + adddays
+
+        symbol, exchange = extract_full_symbol(full_symbol)
+        end = datetime.now()  
+        start = end - timedelta(tradedays)
+
+        ticks = database_manager.load_tick_data(symbol,exchange,start,end)
+        
+        for tick in ticks:
+            callback(tick)
+
+
+
     
     def get_tick(self, full_symbol):
         """

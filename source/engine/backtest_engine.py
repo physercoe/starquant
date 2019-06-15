@@ -896,9 +896,6 @@ class BacktestingEngine:
 
             self.trades[trade.vt_tradeid] = trade
 
-
-
-
     def cross_stop_order(self):
         """
         Cross stop order with last bar/tick data.
@@ -1012,7 +1009,16 @@ class BacktestingEngine:
         """
         called by strategy
         """
-        start = self.start - timedelta(days=days)
+        #以交易日为准，一星期内的时间补上周末二天，大于一周的时间暂不考虑补全额外的交易日
+        tradedays = abs(days)
+        weekday = self.start.date().weekday()
+        adddays = 2 if (days-weekday > 0) else 0
+        if weekday == 6:
+            tradedays = days + 1
+        else:
+            tradedays = days + adddays
+    
+        start = self.start - timedelta(days=tradedays)
         end = self.start            
         self.history_bar = load_bar_data(
             self.symbol,
@@ -1030,7 +1036,15 @@ class BacktestingEngine:
         """
         called by strategy
         """
-        start = self.start - timedelta(days=days)
+        tradedays = abs(days)
+        weekday = self.start.date().weekday()
+        adddays = 2 if (days-weekday > 0) else 0
+        if weekday == 6:
+            tradedays = days + 1
+        else:
+            tradedays = days + adddays
+
+        start = self.start - timedelta(days=tradedays)
         end = self.start            
         self.history_tick = load_tick_data(
             self.symbol,
