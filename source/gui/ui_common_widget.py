@@ -309,7 +309,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             & ~QtCore.Qt.WindowMaximizeButtonHint)
 
         self.fileformat_combo = QtWidgets.QComboBox()
-        self.fileformat_combo.addItems(['csv','csv.gz','hdf5'])
+        self.fileformat_combo.addItems(['csv.gz','csv','hdf5'])
 
         file_button = QtWidgets.QPushButton("选择文件")
         file_button.clicked.connect(self.select_file)
@@ -320,7 +320,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         self.file_edit = QtWidgets.QLineEdit()
 
         self.saveto_combo =  QtWidgets.QComboBox()
-        self.saveto_combo.addItems(['DataBase','Memory'])
+        self.saveto_combo.addItems(['Memory','DataBase'])
 
         self.symbol_edit = QtWidgets.QLineEdit()
 

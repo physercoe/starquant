@@ -1004,7 +1004,7 @@ class BacktestingEngine:
 
 
     def load_bar(
-        self, full_symbol: str, days: int, interval: Interval, callback: Callable
+        self, full_symbol: str, days: int, interval: Interval, callback: Callable,datasource:str = 'DataBase'
     ):
         """
         called by strategy
@@ -1019,20 +1019,42 @@ class BacktestingEngine:
             tradedays = days + adddays
     
         start = self.start - timedelta(days=tradedays)
-        end = self.start            
-        self.history_bar = load_bar_data(
-            self.symbol,
-            self.exchange,
-            interval,
-            start,
-            end
-        )
+        end = self.start  
+        if datasource == 'DataBase':
+            self.history_bar = load_bar_data(
+                self.symbol,
+                self.exchange,
+                interval,
+                start,
+                end
+            )
+        elif datasource == "Memory":
+            startix = 0
+            endix = 0
+            totalbarlist = sqglobal.history_bar[self.full_symbol]
+            if not totalbarlist:
+                self.output('load_bar数据为空，请先读入')
+                return
+            totalbars = len(totalbarlist)
+            for i in range(totalbars):
+                if totalbarlist[i].datetime.date() < start:
+                    continue
+                startix = i
+                break
+            for i in reversed(range(totalbars)):
+                if totalbarlist[i].datetime.date() > end:
+                    continue
+                endix = i
+                break                
+            endix = min(endix+1,totalbars)
+            self.history_bar = totalbarlist[startix:endix]
+
         self.historybar_callback = callback
 
         # self.days = days
         # self.callback = callback
 
-    def load_tick(self, full_symbol: str, days: int, callback: Callable):
+    def load_tick(self, full_symbol: str, days: int, callback: Callable,datasource:str='DataBase'):
         """
         called by strategy
         """
@@ -1045,17 +1067,36 @@ class BacktestingEngine:
             tradedays = days + adddays
 
         start = self.start - timedelta(days=tradedays)
-        end = self.start            
-        self.history_tick = load_tick_data(
-            self.symbol,
-            self.exchange,
-            start,
-            end
-        )
-        self.historytick_callback = callback        
-
-        
-        
+        end = self.start
+        if datasource == 'DataBase':            
+            self.history_tick = load_tick_data(
+                self.symbol,
+                self.exchange,
+                start,
+                end
+            )
+            self.historytick_callback = callback        
+        elif datasource == 'Memory':
+            startix = 0
+            endix = 0
+            totalticklist = sqglobal.history_tick[self.full_symbol]
+            if not totalticklist:
+                self.output('load_tick数据为空，请先读入')
+                return                
+            totalticks = len(totalticklist)
+            for i in range(totalticks):
+                if totalticklist[i].datetime.date() < start:
+                    continue
+                startix = i
+                break
+            for i in reversed(range(totalticks)):
+                if totalticklist[i].datetime.date() > end:
+                    continue
+                endix = i
+                break                
+            endix = min(endix+1,totalticks)
+            self.history_tick = totalticklist[startix:endix]
+       
         
         # self.days = days
         # self.callback = callback

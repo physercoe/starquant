@@ -764,7 +764,8 @@ class StrategyEngine(BaseEngine):
         full_symbol: str, 
         days: int, 
         interval: Interval,
-        callback: Callable[[BarData], None]
+        callback: Callable[[BarData], None],
+        datasource:str='DataBase'
     ):
         """"""
 
@@ -793,7 +794,7 @@ class StrategyEngine(BaseEngine):
         for bar in bars:
             callback(bar)
 
-    def load_tick(self, full_symbol: str, days: int, callback: Callable):   
+    def load_tick(self, full_symbol: str, days: int, callback: Callable,datasource:str='DataBase'):   
         tradedays = abs(days)
         weekday = datetime.now().weekday()
         adddays = 2 if (days-weekday > 0) else 0

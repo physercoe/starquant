@@ -646,11 +646,13 @@ class BacktesterManager(QtWidgets.QWidget):
         self.class_combo.setSizePolicy(policy)
 
         self.data_source = QtWidgets.QComboBox()
-        self.data_source.addItems(['DataBase','Memory'])
+        self.data_source.addItems(['Memory','DataBase'])
         loaddatafile_btn =  QtWidgets.QPushButton("内存数据情况")
         loaddatafile_btn.clicked.connect(self.load_data_file)
 
         cleardata_btn = QtWidgets.QPushButton("清空内存")
+        cleardata_btn.clicked.connect(self.clear_data)
+
 
         self.symbol_line = QtWidgets.QLineEdit("SHFE F RB 1910")
         self.symbol_line.setMaximumWidth(160)
@@ -673,8 +675,8 @@ class BacktesterManager(QtWidgets.QWidget):
             QtCore.QDate.currentDate()
         )
 
-        self.rate_line = QtWidgets.QLineEdit("0.000025")
-        self.slippage_line = QtWidgets.QLineEdit("1")
+        self.rate_line = QtWidgets.QLineEdit("0.0002")
+        self.slippage_line = QtWidgets.QLineEdit("0")
         self.size_line = QtWidgets.QLineEdit("10")
         self.pricetick_line = QtWidgets.QLineEdit("1")
         self.capital_line = QtWidgets.QLineEdit("1000000")
@@ -717,6 +719,7 @@ class BacktesterManager(QtWidgets.QWidget):
         hbox11.addWidget(QtWidgets.QLabel('数据来源'))
         hbox11.addWidget(self.data_source)
         hbox11.addWidget(loaddatafile_btn)
+        hbox11.addWidget(cleardata_btn)
 
         hbox2 = QtWidgets.QHBoxLayout()
         hbox2.addWidget(QtWidgets.QLabel('合约全称'))
@@ -886,6 +889,21 @@ class BacktesterManager(QtWidgets.QWidget):
         """"""
         self.write_log("请点击[优化结果]按钮查看")
         self.result_button.setEnabled(True)
+
+    def clear_data(self):
+        full_sym = self.symbol_line.text()
+        if self.interval_combo.currentText() == 'tick':
+            msg = f"will clear Tick data {full_sym} , continue?"
+            mbox = QtWidgets.QMessageBox().question(None, 'Warning',msg,QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
+            if mbox == QtWidgets.QMessageBox.No:
+                return
+            sqglobal.history_tick[full_sym].clear()
+        elif self.interval_combo.currentText() == '1m':
+            msg = f"will clear Bar(1m) data {full_sym} , continue?"
+            mbox = QtWidgets.QMessageBox().question(None, 'Warning',msg,QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
+            if mbox == QtWidgets.QMessageBox.No:
+                return
+            sqglobal.history_bar[full_sym].clear()
 
     def load_data_file(self):
         if not self.data_source.currentText() == 'Memory':
