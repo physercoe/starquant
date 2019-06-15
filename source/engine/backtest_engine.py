@@ -1011,7 +1011,7 @@ class BacktestingEngine:
         """
         #以交易日为准，一星期内的时间补上周末二天，大于一周的时间暂不考虑补全额外的交易日
         tradedays = abs(days)
-        weekday = self.start.date().weekday()
+        weekday = self.start.weekday()
         adddays = 2 if (days-weekday > 0) else 0
         if weekday == 6:
             tradedays = days + 1
@@ -1037,7 +1037,7 @@ class BacktestingEngine:
         called by strategy
         """
         tradedays = abs(days)
-        weekday = self.start.date().weekday()
+        weekday = self.start.weekday()
         adddays = 2 if (days-weekday > 0) else 0
         if weekday == 6:
             tradedays = days + 1
