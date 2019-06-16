@@ -813,6 +813,7 @@ class BacktesterManager(QtWidgets.QWidget):
 
         # self.posviewchart = BtPosViewWidget()
         self.txnviewtable = TradesTable()
+        self.txnviewtable.tradesig.connect(self.show_trade)
         #TradesTable
 
         bt_topmiddle = QtWidgets.QTabWidget()
@@ -1069,6 +1070,38 @@ class BacktesterManager(QtWidgets.QWidget):
             dataviewchart.add_trades(trades)
             dataviewchart.show_text_signals()
         self.bt_bottommiddle.addTab(dataviewchart,full_symbol)
+
+    def show_trade(self,trade):
+        full_symbol = trade.full_symbol
+        tradetime = trade.datetime
+
+        adddaysstart =  2
+        if tradetime.date().weekday() == 0:
+            adddaysstart =  4
+        elif tradetime.date().weekday() == 1:
+            adddaysstart =  3
+        start = tradetime - timedelta(days=adddaysstart)
+       
+        adddaysend = 1
+        if tradetime.date().weekday() == 4:
+            adddaysend = 3
+        end = tradetime + timedelta(days=adddaysend)
+
+        datasource = self.data_source.currentText()
+        trades = self.backtester_engine.get_result_trades()
+        for i in range(self.bt_bottommiddle.count()):
+            if self.bt_bottommiddle.tabText(i) == full_symbol:
+                widget = self.bt_bottommiddle.widget(i)
+                widget.reset(full_symbol,start.date(),end.date(),Interval.MINUTE,datasource)                
+                widget.add_trades(trades)
+                widget.show_text_signals()
+                return                    
+        dataviewchart = BTQuotesChart()
+        dataviewchart.reset(full_symbol,start.date(),end.date(),Interval.MINUTE,datasource) 
+        dataviewchart.add_trades(trades)
+        dataviewchart.show_text_signals()
+        self.bt_bottommiddle.addTab(dataviewchart,full_symbol)
+
 
     def show(self):
         """"""

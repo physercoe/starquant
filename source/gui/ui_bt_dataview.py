@@ -26,7 +26,7 @@ from ..data.data_board import BarGenerator
 from ..common.datastruct import Event
 from ..common.utility import extract_full_symbol
 from ..data import database_manager
-from ..common.constant import Interval,Direction
+from ..common.constant import Interval,Direction,Offset
 
 sys.path.insert(0,"..")
 from pyfolio import plotting
@@ -340,13 +340,20 @@ class BTQuotesChart(QtGui.QWidget):
                     headLen=12,
                     tipAngle=50,
                 )
+                opacity = 0
+                brush = self.long_brush
+                if trade.offset == Offset.CLOSE:
+                    opacity = 0.15
+                    if trade.short_pnl + trade.long_pnl < 0:
+                        brush = self.short_brush 
                 text_sig = CenteredTextItem(
                     parent=self.signals_group_text,
                     pos=(x, yt),
                     pen=self.long_pen,
-                    brush=self.long_brush,
+                    brush=brush,
                     text=('{:.%df}' % self.digits).format(price),
                     valign=QtCore.Qt.AlignBottom,
+                    opacity=opacity
                 )
                 text_sig.hide()
             else:
@@ -362,13 +369,20 @@ class BTQuotesChart(QtGui.QWidget):
                     headLen=12,
                     tipAngle=50,
                 )
+                opacity = 0
+                brush = self.long_brush
+                if trade.offset == Offset.CLOSE:
+                    opacity = 0.15
+                    if trade.short_pnl + trade.long_pnl < 0:
+                        brush = self.short_brush                
                 text_sig = CenteredTextItem(
                     parent=self.signals_group_text,
                     pos=(x, yt),
                     pen=self.short_pen,
-                    brush=self.short_brush,
+                    brush=brush,
                     text=('{:.%df}' % self.digits).format(price),
                     valign=QtCore.Qt.AlignTop,
+                    opacity=opacity
                 )
                 text_sig.hide()
 
@@ -387,7 +401,7 @@ class BTQuotesChart(QtGui.QWidget):
                 if x > lbar and x < rbar:
                     signals.append(sig)
 
-        if len(signals) <= 50:
+        if len(signals) <= 40:
             for sig in signals:
                 sig.show()
         else:
@@ -395,8 +409,22 @@ class BTQuotesChart(QtGui.QWidget):
                 sig.hide()
 
     def update_yrange_limits(self):
+        if len(self.data) == 0:
+            return
         vr = self.chart.viewRect()
         lbar, rbar = int(vr.left()), int(vr.right())
+        if lbar < 0:
+            lbar = 0
+        if rbar > len(self.data):
+            rbar = len(self.data)
+        ymin = self.data[lbar].low_price
+        ymax = self.data[rbar-1].high_price
+        for bar in self.data[lbar:rbar]:
+            if bar.high_price > ymax:
+                ymax = bar.high_price
+            if bar.low_price < ymin:
+                ymin = bar.low_price
+        self.chart.setYRange(ymin*0.996, ymax*1.004)
         if self.signals_visible:
             self.show_text_signals(lbar, rbar) 
 

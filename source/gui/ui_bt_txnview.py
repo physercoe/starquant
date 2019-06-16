@@ -27,6 +27,7 @@ from pyfolio.utils import (to_utc, to_series)
 from pyfolio import utils
 
 from source.gui.ui_basic import QFloatTableWidgetItem
+from source.common.datastruct import TradeData
 
 class BtTxnViewFC(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
@@ -88,7 +89,7 @@ class BtTxnViewWidget(QWidget):
 
 
 class TradesTable(QtWidgets.QTableWidget):
-
+    tradesig = QtCore.pyqtSignal(TradeData)
     cols = np.array(
         [
             ('成交时间', 'datetime'),
@@ -105,13 +106,15 @@ class TradesTable(QtWidgets.QTableWidget):
             ('多仓平仓盈亏', 'long_pnl'), 
             ('空仓数量', 'short_pos'), 
             ('空仓开仓价格', 'short_price'),
-            ('空仓平仓盈亏', 'short_pnl'),                        
+            ('空仓平仓盈亏', 'short_pnl'), 
+            ('净盈亏', 'net_pnl'),                   
         ]
     )
     colored_cols = (
         'direction',
         'long_pnl',
-        'short_pnl'
+        'short_pnl',
+        'net_pnl'
     )
     numerical_cols = (
         'price',
@@ -124,7 +127,8 @@ class TradesTable(QtWidgets.QTableWidget):
         'long_pnl',
         'short_pos',
         'short_price',
-        'short_pnl'
+        'short_pnl',
+        'net_pnl'
     )
     fg_positive_color = pg.mkColor('#0000cc')
     fg_negative_color = pg.mkColor('#cc0000')
@@ -138,8 +142,18 @@ class TradesTable(QtWidgets.QTableWidget):
         self.setHorizontalHeaderLabels(self.cols[:, 0])
         self.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.verticalHeader().hide()
+        self.itemDoubleClicked.connect(self.show_data)
 
-    def set_data(self,trades):
+    def show_data(self,item):
+        row = item.row()
+        if row >= 0:
+            timestr = self.item(row,0).text()
+            dt = datetime.strptime(timestr, "%Y.%m.%d %H:%M:%S")
+            fullsym = self.item(row,1).text()
+            trade = TradeData(datetime=dt,full_symbol=fullsym)
+            self.tradesig.emit(trade)
+
+    def set_data(self,trades):        
         if not trades:
             return
         self.setRowCount(len(trades))
@@ -154,6 +168,8 @@ class TradesTable(QtWidgets.QTableWidget):
                     )
                 elif col == 'offset':
                     val = '开' if trade.offset == Offset.OPEN else '平'
+                elif col == 'net_pnl':
+                    val = trade.short_pnl + trade.long_pnl - trade.slippage - trade.commission
                 else:
                     val = trade.__getattribute__(col)
 

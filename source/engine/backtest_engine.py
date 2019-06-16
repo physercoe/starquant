@@ -981,7 +981,7 @@ class BacktestingEngine:
                 if trade.direction == Direction.LONG:
                     trade.short_pnl = trade.volume*(self.holding.short_price - trade.price)*self.size
                 else:
-                    trade.long_pnl = trade.volume*(trade.price - self.holding.long_price)*self.si
+                    trade.long_pnl = trade.volume*(trade.price - self.holding.long_price)*self.size
             self.holding.update_trade(trade)
             trade.long_pos = self.holding.long_pos
             trade.long_price = self.holding.long_price
