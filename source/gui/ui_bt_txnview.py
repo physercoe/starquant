@@ -1,4 +1,4 @@
-import os,sys,gzip
+import os,sys,gzip,csv
 import random
 import pandas as pd
 from datetime import datetime
@@ -143,6 +143,40 @@ class TradesTable(QtWidgets.QTableWidget):
         self.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.verticalHeader().hide()
         self.itemDoubleClicked.connect(self.show_data)
+        self.init_menu()
+
+    def init_menu(self):
+        self.menu = QtWidgets.QMenu(self)
+
+        save_action = QtWidgets.QAction("保存数据", self)
+        save_action.triggered.connect(self.save_csv)
+        self.menu.addAction(save_action) 
+
+    def save_csv(self):
+        """
+        Save table data into a csv file
+        """
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "保存数据", "", "CSV(*.csv)")
+
+        if not path:
+            return
+
+        with open(path, "w") as f:
+            writer = csv.writer(f, lineterminator="\n")
+
+            writer.writerow(self.cols[:, 0])
+
+            for row in range(self.rowCount()):
+                row_data = []
+                for column in range(self.columnCount()):
+                    item = self.item(row, column)
+                    if item:
+                        row_data.append(str(item.text()))
+                    else:
+                        row_data.append("")
+                writer.writerow(row_data)
+
 
     def show_data(self,item):
         row = item.row()
@@ -214,7 +248,11 @@ class TradesTable(QtWidgets.QTableWidget):
                 self.setItem(irow, icol, item)
         self.resizeColumnsToContents()
 
-
+    def contextMenuEvent(self, event):
+        """
+        Show menu with right click.
+        """
+        self.menu.popup(QtGui.QCursor.pos())
 
 
 
