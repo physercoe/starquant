@@ -195,11 +195,14 @@ class TradesTable(QtWidgets.QTableWidget):
             for icol, col in enumerate(self.cols[:, 1]):
                 fg_color = None
                 if col == 'direction':
-                    val, fg_color = (
-                        ('▲ 买', QtGui.QColor(255, 174, 201) )
-                        if trade.direction == Direction.LONG
-                        else ('▼ 卖', QtGui.QColor(160, 255, 160))
-                    )
+                    if trade.direction == Direction.LONG and trade.offset == Offset.OPEN:
+                        val, fg_color = ('▲ 买', QtGui.QColor(255, 174, 201))
+                    elif trade.direction == Direction.LONG and trade.offset == Offset.CLOSE:
+                        val, fg_color = ('▵ 买', QtGui.QColor(255, 174, 201)) 
+                    elif trade.direction == Direction.SHORT and trade.offset == Offset.OPEN:
+                        val, fg_color = ('▼ 卖', QtGui.QColor(160, 255, 160))
+                    elif trade.direction == Direction.SHORT and trade.offset == Offset.CLOSE:
+                        val, fg_color = ('▿ 卖', QtGui.QColor(160, 255, 160))
                 elif col == 'offset':
                     val = '开' if trade.offset == Offset.OPEN else '平'
                 elif col == 'net_pnl':
