@@ -26,6 +26,8 @@ from pyfolio import pos
 from pyfolio.utils import (to_utc, to_series)
 from pyfolio import utils
 
+from source.gui.ui_basic import QFloatTableWidgetItem
+
 class BtTxnViewFC(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi)  # 新建一个figure
@@ -99,16 +101,29 @@ class TradesTable(QtWidgets.QTableWidget):
             ('手续费用', 'commission'),            
             ('滑点费用', 'slippage'),
             ('多仓数量', 'long_pos'), 
-            ('多仓成本', 'long_price'),
-            ('平多盈亏', 'long_pnl'), 
+            ('多仓开仓价格', 'long_price'),
+            ('多仓平仓盈亏', 'long_pnl'), 
             ('空仓数量', 'short_pos'), 
-            ('空仓成本', 'short_price'),
-            ('平空盈亏', 'short_pnl'),                        
+            ('空仓开仓价格', 'short_price'),
+            ('空仓平仓盈亏', 'short_pnl'),                        
         ]
     )
     colored_cols = (
         'direction',
         'long_pnl',
+        'short_pnl'
+    )
+    numerical_cols = (
+        'price',
+        'volume',
+        'turnover',
+        'commission',
+        'slippage',
+        'long_pos',
+        'long_price',
+        'long_pnl',
+        'short_pos',
+        'short_price',
         'short_pnl'
     )
     fg_positive_color = pg.mkColor('#0000cc')
@@ -150,6 +165,8 @@ class TradesTable(QtWidgets.QTableWidget):
                     s_val = str(val)
 
                 item = QtWidgets.QTableWidgetItem(s_val)
+                if col in self.numerical_cols:
+                    item  = QFloatTableWidgetItem(s_val)
                 align = QtCore.Qt.AlignVCenter
                 # align |= (
                 #     QtCore.Qt.AlignLeft

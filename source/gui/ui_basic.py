@@ -57,6 +57,24 @@ class VerticalTabBar(QtWidgets.QTabBar):
             painter.restore()
 
 
+
+
+class QFloatTableWidgetItem (QtWidgets.QTableWidgetItem):
+    def __init__ (self, value):
+        super(QFloatTableWidgetItem, self).__init__(value)
+
+    def __lt__ (self, other):
+        if (isinstance(other, QFloatTableWidgetItem)):
+            selfDataValue  = float(self.text())
+            otherDataValue = float(other.text())
+            return selfDataValue < otherDataValue
+        else:
+            return QtWidgets.QTableWidgetItem.__lt__(self, other)
+
+
+
+
+
 class BaseCell(QtWidgets.QTableWidgetItem):
     """
     General cell used in tablewidgets.

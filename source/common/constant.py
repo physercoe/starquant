@@ -414,10 +414,10 @@ class Exchange(Enum):
     Exchange.
     """
     # Chinese
-    CFFEX = "CFFEX"
     SHFE = "SHFE"
     CZCE = "CZCE"
     DCE = "DCE"
+    CFFEX = "CFFEX"
     INE = "INE"
     SSE = "SSE"
     SZSE = "SZSE"

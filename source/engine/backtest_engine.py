@@ -768,8 +768,8 @@ class BacktestingEngine:
         else:
             self.daily_results[d] = DailyResult(d, price)
             #逐日盯市，改变持仓成本价格
-            self.holding.long_price = self.holding.last_price
-            self.holding.short_price = self.holding.last_price
+            # self.holding.long_price = self.holding.last_price
+            # self.holding.short_price = self.holding.last_price
             self.holding.last_price = price
 
     def new_bar(self, bar: BarData):
