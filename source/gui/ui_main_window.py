@@ -2,18 +2,16 @@
 # -*- coding: utf-8 -*-
 # http://stackoverflow.com/questions/9957195/updating-gui-elements-in-multithreaded-pyqt
 import sys
-import os
-import webbrowser
 
-from queue import Queue, Empty
+from queue import Queue
 from PyQt5 import QtCore, QtWidgets, QtGui, QtWebEngineWidgets
 from datetime import datetime
 import requests
 import itchat
 
-from source.common.datastruct import * 
-from mystrategy import strategy_list
-from source.data.data_board import DataBoard
+from source.common.constant import  EventType
+
+
 from source.trade.order_manager import OrderManager
 from source.trade.risk_manager import PassThroughRiskManager
 from source.engine.iengine import EventEngine
@@ -39,13 +37,6 @@ from .ui_monitors import (
     AccountMonitor,
     LogMonitor
 )
-#from .ui_market_window import MarketWindow
-#from .ui_order_window import OrderWindow
-#from .ui_fill_window import FillWindow
-#from .ui_position_window import PositionWindow
-#from .ui_closeposition_window import ClosePositionWindow
-#from .ui_account_window import AccountWindow
-#from .ui_log_window import LogWindow
 
 from .ui_strategy_window import CtaManager
 from .ui_manual_window import ManualWindow 
@@ -54,7 +45,7 @@ from .ui_bt_dataview import BtDataViewWidget,BtDataPGChart
 from .ui_bt_resultsoverview import BtResultViewWidget
 from .ui_bt_posview import BtPosViewWidget
 from .ui_bt_txnview import BtTxnViewWidget
-from .ui_bt_setting import BtSettingWindow,BacktesterManager
+from .ui_bt_setting import BacktesterManager
 from .ui_dataview import MarketDataView
 
 
@@ -91,9 +82,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._events_engine = EventEngine()        # update ui        
         self._flowrate_timer = QtCore.QTimer()                  #  TODO add task scheduler;produce result_packet
 
-        # 3. data board
-        self._data_board = DataBoard()
-
+        
         # 5. risk manager and compliance manager
         self.risk_manager = PassThroughRiskManager()
 
@@ -144,9 +133,8 @@ class MainWindow(QtWidgets.QMainWindow):
     #################################################################################################
     def _tick_event_handler(self, tick_event):
         self.dataviewindow.tick_signal.emit(tick_event)
-        self._current_time = tick_event.data.timestamp
-        self._data_board.on_tick(tick_event)       # update databoard
-        self._order_manager.on_tick(tick_event)     # check standing stop orders    
+        self._current_time = tick_event.data.timestamp        
+        # self._order_manager.on_tick(tick_event)     # check standing stop orders    
 
     def _order_status_event_handler(self, order_status_event):  # including cancel
         pass
@@ -424,49 +412,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
 #---------Backtest ----------------------------------------
         backtestwidget = BacktesterManager(self._events_engine)
-    # backtestwidget = QtWidgets.QWidget()
-    #     bt_hbox = QtWidgets.QHBoxLayout()
-    #   # bt top middle---result
-    #     bt_topmiddle = QtWidgets.QTabWidget()
-
-    #     bt_resulttab1 = BtResultViewWidget()
-    #     bt_resulttab2 = BtPosViewWidget()
-    #     bt_resulttab3 = BtTxnViewWidget()
-    #     bt_topmiddle.addTab(bt_resulttab1, 'OverView and Returns')
-    #     bt_topmiddle.addTab(bt_resulttab2, 'Position')
-    #     bt_topmiddle.addTab(bt_resulttab3, 'Transactions')
-    # #  bottom middle:  data
-    #     bt_bottommiddle = QtWidgets.QTabWidget()
-    #     bt_bottommiddle.setFont(self._font)
-    #     bt_datatab1 = BtDataViewWidget()
-    #     bt_datatab2 = BtDataPGChart()
-    #     bt_bottommiddle.addTab(bt_datatab1, 'Data')
-    #     bt_bottommiddle.addTab(bt_datatab2, 'PGData')
-      
-    # #   bt  left: setting
-    #     bt_left = BtSettingWindow()
-
-    # #-------------------------------- 
- 
-    #     bt_splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-    #     bt_splitter1.addWidget(bt_topmiddle)
-    #     bt_splitter1.addWidget(bt_bottommiddle)
-    #     bt_splitter1.setSizes([400,400])
-
-    #     # bt_splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-    #     # bt_splitter2.addWidget(bt_left)
-    #     # bt_splitter2.addWidget(bt_right)
-    #     # bt_splitter2.setSizes([1000, 600])
-
-    #     bt_splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-    #     bt_splitter3.addWidget(bt_left)
-    #     bt_splitter3.addWidget(bt_splitter1)
-    #     # bt_splitter3.addWidget(bt_right)
-    #     bt_splitter3.setSizes([300, 1200])
-
-    #     bt_hbox.addWidget(bt_splitter3)
-    #     backtestwidget.setLayout(bt_hbox)
-
 
 #--------------------mainwindow----------------------
         manualwidget = ManualWindow(self._config_server['gateway'])

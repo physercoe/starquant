@@ -18,16 +18,24 @@ from threading import Thread
 from time import time as ttime
 import gzip
 import io
-from ..common.constant import *
-from ..common.datastruct import *
+from ..common.constant import (
+    Exchange,Interval,Product,PRODUCT_CTP2VT,OPTIONTYPE_CTP2VT,
+    EventType
+    )
+from ..common.datastruct import (
+    Event,MSG_TYPE,
+    TickData,BarData,HistoryRequest,ContractData
+)
 from ..engine.iengine import EventEngine
 from source.data import database_manager
 from source.data.rqdata import rqdata_client
-from ..common.utility import load_json, save_json
+from ..common.utility import (
+    load_json, save_json,generate_full_symbol,extract_full_symbol
+    )    
 from ..common.config import SETTING_FILENAME, SETTINGS
 from ..api.ctp_constant import THOST_FTDC_PT_Net
 from source.common import sqglobal
-from .ui_basic import *
+from .ui_basic import EnumCell,BaseCell
 
 class WebWindow(QtWidgets.QFrame):
 
@@ -284,7 +292,6 @@ class CsvBarLoader(QtCore.QObject):
                 耗时：{totalloadtime}s\n\
                 "
             self.finishmsg.emit(msg)              
-
 
 
 class CsvLoaderWidget(QtWidgets.QWidget):
@@ -641,8 +648,6 @@ class DataDownloaderWidget(QtWidgets.QWidget):
         logmsg = str(datetime.now()) + " : " + log
         self.log_signal.emit(logmsg)
 
-
-
 class RecorderManager(QtWidgets.QWidget):
     """"""
 
@@ -894,24 +899,6 @@ class RecorderManager(QtWidgets.QWidget):
         self.signal_recorder_out.emit(m)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class ContractManager(QtWidgets.QWidget):
     """
     Query contract data available to trade in system.
@@ -1044,8 +1031,6 @@ class StatusThread(QtCore.QThread):
             memoryPercent = psutil.virtual_memory().percent
             self.status_update.emit('CPU Usage: ' + str(cpuPercent) + '% Memory Usage: ' + str(memoryPercent) + '%')
             self.sleep(2)
-
-
 
 
 class GlobalDialog(QtWidgets.QDialog):

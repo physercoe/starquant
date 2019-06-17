@@ -66,11 +66,6 @@ def generate_vt_symbol(symbol: str, exchange: Exchange):
     return f'{symbol}.{exchange.value}'
 
 
-
-
-
-
-
 def _get_trader_dir(temp_name: str):
     """
     Get path where trader is running in.
@@ -92,7 +87,6 @@ def _get_trader_dir(temp_name: str):
         temp_path.mkdir()
 
     return home_path, temp_path
-
 
 TRADER_DIR, TEMP_DIR = _get_trader_dir(".StarQuant")
 

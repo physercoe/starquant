@@ -6,7 +6,7 @@ from nanomsg import Socket, PAIR, SUB, PUB, PUSH,SUB_SUBSCRIBE, AF_SP,SOL_SOCKET
 from datetime import datetime
 import os
 
-from .datastruct import *
+from .datastruct import Event
 
 
 class ClientMq(object):
@@ -34,7 +34,7 @@ class ClientMq(object):
                     m = Event()
                     m.deserialize(msgin)
                     self._ui_event_engine.put(m)
-            except Exception as e:               
+            except Exception as e:            
                 pass
             try:
                 # request, qry msg to server
@@ -44,6 +44,7 @@ class ClientMq(object):
                 self._send_sock.send(msgout, flags=1)
                 print('outgoing end send',msgout,datetime.now())
             except Exception as e:
+                # print(e)
                 pass
 
     def start(self, timer=True):

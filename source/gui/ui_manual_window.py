@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 # http://stackoverflow.com/questions/9957195/updating-gui-elements-in-multithreaded-pyqt
 import sys
-import os
-from queue import Queue, Empty
 from PyQt5 import QtCore, QtWidgets, QtGui, QtWebEngineWidgets
 from datetime import datetime
 import requests
@@ -11,7 +9,18 @@ import itchat
 sys.path.insert(0,"../..")
 
 from source.api.ctp_constant import *
-from source.common.datastruct import *  
+from source.common.constant import (
+    ESTATE,EventType,MSG_TYPE,SYMBOL_TYPE,
+    OrderFlag,OrderType,OrderStatus
+    )
+from source.common.datastruct import (
+    Event,
+    CtpOrderField,
+    PaperOrderField,
+    QryContractRequest,
+    CancelAllRequest,
+    SubscribeRequest
+)
 from source.common import sqglobal
 
 @itchat.msg_register(itchat.content.TEXT)

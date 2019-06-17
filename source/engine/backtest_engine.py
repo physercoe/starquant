@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from queue import Queue, Empty
 from datetime import datetime, timedelta,date,time
 from time import time as ttime
 from typing import Union
@@ -23,11 +22,16 @@ from deap import creator, base, tools, algorithms
 
 import source.common.sqglobal as sqglobal
 
-from ..common.constant import (Direction, Offset, Exchange, 
-                                Interval, Status, EngineType, 
-                                BacktestingMode,STOPORDER_PREFIX,StopOrderStatus)
-from ..common.datastruct import OrderData, TradeData, BacktestTradeData, BarData, TickData, StopOrder,ContractData
-from ..common.utility import *
+from ..common.constant import (
+    Direction, Offset, Exchange, 
+    Interval, Status, EngineType, 
+    BacktestingMode,STOPORDER_PREFIX,StopOrderStatus
+    )
+from ..common.datastruct import (
+    OrderData, TradeData, BacktestTradeData, 
+    BarData, TickData, StopOrder,ContractData
+    )
+from ..common.utility import extract_full_symbol
 from ..strategy.strategy_base import StrategyBase
 from ..data.rqdata import rqdata_client
 from ..data import database_manager

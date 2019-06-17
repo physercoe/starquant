@@ -11,12 +11,10 @@ import pyqtgraph as pg
 
 from ..common.datastruct import Event
 from ..engine.iengine import EventEngine
-from ..common.constant import Direction, Exchange, Offset, OrderType
+from ..common.constant import Direction
 
 from ..common.constant import EventType, OT2STR
-from ..common.datastruct import OrderRequest, SubscribeRequest
-from ..common.utility import load_json, save_json
-from ..common.config import SETTING_FILENAME, SETTINGS
+
 
 
 

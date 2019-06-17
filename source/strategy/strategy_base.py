@@ -4,9 +4,17 @@ from abc import ABC,ABCMeta, abstractmethod
 from datetime import datetime
 from typing import Any, Callable
 
-from ..common.datastruct import *
+from ..common.constant import (
+    Interval,
+    OrderFlag,OrderStatus,OrderType,Offset,Direction
+)
+from ..common.datastruct import (
+    Event,TickData,BarData,
+    OrderRequest,OrderData,
+    CtpOrderField,PaperOrderField
+    )
 from ..common.sqglobal import dotdict
-from ..common.utility import virtual
+from ..common.utility import extract_full_symbol,virtual
 from ..api.ctp_constant import *
 
 class StrategyBase(metaclass=ABCMeta):
@@ -1200,7 +1208,6 @@ class CtaSignal(ABC):
         return self.signal_pos
 
 CtaTemplate = StrategyBase
-OrderData = OrderStatusEvent
 
 class TargetPosTemplate(CtaTemplate):
     """"""

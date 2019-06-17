@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from queue import Queue, Empty
+from queue import Queue
 from threading import Thread
 from nanomsg import Socket, PAIR, SUB, PUB, PUSH,SUB_SUBSCRIBE, AF_SP,SOL_SOCKET,RCVTIMEO
 from datetime import datetime, timedelta,time
-import os,sys
-import yaml
+import os
+import yaml,json
 from collections import defaultdict
 from copy import copy
 import traceback
@@ -14,15 +14,22 @@ from typing import Any, Callable
 from pathlib import Path
 
 from ..api.ctp_constant import THOST_FTDC_PT_Net
-from ..common.datastruct import *
-from ..common.utility import *
+from ..common.constant import (
+    EngineType,Exchange,Interval,Product,PRODUCT_CTP2VT,OPTIONTYPE_CTP2VT,
+    EventType,MSG_TYPE,SYMBOL_TYPE
+)
+from ..common.datastruct import (
+    Event,SubscribeRequest,OrderData,TradeData,TickData,BarData,PositionData,
+    CtpOrderField,ContractData,AccountData,OrderRequest
+)
+from ..common.utility import generate_full_symbol,extract_full_symbol,generate_vt_symbol,load_json,save_json
 from ..strategy.strategy_base import StrategyBase
 from ..data.rqdata import rqdata_client
 from ..data import database_manager
 from ..trade.portfolio_manager import OffsetConverter
 from ..engine.iengine import BaseEngine,EventEngine
 
-
+CtaTemplate = StrategyBase
 class StrategyEngine(BaseEngine):
     """
     Send to and receive from msg  server ,used for strategy 
@@ -514,6 +521,7 @@ class StrategyEngine(BaseEngine):
 
         # Update GUI
         self.put_strategy_event(strategy)
+
     def reset_strategy(self,strategy_name: str):
         "Reset a strategy"
         strategy = self.strategies[strategy_name]

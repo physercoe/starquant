@@ -7,9 +7,6 @@ from enum import Enum
 from abc import ABC, abstractmethod
 from typing import Optional, Sequence, TYPE_CHECKING
 
-from ..common.datastruct import *
-
-
 
 class Driver(Enum):
     SQLITE = "sqlite"
