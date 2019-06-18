@@ -710,6 +710,9 @@ class BacktesterManager(QtWidgets.QWidget):
         capital = float(self.capital_line.text())
         datasource = self.data_source.currentText()
 
+        if end <= start:
+            QtWidgets.QMessageBox().information(None, 'Error','End date should later than start date!',QtWidgets.QMessageBox.Ok)
+            return
         if (end - start) > timedelta(days=90) and interval == 'tick':
             mbox = QtWidgets.QMessageBox().question(None, 'Warning','Two many data will slow system performance, continue?',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
             if mbox == QtWidgets.QMessageBox.No:
@@ -1255,7 +1258,7 @@ class TxnStatisticsMonitor(QtWidgets.QTableWidget):
         data["daily_slippage"] = f"{data['daily_slippage']:,.2f}"
         data["daily_turnover"] = f"{data['daily_turnover']:,.2f}"
         data["daily_trade_count"] = f"{data['daily_trade_count']:,.2f}"
-        
+
         for key, cell in self.cells.items():
             value = data.get(key, "")
             cell.setText(str(value))
