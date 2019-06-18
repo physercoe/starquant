@@ -54,6 +54,8 @@ class BarGenerator:
         # Filter tick data with 0 last price
         if not tick.last_price:
             return
+        if not tick.ask_price_1 or not tick.bid_price_1:
+            return
 
         if not self.bar:
             new_minute = True

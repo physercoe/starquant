@@ -1133,19 +1133,20 @@ class StrategyBase(metaclass=ABCMeta):
         days: int,
         interval: Interval = Interval.MINUTE,
         callback: Callable = None,
+        datasource = 'DataBase'
     ):
         """
         Load historical bar data for initializing strategy.
         """
         if not callback:
             callback = self.on_bar
-        self.strategy_engine.load_bar(self.full_symbol, days, interval, callback)
+        self.strategy_engine.load_bar(self.full_symbol, days, interval, callback,datasource)
 
-    def load_tick(self, days: int):
+    def load_tick(self, days: int,datasource = 'DataBase'):
         """
         Load historical tick data for initializing strategy.
         """
-        self.strategy_engine.load_tick(self.full_symbol, days, self.on_tick)
+        self.strategy_engine.load_tick(self.full_symbol, days, self.on_tick,datasource)
         pass
 
 

@@ -431,6 +431,8 @@ class BacktestingEngine:
             return_std = 0
             sharpe_ratio = 0
             return_drawdown_ratio = 0
+            winratio = 0
+            winloss = 0
         else:
             # Calculate balance related time series data
             df["balance"] = df["net_pnl"].cumsum() + self.capital
