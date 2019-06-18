@@ -22,7 +22,7 @@ from source.gui.ui_basic import VerticalTabBar
 from source.gui.ui_bt_resultsoverview import BacktesterChart
 from source.gui.ui_bt_dataview import BtDataPGChart,BTQuotesChart
 from source.gui.ui_bt_posview import BtPosViewWidget
-from source.gui.ui_bt_txnview import BtTxnViewWidget,TradesTable
+from source.gui.ui_bt_txnview import BtTxnViewWidget,TradesTable,DailyTable
 
 
 CtaTemplate = StrategyBase
@@ -52,6 +52,7 @@ class Backtester:
         self.result_df = None
         self.result_statistics = None
         self.result_trades = []
+        self.result_dailys = []
 
         # Optimization result
         self.result_values = None
@@ -173,7 +174,7 @@ class Backtester:
         self.result_df = engine.calculate_result()
         self.result_statistics = engine.calculate_statistics(output=False)
         self.result_trades = engine.get_all_trades()
-
+        self.result_dailys = engine.get_all_daily_results()
         # Clear thread object handler.
         self.thread = None
 
@@ -237,6 +238,9 @@ class Backtester:
 
     def get_result_trades(self):
         return self.result_trades
+
+    def get_result_daily(self):
+        return self.result_dailys
 
     def get_default_setting(self, class_name: str):
         """"""
@@ -568,6 +572,7 @@ class BacktesterManager(QtWidgets.QWidget):
         # self.posviewchart = BtPosViewWidget()
         self.txnviewtable = TradesTable()
         self.txnviewtable.tradesig.connect(self.show_trade)
+        self.dailytable = DailyTable()
         #TradesTable
 
         bt_topmiddle = QtWidgets.QTabWidget()
@@ -575,6 +580,7 @@ class BacktesterManager(QtWidgets.QWidget):
         bt_topmiddle.setTabPosition(QtWidgets.QTabWidget.West)
         bt_topmiddle.addTab(self.scrolltop, '盈亏情况')
         bt_topmiddle.addTab(self.txnviewtable, '成交明细')
+        bt_topmiddle.addTab(self.dailytable, '每日明细')
         # bt_topmiddle.addTab(self.posviewchart, '持仓')
 
     #  bottom middle:  data
@@ -638,6 +644,8 @@ class BacktesterManager(QtWidgets.QWidget):
         self.overviewchart.set_data(df)
         trades = self.backtester_engine.get_result_trades()
         self.txnviewtable.set_data(trades)
+        dailyresults = self.backtester_engine.get_result_daily()
+        self.dailytable.set_data(dailyresults)
 
 
     def process_optimization_finished_event(self, event: Event):
@@ -1124,7 +1132,9 @@ class StatisticsMonitor(QtWidgets.QTableWidget):
 
         "return_std": "收益标准差",
         "sharpe_ratio": "夏普比率",
-        "return_drawdown_ratio": "收益回撤比"
+        "return_drawdown_ratio": "收益回撤比",
+        "win_ratio": "胜率",
+        "win_loss": "盈亏比"
     }
 
     def __init__(self):
@@ -1174,7 +1184,8 @@ class StatisticsMonitor(QtWidgets.QTableWidget):
         data["return_std"] = f"{data['return_std']:,.2f}%"
         data["sharpe_ratio"] = f"{data['sharpe_ratio']:,.2f}"
         data["return_drawdown_ratio"] = f"{data['return_drawdown_ratio']:,.2f}"
-
+        data["win_ratio"] = f"{data['win_ratio']:,.2f}"
+        data["win_loss"] = f"{data['win_loss']:,.2f}"
         for key, cell in self.cells.items():
             value = data.get(key, "")
             cell.setText(str(value))
@@ -1243,7 +1254,8 @@ class TxnStatisticsMonitor(QtWidgets.QTableWidget):
         data["daily_commission"] = f"{data['daily_commission']:,.2f}"
         data["daily_slippage"] = f"{data['daily_slippage']:,.2f}"
         data["daily_turnover"] = f"{data['daily_turnover']:,.2f}"
-
+        data["daily_trade_count"] = f"{data['daily_trade_count']:,.2f}"
+        
         for key, cell in self.cells.items():
             value = data.get(key, "")
             cell.setText(str(value))

@@ -3,11 +3,8 @@
 from datetime import datetime, timedelta,date,time
 from time import time as ttime
 from typing import Union
-import os,sys
 import yaml
 from collections import defaultdict
-from copy import copy
-import importlib
 from typing import Any, Callable
 from pathlib import Path
 import multiprocessing
@@ -481,9 +478,32 @@ class BacktestingEngine:
                 sharpe_ratio = daily_return / return_std * np.sqrt(240)
             else:
                 sharpe_ratio = 0
+            if max_ddpercent:
+                return_drawdown_ratio = -total_return / max_ddpercent
+            else:
+                return_drawdown_ratio = 0
 
-            return_drawdown_ratio = -total_return / max_ddpercent
+            wincount = 0
+            winmoney = 0
+            losscount = 0
+            lossmoney = 0
 
+            for trade in self.trades.values():
+                if trade.offset == Offset.CLOSE:
+                    if (trade.long_pnl + trade.short_pnl) > 0:
+                        wincount += 1
+                        winmoney += trade.long_pnl + trade.short_pnl
+                    elif (trade.long_pnl + trade.short_pnl) < 0:
+                        losscount += 1
+                        lossmoney += abs(trade.long_pnl + trade.short_pnl)
+            if (wincount + losscount):
+                winratio = wincount /(wincount + losscount)
+            else:
+                winratio = 0.0
+            if wincount and losscount and lossmoney:
+                winloss = ( winmoney /wincount )/ (lossmoney/losscount)
+            else:
+                winloss = 0.0
         # Output
         if output:
             self.output("-" * 30)
@@ -545,6 +565,8 @@ class BacktestingEngine:
             "return_std": return_std,
             "sharpe_ratio": sharpe_ratio,
             "return_drawdown_ratio": return_drawdown_ratio,
+            "win_ratio": winratio,
+            "win_loss": winloss
         }
 
         return statistics
@@ -1243,6 +1265,17 @@ class BacktestingEngine:
         active_orderids = set(self.active_limit_orders.keys())
         return active_orderids
 
+    def get_all_orders(self):
+        """
+        Return all limit order data of current backtesting result.
+        """
+        return list(self.limit_orders.values())
+
+    def get_all_daily_results(self):
+        """
+        Return all daily result data.
+        """
+        return list(self.daily_results.values())
 
 
 class DailyResult:

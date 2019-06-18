@@ -69,6 +69,7 @@ extra_dump.py
 /Result/*
 /Research/*
 /log/*
+/legacy/*
 /docs/*
 /mystrategy/*
 !/mystrategy/Examplestrategy.py
