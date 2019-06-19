@@ -166,7 +166,7 @@ class CsvTickLoader(QtCore.QObject):
 
         end = tick.datetime
         if self.saveto == 'Memory' and not alreadyhas:
-            sqglobal.history_tick[full_sym].extend(ticks) 
+            sqglobal.history_tick[full_sym] = ticks 
         elif self.saveto == 'DataBase': 
             database_manager.save_tick_data(ticks)         
         endtime = ttime()
@@ -275,7 +275,7 @@ class CsvBarLoader(QtCore.QObject):
         # insert into database
 
         if self.saveto == 'Memory' and not alreadyhas:
-            sqglobal.history_bar[full_sym].extend(bars)
+            sqglobal.history_bar[full_sym] = bars
         elif self.saveto == 'DataBase': 
             database_manager.save_bar_data(bars)
         endtime = ttime()
@@ -459,6 +459,13 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             tick_ask_volume_1 = self.tick_ask_volume_1.text()
             tick_bid_price_1 = self.tick_bid_price_1.text()
             tick_bid_volume_1 = self.tick_bid_volume_1.text()
+            alreadyhas = bool(sqglobal.history_tick[symbol])
+            if alreadyhas:
+                QtWidgets.QMessageBox().information(
+                    None, 'Info','内存已有该数据，若要覆盖请先点击清空内存!',
+                    QtWidgets.QMessageBox.Ok)
+                return
+
             self.isbusy = True
             self.worker = CsvTickLoader(
                 file_path,
@@ -488,6 +495,13 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             high_head = self.high_edit.text()
             close_head = self.close_edit.text()
             volume_head = self.volume_edit.text()
+            alreadyhas = bool(sqglobal.history_bar[symbol])
+            if alreadyhas:
+                QtWidgets.QMessageBox().information(
+                    None, 'Info','内存已有该数据，若要覆盖请先点击清空内存!',
+                    QtWidgets.QMessageBox.Ok)
+                return
+
             self.isbusy = True
             self.worker = CsvBarLoader(
                 file_path,

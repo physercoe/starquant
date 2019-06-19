@@ -138,8 +138,14 @@ class BacktestingEngine:
         self.historybar_callback = None  #used in tick mode called by strategy load_bar
         self.historytick_callback = None   #used in tick mode called by strategy load_tick
         self.history_data = []
+        self.history_data_startix = 0
+        self.history_data_endix = 0
         self.history_bar = []  #used in tick mode called by strategy load_bar
+        self.history_bar_startix = 0
+        self.history_bar_endix = 0
         self.history_tick = [] #used in tick mode called by strategy load_tick
+        self.history_tick_startix = 0
+        self.history_tick_endix = 0
         self.order_count = 0
 
         self.stop_order_count = 0
@@ -253,6 +259,8 @@ class BacktestingEngine:
                     self.start,
                     self.end
                 )
+                self.history_data_startix = 0
+                self.history_data_endix = len(self.history_data)
             elif datasource == "Memory":
                 startix = 0
                 endix = 0
@@ -272,7 +280,9 @@ class BacktestingEngine:
                     endix = i
                     break                
                 endix = min(endix+1,totalbars)
-                self.history_data = totalbarlist[startix:endix]
+                self.history_data_startix = startix
+                self.history_data_endix = endix
+                self.history_data = totalbarlist
         else:
             if datasource == "DataBase":
                 self.history_data = load_tick_data(
@@ -281,6 +291,8 @@ class BacktestingEngine:
                     self.start,
                     self.end
                 )
+                self.history_data_startix = 0
+                self.history_data_endix = len(self.history_data)
             elif datasource == "Memory":
                 startix = 0
                 endix = 0
@@ -300,15 +312,16 @@ class BacktestingEngine:
                     endix = i
                     break                
                 endix = min(endix+1,totalticks)
-                self.history_data = totalticklist[startix:endix]
-            
+                self.history_data = totalticklist
+                self.history_data_startix = startix
+                self.history_data_endix = endix
 
-        self.output(f"历史数据加载完成，数据量：{len(self.history_data)}")
+        self.output(f"历史数据加载完成，数据量：{self.history_data_endix - self.history_data_startix}")
 
     def run_backtesting(self):
 
         """"""
-        if not self.history_data:
+        if not self.history_data or self.history_data_startix == self.history_data_endix:
             self.output('回测数据为空，直接结束回测')
             return
         
@@ -325,10 +338,10 @@ class BacktestingEngine:
         
         # using load_bar/tick for  initializing strategy
         if self.historybar_callback:
-            for data in self.history_bar:
+            for data in self.history_bar[self.history_bar_startix:self.history_bar_endix]:
                 self.historybar_callback(data)
         if self.historytick_callback:
-            for data in self.history_tick:
+            for data in self.history_tick[self.history_tick_startix:self.history_tick_endix]:
                 self.historytick_callback(data)
 
         # for ix, data in enumerate(self.history_data):
@@ -348,7 +361,7 @@ class BacktestingEngine:
         self.output("开始回放历史数据")
 
         # Use the rest of history data for running backtesting
-        for data in self.history_data:
+        for data in self.history_data[self.history_data_startix:self.history_data_endix]:
             func(data)
 
         self.output("历史数据回放结束")
@@ -1056,6 +1069,8 @@ class BacktestingEngine:
                 start,
                 end
             )
+            self.history_bar_startix = 0
+            self.history_bar_endix = len(self.history_bar)
         elif datasource == "Memory":
             startix = 0
             endix = 0
@@ -1075,7 +1090,9 @@ class BacktestingEngine:
                 endix = i
                 break                
             endix = min(endix+1,totalbars)
-            self.history_bar = totalbarlist[startix:endix]
+            self.history_bar_startix = startix
+            self.history_bar_endix = endix
+            self.history_bar = totalbarlist
 
         self.historybar_callback = callback
 
@@ -1103,7 +1120,9 @@ class BacktestingEngine:
                 start,
                 end
             )
-            self.historytick_callback = callback        
+            self.history_tick_startix = 0
+            self.history_tick_endix = len(self.history_tick)
+
         elif datasource == 'Memory':
             startix = 0
             endix = 0
@@ -1123,7 +1142,11 @@ class BacktestingEngine:
                 endix = i
                 break                
             endix = min(endix+1,totalticks)
-            self.history_tick = totalticklist[startix:endix]
+            self.history_tick_startix = startix
+            self.history_tick_endix = endix
+            self.history_tick = totalticklist
+
+        self.historytick_callback = callback
        
         
         # self.days = days

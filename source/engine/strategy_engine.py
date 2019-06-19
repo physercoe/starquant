@@ -214,7 +214,7 @@ class StrategyEngine(BaseEngine):
         """"""
         order = event.data
 
-        self.offset_converter.update_order(order)
+        self.offset_converter.update_order(order) #重新计算冻结
 
         if order.clientID != self.id:
             return
@@ -751,7 +751,7 @@ class StrategyEngine(BaseEngine):
         
         self._send_sock.send(m.serialize())
 
-        # save_json(self.data_filename, sdata)
+        #save_json(self.data_filename, sdata)
         
 # strategy functions 
   #get ,qry  

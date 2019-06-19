@@ -44,6 +44,7 @@ class BarGenerator:
 
         self.last_tick = None
         self.last_bar = None
+        self.tick_counts = 0  # bar should contail at least 2 ticks
 
     def update_tick(self, tick: TickData):
         """
@@ -64,7 +65,8 @@ class BarGenerator:
             self.bar.datetime = self.bar.datetime.replace(
                 second=0, microsecond=0
             )
-            self.on_bar(self.bar)
+            if self.tick_counts > 2:
+                self.on_bar(self.bar)
 
             new_minute = True
 
@@ -80,17 +82,22 @@ class BarGenerator:
                 low_price=tick.last_price,
                 close_price=tick.last_price,
             )
+            self.tick_counts = 1
         else:
-            self.bar.high_price = max(self.bar.high_price, tick.last_price)
-            self.bar.low_price = min(self.bar.low_price, tick.last_price)
-            self.bar.close_price = tick.last_price
-            self.bar.datetime = tick.datetime
+            if self.bar.datetime.time() != tick.datetime.time():
+                self.tick_counts += 1
+                self.bar.high_price = max(self.bar.high_price, tick.last_price)
+                self.bar.low_price = min(self.bar.low_price, tick.last_price)
+                self.bar.close_price = tick.last_price
+                self.bar.datetime = tick.datetime
+
 
         if self.last_tick:
             volume_change = tick.volume - self.last_tick.volume
             self.bar.volume += max(volume_change, 0)
 
         self.last_tick = tick
+
 
     def update_bar(self, bar: BarData):
         """
