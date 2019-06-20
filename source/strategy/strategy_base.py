@@ -1171,6 +1171,7 @@ class StrategyBase(metaclass=ABCMeta):
         Sync strategy variables value into disk storage.
         """
         if self.trading:
+            print('begin syn data')
             self.strategy_engine.sync_strategy_data(self)
         pass
 

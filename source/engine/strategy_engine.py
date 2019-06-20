@@ -162,13 +162,18 @@ class StrategyEngine(BaseEngine):
     def process_timer_event(self,event):
         #auto init and start strategy at 8:57, 20:57
         nowtime = datetime.now().time()
-        if (nowtime > time(hour=8, minute=55) ) and (nowtime < time(hour=8, minute=56)) and (not self.autoinited):
+        dayinitflag = (nowtime > time(hour=8, minute=55) ) and (nowtime < time(hour=8, minute=56))
+        daystartflag = (nowtime > time(hour=8, minute=57) ) and (nowtime < time(hour=8, minute=58))
+        nightinitflag = (nowtime > time(hour=20, minute=55) ) and (nowtime < time(hour=20, minute=56))
+        nightstartflag = (nowtime > time(hour=20, minute=57) ) and (nowtime < time(hour=20, minute=58))
+        if (dayinitflag or nightinitflag) and (not self.autoinited):
             for name, strategy in self.strategies.items():
                 if strategy.autostart:
                     self.init_strategy(name)
             self.dayswitched = False
             self.autoinited = True
-        if (nowtime > time(hour=20, minute=57) ) and (nowtime < time(hour=20, minute=58)) and (not self.autostarted):
+
+        if (daystartflag or nightstartflag) and (not self.autostarted):
             for name, strategy in self.strategies.items():
                 if strategy.autostart:
                     self.start_strategy(name)        

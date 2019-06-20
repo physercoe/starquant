@@ -15,6 +15,7 @@ from source.common.constant import (
     )
 from source.common.datastruct import (
     Event,
+    OrderData,
     CtpOrderField,
     PaperOrderField,
     QryContractRequest,
