@@ -8,22 +8,24 @@ from typing import Callable
 
 from .constant import Exchange
 
+
 def extract_full_symbol(full_symbol: str):
     """
     :return: (symbol, exchange)
     """
-    tmp =  full_symbol.split(' ')
+    tmp = full_symbol.split(' ')
     if len(tmp) < 4:
         return "unknwonsymbol", Exchange.SHFE
     symbol = tmp[2] + tmp[3]
     exchange_str = tmp[0]
-    ex = Exchange(exchange_str)    
-    if ex in [Exchange.SHFE,Exchange.DCE,Exchange.INE]:
+    ex = Exchange(exchange_str)
+    if ex in [Exchange.SHFE, Exchange.DCE, Exchange.INE]:
         symbol = symbol.lower()
     return symbol, ex
 
+
 # from ctp symbol to full symbol
-def generate_full_symbol(exchange: Exchange, symbol: str, type:str = 'F'):
+def generate_full_symbol(exchange: Exchange, symbol: str, type: str = 'F'):
     product = ''
     contractno = ''
     fullsym = symbol
@@ -34,9 +36,10 @@ def generate_full_symbol(exchange: Exchange, symbol: str, type:str = 'F'):
                     break
             product = symbol[:count]
             contractno = symbol[count:]
-            fullsym = exchange.value + ' ' + type + ' ' + product.upper() + ' ' + contractno 
+            fullsym = exchange.value + ' ' + type + ' '\
+                + product.upper() + ' ' + contractno
         elif type == 'S':
-            combo = symbol.split(' ',1)[1]
+            combo = symbol.split(' ', 1)[1]
             symbol1 = combo.split('&')[0]
             symbol2 = combo.split('&')[1]
             for count, word in enumerate(symbol1):
@@ -49,9 +52,9 @@ def generate_full_symbol(exchange: Exchange, symbol: str, type:str = 'F'):
                     break
             product += ('&' + symbol2[:count])
             contractno += ('&' + symbol2[count:])
-            fullsym = exchange.value + ' ' + type + ' ' + product.upper() + ' ' + contractno 
+            fullsym = exchange.value + ' ' + type + ' '\
+                + product.upper() + ' ' + contractno
     return fullsym
-
 
 
 def extract_vt_symbol(vt_symbol: str):
@@ -87,6 +90,7 @@ def _get_trader_dir(temp_name: str):
         temp_path.mkdir()
 
     return home_path, temp_path
+
 
 TRADER_DIR, TEMP_DIR = _get_trader_dir(".StarQuant")
 
@@ -148,6 +152,7 @@ def round_to_pricetick(price: float, pricetick: float):
     rounded = round(price / pricetick, 0) * pricetick
     return rounded
 
+
 def round_to(value: float, target: float):
     """
     Round price to price tick value.
@@ -155,7 +160,8 @@ def round_to(value: float, target: float):
     rounded = int(round(value / target)) * target
     return rounded
 
-def virtual(func: "callable"):
+
+def virtual(func: Callable):
     """
     mark a function as "virtual", which means that this function can be override.
     any base class should use this or @abstractmethod to decorate all functions

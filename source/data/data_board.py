@@ -2,14 +2,12 @@
 # -*- coding: utf-8 -*-
 
 
-import json
-from pathlib import Path
 from typing import Callable
 
 import numpy as np
 import talib
 
-from ..common.datastruct import Event,TickData, BarData
+from ..common.datastruct import TickData, BarData
 from ..common.constant import Interval
 
 
@@ -60,7 +58,7 @@ class BarGenerator:
 
         if not self.bar:
             new_minute = True
-        # in backtest when switching day there should be a new bar     
+        # in backtest when switching day there should be a new bar
         elif self.bar.datetime.minute != tick.datetime.minute or self.bar.datetime.hour != tick.datetime.hour:
             self.bar.datetime = self.bar.datetime.replace(
                 second=0, microsecond=0
@@ -91,13 +89,11 @@ class BarGenerator:
                 self.bar.close_price = tick.last_price
                 self.bar.datetime = tick.datetime
 
-
         if self.last_tick:
             volume_change = tick.volume - self.last_tick.volume
             self.bar.volume += max(volume_change, 0)
 
         self.last_tick = tick
-
 
     def update_bar(self, bar: BarData):
         """
@@ -340,18 +336,18 @@ class ArrayManager(object):
             return up, down
         return up[-1], down[-1]
 
-    def highlow(self, currentHigh,currentLow,HighPoint, LowPoint, HigherRatio,LowerRatio):
+    def highlow(self, currentHigh, currentLow, HighPoint, LowPoint, HigherRatio, LowerRatio):
         PriceBFired = False
         PriceA = 0.0
         PriceB = 0.0
         PriceBFired2 = False
         PriceA2 = 0.0
-        PriceB2 = 0.0   
+        PriceB2 = 0.0
 
         TempHigh = np.max(self.high)
         TempLow = np.min(self.low)
-        TempHighTime = np.where(self.high == TempHigh)[0][-1] #最后一个高点位置
-        TempLowTime = np.where(self.low == TempLow)[0][0] #第一个低点位置
+        TempHighTime = np.where(self.high == TempHigh)[0][-1]  # 最后一个高点位置
+        TempLowTime = np.where(self.low == TempLow)[0][0]  # 第一个低点位置
         TempLowMin1 = self.low[TempHighTime:]
         TempHighMin1 = self.high[TempLowTime:]
         if currentHigh == TempHigh and TempHigh > HighPoint:
@@ -359,20 +355,21 @@ class ArrayManager(object):
             TempLow1Time = np.where(TempLowMin1 == TempLow1)[0][-1]
             TempIfTimeBC = len(TempLowMin1) - TempLow1Time > 2
             TempIfTimeAB = TempLow1Time > 2
-            TempIfPriceOA = (TempHigh - TempLow1 > LowerRatio * HighPoint) and (TempHigh - TempLow1 < HigherRatio * HighPoint)
+            TempIfPriceOA = (TempHigh - TempLow1 > LowerRatio *
+                             HighPoint) and (TempHigh - TempLow1 < HigherRatio * HighPoint)
             if TempIfTimeBC and TempIfTimeAB and TempIfPriceOA:
                 PriceBFired = True
                 PriceA = TempHigh
                 PriceB = TempLow1
-        if currentLow == TempLow and TempLow < LowPoint :
+        if currentLow == TempLow and TempLow < LowPoint:
             TempHigh1 = np.max(TempHighMin1)
             TempHigh1Time = np.where(TempHighMin1 == TempHigh1)[0][-1]
-            TempIfTimeBC2 = (len(TempHighMin1) - TempHigh1Time > 2) 
-            TempIfTimeAB2 = (TempHigh1Time > 2 )
-            TempIfPriceAB2 = (TempHigh1 - TempLow > LowerRatio * LowPoint) and (TempHigh1 - TempLow < HigherRatio * LowPoint)
+            TempIfTimeBC2 = (len(TempHighMin1) - TempHigh1Time > 2)
+            TempIfTimeAB2 = (TempHigh1Time > 2)
+            TempIfPriceAB2 = (TempHigh1 - TempLow > LowerRatio *
+                              LowPoint) and (TempHigh1 - TempLow < HigherRatio * LowPoint)
             if TempIfTimeBC2 and TempIfTimeAB2 and TempIfPriceAB2:
                 PriceBFired2 = True
                 PriceA2 = TempLow
                 PriceB2 = TempHigh1
-        return PriceBFired,PriceA,PriceB,PriceBFired2,PriceA2,PriceB2
-
+        return PriceBFired, PriceA, PriceB, PriceBFired2, PriceA2, PriceB2

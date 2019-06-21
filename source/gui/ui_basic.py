@@ -3,9 +3,7 @@ Basic widgets for SQ main window.
 """
 
 import csv
-from enum import Enum
 from typing import Any
-
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 
@@ -16,15 +14,11 @@ from ..common.constant import Direction
 from ..common.constant import EventType, OT2STR
 
 
-
-
 COLOR_LONG = QtGui.QColor("red")
 COLOR_SHORT = QtGui.QColor("green")
 COLOR_BID = QtGui.QColor(255, 174, 201)
 COLOR_ASK = QtGui.QColor(160, 255, 160)
 COLOR_BLACK = QtGui.QColor("black")
-
-
 
 
 class VerticalTabBar(QtWidgets.QTabBar):
@@ -33,7 +27,7 @@ class VerticalTabBar(QtWidgets.QTabBar):
     #     s.transpose()
     #     return s
 
-    def paintEvent(self,event):
+    def paintEvent(self, event):
         painter = QtWidgets.QStylePainter(self)
         opt = QtWidgets.QStyleOptionTab()
         for i in range(self.count()):
@@ -55,22 +49,17 @@ class VerticalTabBar(QtWidgets.QTabBar):
             painter.restore()
 
 
-
-
 class QFloatTableWidgetItem (QtWidgets.QTableWidgetItem):
-    def __init__ (self, value):
+    def __init__(self, value):
         super(QFloatTableWidgetItem, self).__init__(value)
 
-    def __lt__ (self, other):
+    def __lt__(self, other):
         if (isinstance(other, QFloatTableWidgetItem)):
-            selfDataValue  = float(self.text())
+            selfDataValue = float(self.text())
             otherDataValue = float(other.text())
             return selfDataValue < otherDataValue
         else:
             return QtWidgets.QTableWidgetItem.__lt__(self, other)
-
-
-
 
 
 class BaseCell(QtWidgets.QTableWidgetItem):
@@ -114,6 +103,7 @@ class EnumCell(BaseCell):
         if content:
             super(EnumCell, self).set_content(content.value, data)
 
+
 class OTCell(BaseCell):
     """
     Cell used for showing ordertype data.
@@ -128,7 +118,7 @@ class OTCell(BaseCell):
         Set text using ot2str.
         """
         if content:
-            text = OT2STR.get(content,'未知')
+            text = OT2STR.get(content, '未知')
             self.setText(text)
             self._data = data
 
@@ -241,7 +231,7 @@ class BaseMonitor(QtWidgets.QTableWidget):
     Monitor data update in VN Trader.
     """
 
-    event_type : EventType = EventType.HEADER
+    event_type: EventType = EventType.HEADER
     data_key = ""
     sorting = False
     headers = {}
@@ -252,7 +242,6 @@ class BaseMonitor(QtWidgets.QTableWidget):
         """"""
         super(BaseMonitor, self).__init__()
 
- 
         self.event_engine = event_engine
         self.cells = {}
 
@@ -293,7 +282,7 @@ class BaseMonitor(QtWidgets.QTableWidget):
         self.menu.addAction(save_action)
 
         del_action = QtWidgets.QAction("删除数据", self)
-        del_action.triggered.connect(self.deleterows)           
+        del_action.triggered.connect(self.deleterows)
         self.menu.addAction(del_action)
 
     def register_event(self):
@@ -393,10 +382,10 @@ class BaseMonitor(QtWidgets.QTableWidget):
 
     def deleterows(self):
         rr = QtWidgets.QMessageBox.warning(self, "注意", "删除无法恢复！",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, 
-            QtWidgets.QMessageBox.No)
+                                           QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                                           QtWidgets.QMessageBox.No)
         if rr == QtWidgets.QMessageBox.Yes:
-            curow = self.currentRow()            
+            curow = self.currentRow()
             selections = self.selectionModel()
             selectedsList = selections.selectedRows()
             rows = []
@@ -406,12 +395,12 @@ class BaseMonitor(QtWidgets.QTableWidget):
                 rows.append(curow)
             rows.reverse()
             for i in rows:
-                cell = self.item(i,0)
+                cell = self.item(i, 0)
                 data = cell.get_data()
                 key = data.__getattribute__(self.data_key)
                 self.removeRow(i)
-                del self.cells[key]        
-    
+                del self.cells[key]
+
     def contextMenuEvent(self, event):
         """
         Show menu with right click.
@@ -419,23 +408,20 @@ class BaseMonitor(QtWidgets.QTableWidget):
         self.menu.popup(QtGui.QCursor.pos())
 
 
-
-
-
 class CandlestickItem(pg.GraphicsObject):
     w = 0.35
     bull_pen = pg.mkPen('r')
     bear_pen = pg.mkPen('g')
-    bull_brush = pg.mkBrush('r') #pg.mkBrush('#00cc00')
-    bear_brush = pg.mkBrush('g')#   pg.mkBrush('#fa0000')
+    bull_brush = pg.mkBrush('r')  # pg.mkBrush('#00cc00')
+    bear_brush = pg.mkBrush('g')  # pg.mkBrush('#fa0000')
 
     def __init__(self, data):
         pg.GraphicsObject.__init__(self)
-        self.data = data        
+        self.data = data
         self.generatePicture()
 
     def generatePicture(self):
-        self.picture = QtGui.QPicture()        
+        self.picture = QtGui.QPicture()
         p = QtGui.QPainter(self.picture)
         for t, bar in enumerate(self.data):
             # t = 60*(bar.datetime.hour - 9) + bar.datetime.minute
@@ -445,13 +431,14 @@ class CandlestickItem(pg.GraphicsObject):
             else:
                 p.setPen(self.bear_pen)
                 p.setBrush(self.bear_brush)
-            p.drawLine(QtCore.QPointF(t, bar.low_price), QtCore.QPointF(t, bar.high_price))
-            p.drawRect(QtCore.QRectF(t - self.w, bar.open_price, self.w * 2, bar.close_price - bar.open_price))
+            p.drawLine(QtCore.QPointF(t, bar.low_price),
+                       QtCore.QPointF(t, bar.high_price))
+            p.drawRect(QtCore.QRectF(t - self.w, bar.open_price,
+                                     self.w * 2, bar.close_price - bar.open_price))
         p.end()
         self.update()
 
-
-    def on_bar(self,bar):
+    def on_bar(self, bar):
         # self.data.append(bar)
         self.generatePicture()
         # p = self.p
@@ -465,7 +452,7 @@ class CandlestickItem(pg.GraphicsObject):
         # p.drawLine(QtCore.QPointF(t, bar.low_price), QtCore.QPointF(t, bar.high_price))
         # p.drawRect(QtCore.QRectF(t - self.w, bar.open_price, self.w * 2, bar.close_price - bar.open_price))
         # p.end()
-        # self.update()       
+        # self.update()
 
     def paint(self, p, *args):
         p.drawPicture(0, 0, self.picture)
@@ -478,8 +465,8 @@ class VolumeItem(pg.GraphicsObject):
     w = 0.35
     bull_pen = pg.mkPen('r')
     bear_pen = pg.mkPen('g')
-    bull_brush = pg.mkBrush('r') #pg.mkBrush('#00cc00')
-    bear_brush = pg.mkBrush('g')#   pg.mkBrush('#fa0000')
+    bull_brush = pg.mkBrush('r')  # pg.mkBrush('#00cc00')
+    bear_brush = pg.mkBrush('g')  # pg.mkBrush('#fa0000')
 
     def __init__(self, data):
         pg.GraphicsObject.__init__(self)
@@ -497,15 +484,16 @@ class VolumeItem(pg.GraphicsObject):
                 p.setBrush(self.bull_brush)
             else:
                 p.setPen(self.bear_pen)
-                p.setBrush(self.bear_brush) 
-                sign = -1           
-            p.drawRect(QtCore.QRectF(t - self.w, 0, self.w * 2, sign*bar.volume))
+                p.setBrush(self.bear_brush)
+                sign = -1
+            p.drawRect(QtCore.QRectF(t - self.w, 0,
+                                     self.w * 2, sign*bar.volume))
         p.end()
         self.update()
 
-    def on_bar(self,bar):
+    def on_bar(self, bar):
         # self.data.append(bar)
-        self.generatePicture()    
+        self.generatePicture()
 
     def paint(self, p, *args):
         p.drawPicture(0, 0, self.picture)

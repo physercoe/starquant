@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 from queue import Queue
 from threading import Thread
-from nanomsg import Socket, PAIR, SUB, PUB, PUSH,SUB_SUBSCRIBE, AF_SP,SOL_SOCKET,RCVTIMEO
-from datetime import datetime, timedelta,time
+from nanomsg import Socket, SUB, PUSH, SUB_SUBSCRIBE, SOL_SOCKET, RCVTIMEO
+from datetime import datetime, timedelta, time
 import os
-import yaml,json
+import yaml
+import json
 from collections import defaultdict
 from copy import copy
 import traceback
@@ -15,21 +16,23 @@ from pathlib import Path
 
 from ..api.ctp_constant import THOST_FTDC_PT_Net
 from ..common.constant import (
-    EngineType,Exchange,Interval,Product,PRODUCT_CTP2VT,OPTIONTYPE_CTP2VT,
-    EventType,MSG_TYPE,SYMBOL_TYPE
+    EngineType, Exchange, Interval, Product, PRODUCT_CTP2VT, OPTIONTYPE_CTP2VT,
+    EventType, MSG_TYPE, SYMBOL_TYPE
 )
 from ..common.datastruct import (
-    Event,SubscribeRequest,OrderData,TradeData,TickData,BarData,PositionData,
-    CtpOrderField,ContractData,AccountData,OrderRequest
+    Event, SubscribeRequest, OrderData, TradeData, TickData, BarData, PositionData,
+    CtpOrderField, ContractData, AccountData, OrderRequest
 )
-from ..common.utility import generate_full_symbol,extract_full_symbol,generate_vt_symbol,load_json,save_json
+from ..common.utility import extract_full_symbol, load_json, save_json
 from ..strategy.strategy_base import StrategyBase
 from ..data.rqdata import rqdata_client
 from ..data import database_manager
 from ..trade.portfolio_manager import OffsetConverter
-from ..engine.iengine import BaseEngine,EventEngine
+from ..engine.iengine import BaseEngine, EventEngine
 
 CtaTemplate = StrategyBase
+
+
 class StrategyEngine(BaseEngine):
     """
     Send to and receive from msg  server ,used for strategy 
@@ -37,19 +40,20 @@ class StrategyEngine(BaseEngine):
     config_filename = "config_server.yaml"
     setting_filename = "cta_strategy_setting.json"
     data_filename = "cta_strategy_data.json"
-# init    
-    def __init__(self,configfile:str = '',id :int = 1):
+# init
+
+    def __init__(self, configfile: str = '', id: int = 1):
         super(StrategyEngine, self).__init__(event_engine=EventEngine(10))
         """
         two sockets to send and recv msg
         """
         self.__active = False
         self.id = os.getpid()
-        self.engine_type = EngineType.LIVE     
+        self.engine_type = EngineType.LIVE
         self._recv_sock = Socket(SUB)
         self._send_sock = Socket(PUSH)
         self._handlers = defaultdict(list)
-        if configfile:            
+        if configfile:
             self.config_filename = configfile
         filepath = Path.cwd().joinpath("etc/" + self.config_filename)
         with open(filepath, encoding='utf8') as fd:
@@ -60,12 +64,11 @@ class StrategyEngine(BaseEngine):
         self.strategy_setting = {}  # strategy_name: dict
         self.strategy_data = {}     # strategy_name: dict
 
-        self.classes = {}           # class_name: stategy_class        
+        self.classes = {}           # class_name: stategy_class
         self.strategies = {}        # strategy_name: strategy
 
         # self.classes_id = {}     # class_id : strategy
         # self.strategies_id = {}     # strategy_ID: strategy
-
 
         self.symbol_strategy_map = defaultdict(
             list)                   # full_symbol: strategy list
@@ -98,19 +101,20 @@ class StrategyEngine(BaseEngine):
 
         self.init_engine()
 
-# init functions 
+# init functions
     def init_engine(self):
         self.init_nng()
         self.init_rqdata()
         self.load_contract()
         self.load_strategy_class()
         self.load_strategy_setting()
-        self.load_strategy_data()  
+        self.load_strategy_data()
         self.register_event()
 
     def init_nng(self):
-        self._recv_sock.set_string_option(SUB, SUB_SUBSCRIBE, '')  # receive msg start with all
-        self._recv_sock.set_int_option(SOL_SOCKET,RCVTIMEO,100)
+        self._recv_sock.set_string_option(
+            SUB, SUB_SUBSCRIBE, '')  # receive msg start with all
+        self._recv_sock.set_int_option(SOL_SOCKET, RCVTIMEO, 100)
         self._recv_sock.connect(self._config['serverpub_url'])
         self._send_sock.connect(self._config['serverpull_url'])
 
@@ -119,12 +123,12 @@ class StrategyEngine(BaseEngine):
         result = rqdata_client.init()
         if result:
             self.write_log("RQData数据接口初始化成功")
-    
+
     def load_contract(self):
         contractfile = Path.cwd().joinpath("etc/ctpcontract.yaml")
-        with open(contractfile, encoding='utf8') as fc: 
+        with open(contractfile, encoding='utf8') as fc:
             contracts = yaml.load(fc)
-        print('loading contracts, total number:',len(contracts))
+        print('loading contracts, total number:', len(contracts))
         for sym, data in contracts.items():
             contract = ContractData(
                 symbol=data["symbol"],
@@ -133,39 +137,52 @@ class StrategyEngine(BaseEngine):
                 product=PRODUCT_CTP2VT[str(data["product"])],
                 size=data["size"],
                 pricetick=data["pricetick"],
-                net_position = True if str(data["positiontype"]) == THOST_FTDC_PT_Net else False,
-                long_margin_ratio = data["long_margin_ratio"],
-                short_margin_ratio = data["short_margin_ratio"],
-                full_symbol = data["full_symbol"]
-            )            
+                net_position=True if str(
+                    data["positiontype"]) == THOST_FTDC_PT_Net else False,
+                long_margin_ratio=data["long_margin_ratio"],
+                short_margin_ratio=data["short_margin_ratio"],
+                full_symbol=data["full_symbol"]
+            )
             # For option only
             if contract.product == Product.OPTION:
                 contract.option_underlying = data["option_underlying"],
-                contract.option_type = OPTIONTYPE_CTP2VT.get(str(data["option_type"]), None),
+                contract.option_type = OPTIONTYPE_CTP2VT.get(
+                    str(data["option_type"]), None),
                 contract.option_strike = data["option_strike"],
-                contract.option_expiry = datetime.strptime(str(data["option_expiry"]), "%Y%m%d"),
+                contract.option_expiry = datetime.strptime(
+                    str(data["option_expiry"]), "%Y%m%d"),
             self.contracts[contract.full_symbol] = contract
 
     def register_event(self):
         """"""
         self.event_engine.register(EventType.TICK, self.process_tick_event)
-        self.event_engine.register(EventType.ORDERSTATUS, self.process_orderstatus_event)
+        self.event_engine.register(
+            EventType.ORDERSTATUS, self.process_orderstatus_event)
         self.event_engine.register(EventType.FILL, self.process_trade_event)
-        self.event_engine.register(EventType.POSITION, self.process_position_event)
-        self.event_engine.register(EventType.ACCOUNT, self.process_account_event)
-        self.event_engine.register(EventType.CONTRACT, self.process_contract_event)        
-        self.event_engine.register(EventType.STRATEGY_CONTROL,self.process_strategycontrol_event)
-        self.event_engine.register(EventType.HEADER,self.process_general_event)
-        self.event_engine.register(EventType.TIMER,self.process_timer_event)
+        self.event_engine.register(
+            EventType.POSITION, self.process_position_event)
+        self.event_engine.register(
+            EventType.ACCOUNT, self.process_account_event)
+        self.event_engine.register(
+            EventType.CONTRACT, self.process_contract_event)
+        self.event_engine.register(
+            EventType.STRATEGY_CONTROL, self.process_strategycontrol_event)
+        self.event_engine.register(
+            EventType.HEADER, self.process_general_event)
+        self.event_engine.register(EventType.TIMER, self.process_timer_event)
 # event handler
 
-    def process_timer_event(self,event):
-        #auto init and start strategy at 8:57, 20:57
+    def process_timer_event(self, event):
+        # auto init and start strategy at 8:57, 20:57
         nowtime = datetime.now().time()
-        dayinitflag = (nowtime > time(hour=8, minute=55) ) and (nowtime < time(hour=8, minute=56))
-        daystartflag = (nowtime > time(hour=8, minute=57) ) and (nowtime < time(hour=8, minute=58))
-        nightinitflag = (nowtime > time(hour=20, minute=55) ) and (nowtime < time(hour=20, minute=56))
-        nightstartflag = (nowtime > time(hour=20, minute=57) ) and (nowtime < time(hour=20, minute=58))
+        dayinitflag = (nowtime > time(hour=8, minute=55)) and (
+            nowtime < time(hour=8, minute=56))
+        daystartflag = (nowtime > time(hour=8, minute=57)) and (
+            nowtime < time(hour=8, minute=58))
+        nightinitflag = (nowtime > time(hour=20, minute=55)) and (
+            nowtime < time(hour=20, minute=56))
+        nightstartflag = (nowtime > time(hour=20, minute=57)) and (
+            nowtime < time(hour=20, minute=58))
         if (dayinitflag or nightinitflag) and (not self.autoinited):
             for name, strategy in self.strategies.items():
                 if strategy.autostart:
@@ -176,26 +193,25 @@ class StrategyEngine(BaseEngine):
         if (daystartflag or nightstartflag) and (not self.autostarted):
             for name, strategy in self.strategies.items():
                 if strategy.autostart:
-                    self.start_strategy(name)        
+                    self.start_strategy(name)
             self.autostarted = True
             self.dayswitched = False
 
-        # auto stop strategy at 14:57 and 22:57, 23:27, 00:27, 2:27 
-        if (nowtime > time(hour=16, minute=0) ) and (nowtime < time(hour=16, minute=1)) and (not self.dayswitched):
+        # auto stop strategy at 14:57 and 22:57, 23:27, 00:27, 2:27
+        if (nowtime > time(hour=16, minute=0)) and (nowtime < time(hour=16, minute=1)) and (not self.dayswitched):
             for name, strategy in self.strategies.items():
                 if strategy.autostart:
-                    self.reset_strategy(name)     
+                    self.reset_strategy(name)
             self.dayswitched = True
             self.autostarted = False
             self.autoinited = False
-        if (nowtime > time(hour=3, minute=0) ) and (nowtime < time(hour=3, minute=1)) and (not self.dayswitched):
+        if (nowtime > time(hour=3, minute=0)) and (nowtime < time(hour=3, minute=1)) and (not self.dayswitched):
             for name, strategy in self.strategies.items():
                 if strategy.autostart:
-                    self.reset_strategy(name)         
+                    self.reset_strategy(name)
             self.dayswitched = True
             self.autostarted = False
             self.autoinited = False
-
 
     def process_general_event(self, event):
         for name, strategy in self.strategies.items():
@@ -219,7 +235,7 @@ class StrategyEngine(BaseEngine):
         """"""
         order = event.data
 
-        self.offset_converter.update_order(order) #重新计算冻结
+        self.offset_converter.update_order(order)  # 重新计算冻结
 
         if order.clientID != self.id:
             return
@@ -231,7 +247,7 @@ class StrategyEngine(BaseEngine):
             self.active_orders[order.client_order_id] = order
         # Otherwise, pop inactive order from in dict
         elif order.client_order_id in self.active_orders:
-            self.active_orders.pop(order.client_order_id)  
+            self.active_orders.pop(order.client_order_id)
 
         strategy = self.orderid_strategy_map.get(order.client_order_id, None)
         if not strategy:
@@ -257,13 +273,10 @@ class StrategyEngine(BaseEngine):
         #         status=STOP_STATUS_MAP[order.status],
         #         vt_orderid=order.vt_orderid,
         #     )
-        #     self.call_strategy_func(strategy, strategy.on_stop_order, so)  
+        #     self.call_strategy_func(strategy, strategy.on_stop_order, so)
 
         # Call strategy on_order function
         self.call_strategy_func(strategy, strategy.on_order, order)
-
-        
-   
 
     def process_trade_event(self, event: Event):
         """"""
@@ -286,11 +299,11 @@ class StrategyEngine(BaseEngine):
         self.put_strategy_event(strategy)
 
         self.trades[trade.vt_tradeid] = trade
-        #send qry pos to update position
+        # send qry pos to update position
         m = Event(type=EventType.QRY,
-            des=event.source,
-            src=str(self.id),
-            msgtype=MSG_TYPE.MSG_TYPE_QRY_POS)
+                  des=event.source,
+                  src=str(self.id),
+                  msgtype=MSG_TYPE.MSG_TYPE_QRY_POS)
         self.put(m)
 
     def process_position_event(self, event: Event):
@@ -311,17 +324,17 @@ class StrategyEngine(BaseEngine):
         contract = event.data
         self.contracts[contract.full_symbol] = contract
 
-    def process_strategycontrol_event(self,event:Event):
+    def process_strategycontrol_event(self, event: Event):
         msgtype = event.msg_type
-        deslist = ['@*',str(self.id),'@'+str(self.id)]
-        if (event.destination not in deslist ) :
+        deslist = ['@*', str(self.id), '@'+str(self.id)]
+        if (event.destination not in deslist):
             return
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_STATUS):
             m = Event(type=EventType.STRATEGY_CONTROL,
-                des='@0',
-                src=str(self.id),
-                msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STATUS
-                )
+                      des='@0',
+                      src=str(self.id),
+                      msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STATUS
+                      )
             self._send_sock.send(m.serialize())
         # elif (event.destination not in deslist ) :
         #     return
@@ -331,7 +344,7 @@ class StrategyEngine(BaseEngine):
             strname = v[1]
             fulsym = v[2]
             setting = json.loads(v[3])
-            self.add_strategy(classname,strname,fulsym,setting)
+            self.add_strategy(classname, strname, fulsym, setting)
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_INIT):
             self.init_strategy(event.data)
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_INIT_ALL):
@@ -349,33 +362,32 @@ class StrategyEngine(BaseEngine):
             self.load_strategy_class(True)
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_RESET):
             self.reset_strategy(event.data)
-        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_RESET_ALL): 
+        elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_RESET_ALL):
             self.reset_all_strategies()
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_EDIT):
             v = event.data.split('|')
             setting = json.loads(v[1])
-            self.edit_strategy(v[0],setting)
+            self.edit_strategy(v[0], setting)
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE):
             if self.remove_strategy(event.data):
                 m = Event(type=EventType.STRATEGY_CONTROL,
-                data=event.data,
-                des='@0',
-                src=str(self.id),
-                msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RTN_REMOVE
-                )
+                          data=event.data,
+                          des='@0',
+                          src=str(self.id),
+                          msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RTN_REMOVE
+                          )
                 self._send_sock.send(m.serialize())
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE_DUPLICATE):
-            self.remove_strategy(event.data,True)
+            self.remove_strategy(event.data, True)
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_GET_DATA):
             # print('begin get data')
             if event.data:
-                strategy = self.strategies.get(event.data,None)
+                strategy = self.strategies.get(event.data, None)
                 if strategy:
                     self.put_strategy_event(strategy)
-            else : # get all strategy data
+            else:  # get all strategy data
                 for strategy in self.strategies.values():
                     self.put_strategy_event(strategy)
-        
 
     def call_strategy_func(
         self, strategy: StrategyBase, func: Callable, params: Any = None
@@ -395,6 +407,7 @@ class StrategyEngine(BaseEngine):
             msg = f"触发异常已停止\n{traceback.format_exc()}"
             self.write_log(msg, strategy)
 # strategy manage
+
     def add_strategy(
         self, class_name: str, strategy_name: str, full_symbol: str, setting: dict
     ):
@@ -406,12 +419,13 @@ class StrategyEngine(BaseEngine):
             self.write_log(f"创建策略失败，存在重名{strategy_name}")
             return
         if class_name not in self.classes:
-            self.write_log(f'strategy class[{class_name}] not exist, please check')
+            self.write_log(
+                f'strategy class[{class_name}] not exist, please check')
             return
         strategy_class = self.classes[class_name]
 
-        strategy = strategy_class(self,strategy_name, full_symbol, setting)
-        self.strategies[strategy_name] = strategy       
+        strategy = strategy_class(self, strategy_name, full_symbol, setting)
+        self.strategies[strategy_name] = strategy
 
         # Add full_symbol to strategy map.
         strategies = self.symbol_strategy_map[full_symbol]
@@ -422,10 +436,11 @@ class StrategyEngine(BaseEngine):
 
         self.put_strategy_event(strategy)
         print("end add strategy")
+
     def init_strategy(self, strategy_name: str):
         """
         Init a strategy.
-        """ 
+        """
         self.init_queue.put(strategy_name)
 
         if not self.init_thread:
@@ -460,11 +475,12 @@ class StrategyEngine(BaseEngine):
             # Subscribe market data
             contract = self.get_contract(strategy.full_symbol)
             if contract:
-                m = Event(type=EventType.SUBSCRIBE,msgtype=MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA)
+                m = Event(type=EventType.SUBSCRIBE,
+                          msgtype=MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA)
                 m.destination = "CTP.MD"
                 m.source = str(self.id)
                 req = SubscribeRequest()
-                req.sym_type = SYMBOL_TYPE.CTP                
+                req.sym_type = SYMBOL_TYPE.CTP
                 req.content = contract.symbol
                 m.data = req
                 self._send_sock.send(m.serialize())
@@ -472,12 +488,13 @@ class StrategyEngine(BaseEngine):
                 self.write_log(f"行情订阅失败，找不到合约{strategy.full_symbol}", strategy)
 
             # qry pos and acc
-            m = Event(type=EventType.QRY,msgtype=MSG_TYPE.MSG_TYPE_QRY_POS)
+            m = Event(type=EventType.QRY, msgtype=MSG_TYPE.MSG_TYPE_QRY_POS)
             m.destination = strategy.api + '.' + strategy.account
             m.source = str(self.id)
             self._send_sock.send(m.serialize())
 
-            m = Event(type=EventType.QRY,msgtype=MSG_TYPE.MSG_TYPE_QRY_ACCOUNT)
+            m = Event(type=EventType.QRY,
+                      msgtype=MSG_TYPE.MSG_TYPE_QRY_ACCOUNT)
             m.destination = strategy.api + '.' + strategy.account
             m.source = str(self.id)
             self._send_sock.send(m.serialize())
@@ -486,7 +503,7 @@ class StrategyEngine(BaseEngine):
             strategy.inited = True
             self.put_strategy_event(strategy)
             self.write_log(f"{strategy_name}初始化完成")
-        
+
         self.init_thread = None
 
     def start_strategy(self, strategy_name: str):
@@ -527,7 +544,7 @@ class StrategyEngine(BaseEngine):
         # Update GUI
         self.put_strategy_event(strategy)
 
-    def reset_strategy(self,strategy_name: str):
+    def reset_strategy(self, strategy_name: str):
         "Reset a strategy"
         strategy = self.strategies[strategy_name]
         if not strategy.inited:
@@ -537,7 +554,7 @@ class StrategyEngine(BaseEngine):
         strategy.trading = False
         self.cancel_all(strategy)
         # reset
-        self.call_strategy_func(strategy,strategy.on_reset)
+        self.call_strategy_func(strategy, strategy.on_reset)
         strategy.inited = False
 
         self.put_strategy_event(strategy)
@@ -552,7 +569,7 @@ class StrategyEngine(BaseEngine):
         self.update_strategy_setting(strategy_name, setting)
         self.put_strategy_event(strategy)
 
-    def remove_strategy(self, strategy_name: str, duplicate:bool = False):
+    def remove_strategy(self, strategy_name: str, duplicate: bool = False):
         """
         Remove a strategy.
         """
@@ -584,7 +601,7 @@ class StrategyEngine(BaseEngine):
         print("end remove")
         return True
 
-    def load_strategy_class(self,reload:bool=False):
+    def load_strategy_class(self, reload: bool = False):
         """
         Load strategy class from source code.
         """
@@ -594,9 +611,9 @@ class StrategyEngine(BaseEngine):
         #     path1, "vnpy.app.cta_strategy.strategies")
 
         path2 = Path.cwd().joinpath("mystrategy")
-        self.load_strategy_class_from_folder(path2, "",reload)
+        self.load_strategy_class_from_folder(path2, "", reload)
 
-    def load_strategy_class_from_folder(self, path: Path, module_name: str = "",reload:bool=False):
+    def load_strategy_class_from_folder(self, path: Path, module_name: str = "", reload: bool = False):
         """
         Load strategy class from certain folder.
         """
@@ -605,9 +622,10 @@ class StrategyEngine(BaseEngine):
                 if filename.endswith(".py"):
                     strategy_module_name = "mystrategy.".join(
                         [module_name, filename.replace(".py", "")])
-                    self.load_strategy_class_from_module(strategy_module_name,reload)
+                    self.load_strategy_class_from_module(
+                        strategy_module_name, reload)
 
-    def load_strategy_class_from_module(self, module_name: str,reload:bool=False):
+    def load_strategy_class_from_module(self, module_name: str, reload: bool = False):
         """
         Load strategy class from module file.
         """
@@ -616,8 +634,8 @@ class StrategyEngine(BaseEngine):
         # if reload delete old attribute
             if reload:
                 for attr in dir(module):
-                    if attr not in ('__name__','__file__'):
-                        delattr(module,attr)
+                    if attr not in ('__name__', '__file__'):
+                        delattr(module, attr)
                 importlib.reload(module)
             for name in dir(module):
                 value = getattr(module, name)
@@ -638,15 +656,14 @@ class StrategyEngine(BaseEngine):
         Sync strategy data into json file.
         """
         data = strategy.get_variables()
-        data.pop("inited")      # Strategy status (inited, trading) should not be synced.
+        # Strategy status (inited, trading) should not be synced.
+        data.pop("inited")
         data.pop("trading")
 
         self.strategy_data = load_json(self.data_filename)
 
         self.strategy_data[strategy.strategy_name] = data
         save_json(self.data_filename, self.strategy_data)
-
-
 
     def get_all_strategy_class_names(self):
         """
@@ -703,9 +720,9 @@ class StrategyEngine(BaseEngine):
 
         for strategy_name, strategy_config in self.strategy_setting.items():
             self.add_strategy(
-                strategy_config["class_name"], 
+                strategy_config["class_name"],
                 strategy_name,
-                strategy_config["full_symbol"], 
+                strategy_config["full_symbol"],
                 strategy_config["setting"]
             )
 
@@ -752,14 +769,15 @@ class StrategyEngine(BaseEngine):
         # event = Event(EVENT_CTA_STRATEGY, data)
         # self.event_engine.put(event)
         msg = json.dumps(sdata)
-        m = Event(type=EventType.STRATEGY_CONTROL,data=msg,des='@0',src=str(self.id),msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RTN_DATA)
-        
+        m = Event(type=EventType.STRATEGY_CONTROL, data=msg, des='@0', src=str(
+            self.id), msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RTN_DATA)
+
         self._send_sock.send(m.serialize())
 
         #save_json(self.data_filename, sdata)
-        
-# strategy functions 
-  #get ,qry  
+
+# strategy functions
+  #get ,qry
     def query_bar_from_rq(
         self, symbol: str, exchange: Exchange, interval: Interval, start: datetime, end: datetime
     ):
@@ -769,16 +787,15 @@ class StrategyEngine(BaseEngine):
         data = rqdata_client.query_bar(
             symbol, exchange, interval, start, end
         )
-        return data   
-    
-    
+        return data
+
     def load_bar(
-        self, 
-        full_symbol: str, 
-        days: int, 
+        self,
+        full_symbol: str,
+        days: int,
         interval: Interval,
         callback: Callable[[BarData], None],
-        datasource:str='DataBase'
+        datasource: str = 'DataBase'
     ):
         """"""
 
@@ -791,7 +808,7 @@ class StrategyEngine(BaseEngine):
             tradedays = days + adddays
 
         symbol, exchange = extract_full_symbol(full_symbol)
-        end = datetime.now()  
+        end = datetime.now()
         start = end - timedelta(tradedays)
         # Query bars from RQData by default, if not found, load from database.
         bars = self.query_bar_from_rq(symbol, exchange, interval, start, end)
@@ -807,7 +824,7 @@ class StrategyEngine(BaseEngine):
         for bar in bars:
             callback(bar)
 
-    def load_tick(self, full_symbol: str, days: int, callback: Callable,datasource:str='DataBase'):   
+    def load_tick(self, full_symbol: str, days: int, callback: Callable, datasource: str = 'DataBase'):
         tradedays = abs(days)
         weekday = datetime.now().weekday()
         adddays = 2 if (days-weekday > 0) else 0
@@ -817,24 +834,21 @@ class StrategyEngine(BaseEngine):
             tradedays = days + adddays
 
         symbol, exchange = extract_full_symbol(full_symbol)
-        end = datetime.now()  
+        end = datetime.now()
         start = end - timedelta(tradedays)
 
-        ticks = database_manager.load_tick_data(symbol,exchange,start,end)
-        
+        ticks = database_manager.load_tick_data(symbol, exchange, start, end)
+
         for tick in ticks:
             callback(tick)
 
-
-
-    
     def get_tick(self, full_symbol):
         """
         Get latest market tick data by full_symbol.
         """
         return self.ticks.get(full_symbol, None)
 
-    def get_order(self, orderid:int):
+    def get_order(self, orderid: int):
         """
         Get latest order data by orderid.
         """
@@ -916,16 +930,15 @@ class StrategyEngine(BaseEngine):
             ]
             return active_orders
 
-    def get_position_holding(self, acc:str, full_symbol:str):
-        return self.offset_converter.get_position_holding(acc,full_symbol)
+    def get_position_holding(self, acc: str, full_symbol: str):
+        return self.offset_converter.get_position_holding(acc, full_symbol)
 
-    def get_strategy_active_orderids(self,strategy_name:str):
+    def get_strategy_active_orderids(self, strategy_name: str):
         oidset = self.strategy_orderid_map[strategy_name]
         return oidset
- 
-
 
   #order, cancel
+
     def send_order(
         self,
         strategy: StrategyBase,
@@ -936,20 +949,21 @@ class StrategyEngine(BaseEngine):
         Send a new order to server.
         """
         # Convert with offset converter
-        req_list = self.offset_converter.convert_order_request(original_req, lock)
+        req_list = self.offset_converter.convert_order_request(
+            original_req, lock)
 
         # Send Orders
         orderids = []
 
         for req in req_list:
             req.clientID = self.id
-            req.client_order_id = self.ordercount 
+            req.client_order_id = self.ordercount
             self.ordercount += 1
             m = Event(type=EventType.ORDER,
-                    data=req,
-                    des=req.api + '.' + req.account, 
-                    src=str(self.id)
-                )
+                      data=req,
+                      des=req.api + '.' + req.account,
+                      src=str(self.id)
+                      )
             if req.api == "CTP.TD":
                 m.msg_type = MSG_TYPE.MSG_TYPE_ORDER_CTP
             elif req.api == "PAPER.TD":
@@ -964,8 +978,9 @@ class StrategyEngine(BaseEngine):
             self.offset_converter.update_order_request(req)
             # Save relationship between orderid and strategy.
             self.orderid_strategy_map[req.client_order_id] = strategy
-            self.strategy_orderid_map[strategy.strategy_name].add(req.client_order_id)
-        
+            self.strategy_orderid_map[strategy.strategy_name].add(
+                req.client_order_id)
+
         return orderids
 
     def cancel_order(self, strategy: StrategyBase, orderid: int):
@@ -978,37 +993,37 @@ class StrategyEngine(BaseEngine):
             return
 
         req = order.create_cancel_request()
-        m = Event(type=EventType.CANCEL,            
-            data=req,
-            des=order.api + '.'+ order.account,
-            src=str(self.id),
-            msgtype=MSG_TYPE.MSG_TYPE_ORDER_ACTION
-            )
+        m = Event(type=EventType.CANCEL,
+                  data=req,
+                  des=order.api + '.' + order.account,
+                  src=str(self.id),
+                  msgtype=MSG_TYPE.MSG_TYPE_ORDER_ACTION
+                  )
         msg = m.serialize()
         print(f'tradeclient {self.id} send msg: {msg}')
         self._send_sock.send(msg)
-    
+
     def cancel_all(self, strategy: StrategyBase):
         """
         Cancel all active orders of a strategy.
         """
         orderids = self.strategy_orderid_map[strategy.strategy_name]
         if not orderids:
-            print(strategy.strategy_name,'has no active order')
+            print(strategy.strategy_name, 'has no active order')
             return
 
         for orderid in copy(orderids):
-            print('cancel oid:',orderid)
+            print('cancel oid:', orderid)
             self.cancel_order(strategy, orderid)
 
-
     def send_testmsg(self):
-        m = Event(des='CTP.MD',src=str(self.id),msgtype=MSG_TYPE.MSG_TYPE_TEST)
+        m = Event(des='CTP.MD', src=str(self.id),
+                  msgtype=MSG_TYPE.MSG_TYPE_TEST)
         msg = m.serialize()
         self._send_sock.send(msg)
         print(f'tradeclient {self.id} send msg: {msg}')
 
-# start and stop    
+# start and stop
     def start(self, timer=True):
         """
         start the dispatcher thread and begin to recv msg through nng
@@ -1022,7 +1037,8 @@ class StrategyEngine(BaseEngine):
                 msgin = msgin.decode("utf-8")
                 if msgin is not None and msgin.index('|') > 0:
                     if msgin[0] == '@':
-                        print('tradeclient(pid = %d) rec @ msg:'%(self.id), msgin,'at ', datetime.now())
+                        print('tradeclient(pid = %d) rec @ msg:' %
+                              (self.id), msgin, 'at ', datetime.now())
                     if msgin[-1] == '\0':
                         msgin = msgin[:-1]
                     if msgin[-1] == '\x00':
@@ -1033,7 +1049,7 @@ class StrategyEngine(BaseEngine):
             except Exception as e:
                 pass
                 #print("TradeEngineError {0}".format(str(e.args[0])).encode("utf-8"))
- 
+
     def stop(self):
         """
         stop 
@@ -1045,8 +1061,8 @@ class StrategyEngine(BaseEngine):
         """
         send event msg,TODO:check the event
         """
-        # 
-        self._send_sock.send(event.serialize(),flags=1)
+        #
+        self._send_sock.send(event.serialize(), flags=1)
 
     def register_handler(self, type_, handler):
         """
@@ -1082,7 +1098,7 @@ class StrategyEngine(BaseEngine):
 
         # log = LogData(msg=msg, gateway_name="CtaStrategy")
         # event = Event(type=EVENT_CTA_LOG, data=log)
-        # self.event_engine.put(event)  
-        print(msg)      
+        # self.event_engine.put(event)
+        print(msg)
 
     # -------------------------------- end of public functions -----------------------------#

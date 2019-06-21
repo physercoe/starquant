@@ -2,14 +2,13 @@
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
 import json
-from datetime import datetime, timedelta
 import os
 import traceback
 import importlib
 from pathlib import Path
 
 from ..common.utility import load_json
-from ..common.constant import EventType,MSG_TYPE
+from ..common.constant import EventType, MSG_TYPE
 from ..common.datastruct import Event
 from ..strategy.strategy_base import StrategyBase
 CtaTemplate = StrategyBase
@@ -24,7 +23,6 @@ class CtaManager(QtWidgets.QWidget):
     setting_filename = "cta_strategy_setting.json"
     data_filename = "cta_strategy_data.json"
 
-
     def __init__(self):
         super(CtaManager, self).__init__()
 
@@ -33,20 +31,20 @@ class CtaManager(QtWidgets.QWidget):
         # self.cta_engine = main_engine.get_engine(APP_NAME)
         self.strategy_setting = {}  # strategy_name: dict
         self.strategy_data = {}     # strategy_name: dict
-        self.classes = {}           # class_name: stategy_class  
+        self.classes = {}           # class_name: stategy_class
         self.engines = []
-        self.strategy_engine_map ={} # strategy_name -> engine_id map
+        self.strategy_engine_map = {}  # strategy_name -> engine_id map
         self.managers = {}
         self.load_strategy_class()
         self.load_strategy_setting()
-        self.load_strategy_data()  
+        self.load_strategy_data()
         self.init_ui()
         self.register_event()
         # self.cta_engine.init_engine()
         self.update_class_combo()
         self.refresh_strategies()
 
-    def load_strategy_class(self,reload:bool=False):
+    def load_strategy_class(self, reload: bool = False):
         """
         Load strategy class from source code.
         """
@@ -56,9 +54,9 @@ class CtaManager(QtWidgets.QWidget):
         #     path1, "vnpy.app.cta_strategy.strategies")
 
         path2 = Path.cwd().joinpath("mystrategy")
-        self.load_strategy_class_from_folder(path2, "",reload)
+        self.load_strategy_class_from_folder(path2, "", reload)
 
-    def load_strategy_class_from_folder(self, path: Path, module_name: str = "",reload:bool=False):
+    def load_strategy_class_from_folder(self, path: Path, module_name: str = "", reload: bool = False):
         """
         Load strategy class from certain folder.
         """
@@ -67,9 +65,10 @@ class CtaManager(QtWidgets.QWidget):
                 if filename.endswith(".py"):
                     strategy_module_name = "mystrategy.".join(
                         [module_name, filename.replace(".py", "")])
-                    self.load_strategy_class_from_module(strategy_module_name,reload)
+                    self.load_strategy_class_from_module(
+                        strategy_module_name, reload)
 
-    def load_strategy_class_from_module(self, module_name: str,reload:bool=False):
+    def load_strategy_class_from_module(self, module_name: str, reload: bool = False):
         """
         Load strategy class from module file.
         """
@@ -78,8 +77,8 @@ class CtaManager(QtWidgets.QWidget):
         # if reload delete old attribute
             if reload:
                 for attr in dir(module):
-                    if attr not in ('__name__','__file__'):
-                        delattr(module,attr)
+                    if attr not in ('__name__', '__file__'):
+                        delattr(module, attr)
                 importlib.reload(module)
             for name in dir(module):
                 value = getattr(module, name)
@@ -88,7 +87,7 @@ class CtaManager(QtWidgets.QWidget):
         except:  # noqa
             msg = f"策略文件{module_name}加载失败，触发异常：\n{traceback.format_exc()}"
             print(msg)
-            #self.write_log(msg)
+            # self.write_log(msg)
 
     def get_all_strategy_class_names(self):
         """
@@ -113,13 +112,12 @@ class CtaManager(QtWidgets.QWidget):
         Load setting file.
         """
         self.strategy_setting = load_json(self.setting_filename)
+
     def load_strategy_data(self):
         """
         Load strategy data from json file.
         """
         self.strategy_data = load_json(self.data_filename)
-
-
 
     def init_ui(self):
         """"""
@@ -166,7 +164,7 @@ class CtaManager(QtWidgets.QWidget):
         # Set layout
         hbox1 = QtWidgets.QHBoxLayout()
         hbox1.addWidget(refresh_button)
-        hbox1.addWidget(QtWidgets.QLabel('Strategy'))        
+        hbox1.addWidget(QtWidgets.QLabel('Strategy'))
         hbox1.addWidget(self.class_combo)
         hbox1.addWidget(add_button)
         hbox1.addWidget(QtWidgets.QLabel('Engine PID'))
@@ -207,7 +205,7 @@ class CtaManager(QtWidgets.QWidget):
         """
         Update strategy status onto its monitor.
         """
-        if event.msg_type == MSG_TYPE.MSG_TYPE_STRATEGY_RTN_DATA :
+        if event.msg_type == MSG_TYPE.MSG_TYPE_STRATEGY_RTN_DATA:
             strmsg = event.data
             data = json.loads(strmsg)
             # print(type(data),data)
@@ -218,9 +216,10 @@ class CtaManager(QtWidgets.QWidget):
             # second update data in managers
             for strategy_name, strategy_config in data.items():
                 if strategy_name in self.managers:
-                    # if this strategy already exist in other engine, remove it 
-                    if self.strategy_engine_map[strategy_name] != strategy_config["engine_id"] :
-                        self.send_remove_strategy_msg(strategy_name,str(strategy_config["engine_id"]),True)
+                    # if this strategy already exist in other engine, remove it
+                    if self.strategy_engine_map[strategy_name] != strategy_config["engine_id"]:
+                        self.send_remove_strategy_msg(
+                            strategy_name, str(strategy_config["engine_id"]), True)
                         continue
                     manager = self.managers[strategy_name]
                     manager.update_data(strategy_config)
@@ -229,7 +228,7 @@ class CtaManager(QtWidgets.QWidget):
                     self.scroll_layout.insertWidget(0, manager)
                     self.managers[strategy_name] = manager
                     self.strategy_engine_map[strategy_name] = strategy_config["engine_id"]
-        elif event.msg_type == MSG_TYPE.MSG_TYPE_STRATEGY_RTN_REMOVE :
+        elif event.msg_type == MSG_TYPE.MSG_TYPE_STRATEGY_RTN_REMOVE:
             if str(self.strategy_engine_map[event.data]) == event.source:
                 self.remove_strategy(event.data)
         elif event.msg_type == MSG_TYPE.MSG_TYPE_STRATEGY_STATUS:
@@ -237,37 +236,41 @@ class CtaManager(QtWidgets.QWidget):
                 self.engines.append(event.source)
                 self.engine_combo.addItem(event.source)
 
-    def refresh_strategies(self): 
+    def refresh_strategies(self):
         # reload all the strategy class
         self.reload_strategies()
         # reload all the managers, delete first, send qry msg, then add manager according to reply
         while self.managers:
             name, manager = self.managers.popitem()
-            manager.deleteLater()        
-        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_GET_DATA)
+            manager.deleteLater()
+        m = Event(type=EventType.STRATEGY_CONTROL, des='@*', src='0',
+                  msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_GET_DATA)
         self.signal_strategy_out.emit(m)
         # reload all the engine, delele first , send qry msg, then add according to reply
         self.engine_combo.clear()
         self.engines.clear()
-        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STATUS)
+        m = Event(type=EventType.STRATEGY_CONTROL, des='@*',
+                  src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STATUS)
         self.signal_strategy_out.emit(m)
 
     def init_all_strategies(self):
-        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_INIT_ALL)
+        m = Event(type=EventType.STRATEGY_CONTROL, des='@*', src='0',
+                  msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_INIT_ALL)
         self.signal_strategy_out.emit(m)
-
 
     def start_all_strategies(self):
-        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_START_ALL)
+        m = Event(type=EventType.STRATEGY_CONTROL, des='@*', src='0',
+                  msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_START_ALL)
         self.signal_strategy_out.emit(m)
 
-
     def stop_all_strategies(self):
-        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STOP_ALL)
+        m = Event(type=EventType.STRATEGY_CONTROL, des='@*', src='0',
+                  msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STOP_ALL)
         self.signal_strategy_out.emit(m)
 
     def reset_all_strategies(self):
-        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RESET_ALL)
+        m = Event(type=EventType.STRATEGY_CONTROL, des='@*', src='0',
+                  msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RESET_ALL)
         self.signal_strategy_out.emit(m)
 
     def reload_strategies(self):
@@ -275,37 +278,43 @@ class CtaManager(QtWidgets.QWidget):
         self.classes.clear()
         self.load_strategy_class(True)
         self.update_class_combo()
-        m = Event(type=EventType.STRATEGY_CONTROL,des='@*',src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RELOAD)
-        self.signal_strategy_out.emit(m)      
-
-    def init_strategy(self,strategy_name:str, id:str):
-        m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_INIT)
-        self.signal_strategy_out.emit(m)
-        
-
-    def start_strategy(self,strategy_name:str,id:str):
-        m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_START)
-        self.signal_strategy_out.emit(m)        
-
-    def stop_strategy(self,strategy_name:str,id:str):
-        m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STOP)
+        m = Event(type=EventType.STRATEGY_CONTROL, des='@*',
+                  src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RELOAD)
         self.signal_strategy_out.emit(m)
 
-    def reset_strategy(self,strategy_name:str,id:str):
-        m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RESET)
+    def init_strategy(self, strategy_name: str, id: str):
+        m = Event(type=EventType.STRATEGY_CONTROL, data=strategy_name,
+                  des='@'+id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_INIT)
         self.signal_strategy_out.emit(m)
 
-    def edit_strategy(self,strategy_name:str, setting:dict,id:str):
+    def start_strategy(self, strategy_name: str, id: str):
+        m = Event(type=EventType.STRATEGY_CONTROL, data=strategy_name,
+                  des='@'+id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_START)
+        self.signal_strategy_out.emit(m)
+
+    def stop_strategy(self, strategy_name: str, id: str):
+        m = Event(type=EventType.STRATEGY_CONTROL, data=strategy_name,
+                  des='@'+id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STOP)
+        self.signal_strategy_out.emit(m)
+
+    def reset_strategy(self, strategy_name: str, id: str):
+        m = Event(type=EventType.STRATEGY_CONTROL, data=strategy_name,
+                  des='@'+id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RESET)
+        self.signal_strategy_out.emit(m)
+
+    def edit_strategy(self, strategy_name: str, setting: dict, id: str):
         msg = strategy_name + '|' + json.dumps(setting)
-        m = Event(type=EventType.STRATEGY_CONTROL,data=msg,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_EDIT)
+        m = Event(type=EventType.STRATEGY_CONTROL, data=msg, des='@' +
+                  id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_EDIT)
         self.signal_strategy_out.emit(m)
 
-
-    def send_remove_strategy_msg(self,strategy_name:str,id:str, duplicate:bool = False):
+    def send_remove_strategy_msg(self, strategy_name: str, id: str, duplicate: bool = False):
         if duplicate:
-            m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE_DUPLICATE)
+            m = Event(type=EventType.STRATEGY_CONTROL, data=strategy_name, des='@' +
+                      id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE_DUPLICATE)
         else:
-            m = Event(type=EventType.STRATEGY_CONTROL,data=strategy_name,des='@'+id,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE)
+            m = Event(type=EventType.STRATEGY_CONTROL, data=strategy_name,
+                      des='@'+id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE)
         self.signal_strategy_out.emit(m)
 
     def remove_strategy(self, strategy_name):
@@ -319,10 +328,10 @@ class CtaManager(QtWidgets.QWidget):
         class_name = str(self.class_combo.currentText())
         if not class_name:
             return
-        engine_id  = str(self.engine_combo.currentText())
+        engine_id = str(self.engine_combo.currentText())
         if not engine_id:
             return
-        desid = '@'+ engine_id
+        desid = '@' + engine_id
         parameters = self.get_strategy_class_parameters(class_name)
         editor = SettingEditor(parameters, class_name=class_name)
         n = editor.exec_()
@@ -332,11 +341,13 @@ class CtaManager(QtWidgets.QWidget):
             full_symbol = setting.pop("full_symbol")
             strategy_name = setting.pop("strategy_name")
             if strategy_name in self.managers.keys():
-                QtWidgets.QMessageBox().information(None, 'Error','strategy name already exist!',QtWidgets.QMessageBox.Ok)
+                QtWidgets.QMessageBox().information(
+                    None, 'Error', 'strategy name already exist!', QtWidgets.QMessageBox.Ok)
                 return
-            strsetting = json.dumps(setting) 
-            msg = class_name +'|' +strategy_name + '|' + full_symbol +'|' + strsetting           
-            m = Event(type=EventType.STRATEGY_CONTROL,data=msg,des=desid,src='0',msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_ADD)
+            strsetting = json.dumps(setting)
+            msg = class_name + '|' + strategy_name + '|' + full_symbol + '|' + strsetting
+            m = Event(type=EventType.STRATEGY_CONTROL, data=msg,
+                      des=desid, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_ADD)
             self.signal_strategy_out.emit(m)
 
     def show(self):
@@ -393,8 +404,8 @@ class StrategyManager(QtWidgets.QFrame):
         full_symbol = self._data["full_symbol"]
         class_name = self._data["class_name"]
         author = self._data["author"]
-        account = self._data["parameters"].get("account","")
-        api = self._data["parameters"].get("api","")
+        account = self._data["parameters"].get("account", "")
+        api = self._data["parameters"].get("api", "")
 
         label_text = (
             f"{api}|{account}: {strategy_name}@{engine_id}  -  {full_symbol}  ({class_name} by {author})"
@@ -431,30 +442,31 @@ class StrategyManager(QtWidgets.QFrame):
 
     def init_strategy(self):
         """"""
-        self.cta_manager.init_strategy(self.strategy_name,self.engine_id)
+        self.cta_manager.init_strategy(self.strategy_name, self.engine_id)
 
     def start_strategy(self):
         """"""
-        self.cta_manager.start_strategy(self.strategy_name,self.engine_id)
+        self.cta_manager.start_strategy(self.strategy_name, self.engine_id)
 
     def stop_strategy(self):
         """"""
-        self.cta_manager.stop_strategy(self.strategy_name,self.engine_id)
+        self.cta_manager.stop_strategy(self.strategy_name, self.engine_id)
 
     def reset_strategy(self):
-        self.cta_manager.reset_strategy(self.strategy_name,self.engine_id)
+        self.cta_manager.reset_strategy(self.strategy_name, self.engine_id)
 
     def edit_strategy(self):
         """"""
         strategy_name = self._data["strategy_name"]
-        
+
         parameters = self.parameters_monitor._data
         editor = SettingEditor(parameters, strategy_name=strategy_name)
         n = editor.exec_()
 
         if n == editor.Accepted:
             setting = editor.get_setting()
-            self.cta_manager.edit_strategy(strategy_name, setting, self.engine_id)
+            self.cta_manager.edit_strategy(
+                strategy_name, setting, self.engine_id)
 
     def remove_strategy(self):
         """"""
@@ -463,9 +475,11 @@ class StrategyManager(QtWidgets.QFrame):
         # # Only remove strategy gui manager if it has been removed from engine
         # if result:
         #     self.cta_manager.remove_strategy(self.strategy_name)
-        mbox = QtWidgets.QMessageBox().question(None, 'confirm','are you sure',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.Yes)
+        mbox = QtWidgets.QMessageBox().question(None, 'confirm', 'are you sure',
+                                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.Yes)
         if mbox == QtWidgets.QMessageBox.Yes:
-            self.cta_manager.send_remove_strategy_msg(self.strategy_name,self.engine_id)
+            self.cta_manager.send_remove_strategy_msg(
+                self.strategy_name, self.engine_id)
 
 
 class DataMonitor(QtWidgets.QTableWidget):
@@ -588,5 +602,3 @@ class SettingEditor(QtWidgets.QDialog):
             setting[name] = value
 
         return setting
-
-

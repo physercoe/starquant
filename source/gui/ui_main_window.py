@@ -1,18 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# http://stackoverflow.com/questions/9957195/updating-gui-elements-in-multithreaded-pyqt
-import sys
-
 from queue import Queue
-from PyQt5 import QtCore, QtWidgets, QtGui, QtWebEngineWidgets
+from PyQt5 import QtCore, QtWidgets, QtGui
 from datetime import datetime
 import requests
-import itchat
 
-from source.common.constant import  EventType
+from source.common.constant import EventType
 
 
-from source.trade.order_manager import OrderManager
+# from source.trade.order_manager import OrderManager
 from source.trade.risk_manager import PassThroughRiskManager
 from source.engine.iengine import EventEngine
 from source.common.client_mq import ClientMq
@@ -20,9 +16,9 @@ from source.common.client_mq import ClientMq
 from .ui_common_widget import (
     RecorderManager,
     ContractManager,
-    StatusThread, 
+    StatusThread,
     CsvLoaderWidget,
-    DataDownloaderWidget, 
+    DataDownloaderWidget,
     AboutWidget,
     WebWindow,
     GlobalDialog,
@@ -39,26 +35,20 @@ from .ui_monitors import (
 )
 
 from .ui_strategy_window import CtaManager
-from .ui_manual_window import ManualWindow 
-
-from .ui_bt_dataview import BtDataViewWidget,BtDataPGChart
-from .ui_bt_resultsoverview import BtResultViewWidget
-from .ui_bt_posview import BtPosViewWidget
-from .ui_bt_txnview import BtTxnViewWidget
+from .ui_manual_window import ManualWindow
 from .ui_bt_setting import BacktesterManager
 from .ui_dataview import MarketDataView
-
 
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, config_server, config_client, lang_dict):
         super(MainWindow, self).__init__()
 
-        ## member variables
+        # member variables
         self._current_time = None
         self._config_server = config_server
         self._config_client = config_client
-        self._symbols =  config_server['tickers']
+        self._symbols = config_server['tickers']
         self._lang_dict = lang_dict
         self._font = lang_dict['font']
         self._widget_dict = {}
@@ -75,66 +65,82 @@ class MainWindow(QtWidgets.QMainWindow):
         self.manualorderid = 0
 
         #  0. order_manager; some of ui_windows uses order_manager
-        self._order_manager = OrderManager()
+        # self._order_manager = OrderManager()
 
-        ## 1. event engine
-        self._outgoing_queue = Queue()                    # outgoing queue from client side
-        self._events_engine = EventEngine()        # update ui        
-        self._flowrate_timer = QtCore.QTimer()                  #  TODO add task scheduler;produce result_packet
+        # 1. event engine
+        # outgoing queue from client side
+        self._outgoing_queue = Queue()
+        self._events_engine = EventEngine()        # update ui
+        # TODO add task scheduler;produce result_packet
+        self._flowrate_timer = QtCore.QTimer()
 
-        
         # 5. risk manager and compliance manager
         self.risk_manager = PassThroughRiskManager()
 
-
-        # 7 portfolio manager and position manager        
+        # 7 portfolio manager and position manager
         self.contract_manager = ContractManager()
-        self.recorder_manager = RecorderManager(contracts= self.contract_manager.contracts)
-        self.recorder_manager.signal_recorder_out.connect(self._outgoing_general_request_handler)
+        self.recorder_manager = RecorderManager(
+            contracts=self.contract_manager.contracts)
+        self.recorder_manager.signal_recorder_out.connect(
+            self._outgoing_general_request_handler)
         self.data_downloader = DataDownloaderWidget()
-       
-        ## 8. client mq
-        self._client_mq = ClientMq(self._config_server,self._events_engine, self._outgoing_queue)
-        
+
+        # 8. client mq
+        self._client_mq = ClientMq(
+            self._config_server, self._events_engine, self._outgoing_queue)
+
         # 1. set up gui windows
         self.setGeometry(50, 50, 850, 650)
         self.setWindowTitle('StarQuant')
-        self.setWindowIcon(QtGui.QIcon("source/gui/image/star.png"))       
+        self.setWindowIcon(QtGui.QIcon("source/gui/image/star.png"))
         self.init_menu()
-        self.init_status_bar()  
+        self.init_status_bar()
         self.init_central_area()
- 
-        ## 9. wire up event handlers
+
+        # 9. wire up event handlers
         self._events_engine.register(EventType.TICK, self._tick_event_handler)
-        self._events_engine.register(EventType.ORDERSTATUS, self._order_status_event_handler)
+        self._events_engine.register(
+            EventType.ORDERSTATUS, self._order_status_event_handler)
         self._events_engine.register(EventType.FILL, self._fill_event_handler)
-        self._events_engine.register(EventType.POSITION, self._position_event_handler)
-        self._events_engine.register(EventType.ACCOUNT, self._account_event_handler)
-        self._events_engine.register(EventType.CONTRACT, self._contract_event_handler)
-        self._events_engine.register(EventType.HISTORICAL, self._historical_event_handler)
+        self._events_engine.register(
+            EventType.POSITION, self._position_event_handler)
+        self._events_engine.register(
+            EventType.ACCOUNT, self._account_event_handler)
+        self._events_engine.register(
+            EventType.CONTRACT, self._contract_event_handler)
+        self._events_engine.register(
+            EventType.HISTORICAL, self._historical_event_handler)
         self._events_engine.register(EventType.INFO, self._info_event_handler)
-        self._events_engine.register(EventType.STRATEGY_CONTROL, self._strategy_control_event_handler)
-        self._events_engine.register(EventType.ENGINE_CONTROL, self._engine_control_event_handler)
-        self._events_engine.register(EventType.RECORDER_CONTROL,self._recorder_control_event_handler)
-        self._events_engine.register(EventType.ORDER, self._outgoing_order_request_handler)
-        self._events_engine.register(EventType.QRY, self._outgoing_qry_request_handler)
-        self._events_engine.register(EventType.SUBSCRIBE, self._outgoing_general_request_handler)
-        self._events_engine.register(EventType.GENERAL_REQ, self._outgoing_general_request_handler)
-        
-        self._flowrate_timer.timeout.connect(self.risk_manager.reset)   #timer event to reset riskmanager flow rate count
-        ## 10. start
+        self._events_engine.register(
+            EventType.STRATEGY_CONTROL, self._strategy_control_event_handler)
+        self._events_engine.register(
+            EventType.ENGINE_CONTROL, self._engine_control_event_handler)
+        self._events_engine.register(
+            EventType.RECORDER_CONTROL, self._recorder_control_event_handler)
+        self._events_engine.register(
+            EventType.ORDER, self._outgoing_order_request_handler)
+        self._events_engine.register(
+            EventType.QRY, self._outgoing_qry_request_handler)
+        self._events_engine.register(
+            EventType.SUBSCRIBE, self._outgoing_general_request_handler)
+        self._events_engine.register(
+            EventType.GENERAL_REQ, self._outgoing_general_request_handler)
+
+        # timer event to reset riskmanager flow rate count
+        self._flowrate_timer.timeout.connect(self.risk_manager.reset)
+        # 10. start
         self._events_engine.start()
         self._client_mq.start()
         self._flowrate_timer.start(5000)
 
-
     #################################################################################################
     # -------------------------------- Event Handler   --------------------------------------------#
     #################################################################################################
+
     def _tick_event_handler(self, tick_event):
         self.dataviewindow.tick_signal.emit(tick_event)
-        self._current_time = tick_event.data.timestamp        
-        # self._order_manager.on_tick(tick_event)     # check standing stop orders    
+        self._current_time = tick_event.data.timestamp
+        # self._order_manager.on_tick(tick_event)     # check standing stop orders
 
     def _order_status_event_handler(self, order_status_event):  # including cancel
         pass
@@ -156,47 +162,47 @@ class MainWindow(QtWidgets.QMainWindow):
         pass
         # print(historical_event)
 
-    def _strategy_control_event_handler(self,sc_event):
+    def _strategy_control_event_handler(self, sc_event):
         self.ctastrategywindow.signal_strategy_in.emit(sc_event)
 
-
-    def _engine_control_event_handler(self,ec_event):
+    def _engine_control_event_handler(self, ec_event):
         self.manual_widget.updateapistatusdict(ec_event)
 
-    def _recorder_control_event_handler(self,rc_event):
+    def _recorder_control_event_handler(self, rc_event):
         self.recorder_manager.signal_recorder_update.emit(rc_event)
 
-    def _info_event_handler(self,info_event):
+    def _info_event_handler(self, info_event):
         pass
-            # self.log_window.msg_signal.emit(info_event)
+        # self.log_window.msg_signal.emit(info_event)
 
-#----------------------------------------outgoing event ------------------------------------
+# ----------------------------------------outgoing event ------------------------------------
     def _outgoing_order_request_handler(self, o):
         """
          process o, check against risk manager and compliance manager
         """
-        self.risk_manager.order_in_compliance(o)  # order pointer; modify order directly
+        self.risk_manager.order_in_compliance(
+            o)  # order pointer; modify order directly
         if (self.risk_manager.passorder()):
-            self._order_manager.on_order(o)
-            #self.order_window.
+            # self._order_manager.on_order(o)
+            # self.order_window.
             msg = o.serialize()
-            print('client send msg: ' + msg,datetime.now())
+            print('client send msg: ' + msg, datetime.now())
             # print('client send msg: ' + msg)
             # text = o.destination + o.source + str(o.clientID)
             # requests.get('https://sc.ftqq.com/SCU49995T54cd0bf4d42dd8448359347830d62bd85cc3f69d085ee.send?text=%s &desp=%s'%(text,msg))
             self._outgoing_queue.put(msg)
-    def _outgoing_qry_request_handler(self,qry):
+
+    def _outgoing_qry_request_handler(self, qry):
         if (self.risk_manager.passquery()):
             msg = qry.serialize()
             print('client send msg: ' + msg)
             self._outgoing_queue.put(msg)
 
-    def _outgoing_general_request_handler(self,gr):
+    def _outgoing_general_request_handler(self, gr):
         msg = gr.serialize()
         print('client send msg: ' + msg)
         self._outgoing_queue.put(msg)
-   
-        
+
     #################################################################################################
     # ------------------------------ Event Handler Ends --------------------------------------------#
     #################################################################################################
@@ -204,18 +210,19 @@ class MainWindow(QtWidgets.QMainWindow):
     #################################################################################################
     # -------------------------------- User Interface  --------------------------------------------#
     #################################################################################################
+
     def set_font(self, font):
         self._font = font
 
     def displaytrade(self):
         self.central_widget.setCurrentIndex(0)
+
     def displaybacktest(self):
         self.central_widget.setCurrentIndex(1)
 
-
     def init_menu(self):
         menubar = self.menuBar()
-        #sys menu --
+        # sys menu --
         sysMenu = menubar.addMenu('File')
         editsettingAction = QtWidgets.QAction('Setting', self)
         editsettingAction.setStatusTip('edit python setting')
@@ -224,7 +231,7 @@ class MainWindow(QtWidgets.QMainWindow):
         editfileAction = QtWidgets.QAction('view/edit', self)
         editfileAction.setStatusTip('edit server config...')
         editfileAction.triggered.connect(self.file_edit)
-        sysMenu.addAction(editfileAction)  
+        sysMenu.addAction(editfileAction)
         # --exit
         sysMenu.addSeparator()
         sys_exitAction = QtWidgets.QAction('Exit', self)
@@ -232,42 +239,43 @@ class MainWindow(QtWidgets.QMainWindow):
         sys_exitAction.setStatusTip('Exit GUI')
         sys_exitAction.triggered.connect(self.close)
         sysMenu.addAction(sys_exitAction)
-        #mode menu 
+        # mode menu
         modeMenu = menubar.addMenu('Mode')
-        mode_tradeAction = QtWidgets.QAction('Trade',self)
+        mode_tradeAction = QtWidgets.QAction('Trade', self)
         mode_tradeAction.triggered.connect(self.displaytrade)
         modeMenu.addAction(mode_tradeAction)
-        mode_backtestAction = QtWidgets.QAction('Backtest',self)
+        mode_backtestAction = QtWidgets.QAction('Backtest', self)
         mode_backtestAction.triggered.connect(self.displaybacktest)
         modeMenu.addAction(mode_backtestAction)
 
-        #tool menu
+        # tool menu
         toolMenu = menubar.addMenu('Tools')
 
-        tool_recorder = QtWidgets.QAction('Data Recorder',self)
+        tool_recorder = QtWidgets.QAction('Data Recorder', self)
         tool_recorder.triggered.connect(self.recorder_manager.show)
         toolMenu.addAction(tool_recorder)
-        tool_csvloader = QtWidgets.QAction('Data Loader',self)
+        tool_csvloader = QtWidgets.QAction('Data Loader', self)
         tool_csvloader.triggered.connect(self.opencsvloader)
         toolMenu.addAction(tool_csvloader)
-        tool_datadownloader = QtWidgets.QAction('Data Downloader',self)
+        tool_datadownloader = QtWidgets.QAction('Data Downloader', self)
         tool_datadownloader.triggered.connect(self.data_downloader.show)
         toolMenu.addAction(tool_datadownloader)
 
-        #help menu
+        # help menu
         helpMenu = menubar.addMenu('Help')
         help_contractaction = QtWidgets.QAction('Query Contracts', self)
         help_contractaction.triggered.connect(self.contract_manager.show)
         helpMenu.addAction(help_contractaction)
         help_webaction = QtWidgets.QAction('Web/Jupyter Notebook', self)
-        help_webaction.triggered.connect(self.openweb)        
+        help_webaction.triggered.connect(self.openweb)
         helpMenu.addAction(help_webaction)
         help_action = QtWidgets.QAction('About', self)
-        help_action.triggered.connect(self.openabout)        
+        help_action.triggered.connect(self.openabout)
         helpMenu.addAction(help_action)
 
     def file_edit(self):
-        filename, _ = QtWidgets.QFileDialog.getOpenFileName(self,'open file','etc/')
+        filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, 'open file', 'etc/')
         print(filename)
         if not filename:
             return
@@ -276,10 +284,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def opencsvloader(self):
         try:
-            self._widget_dict['csvloader'].show()           
+            self._widget_dict['csvloader'].show()
         except KeyError:
             self._widget_dict['csvloader'] = CsvLoaderWidget()
-            self._widget_dict['csvloader'].show()  
+            self._widget_dict['csvloader'].show()
 
     def edit_client_setting(self):
         """
@@ -291,9 +299,10 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self._widget_dict['about'].show()
         except KeyError:
-            self._widget_dict['about'] =AboutWidget(self)
+            self._widget_dict['about'] = AboutWidget(self)
             self._widget_dict['about'].show()
-    def openweb(self):        
+
+    def openweb(self):
         try:
             self._widget_dict['web'].show()
         except KeyError:
@@ -314,9 +323,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage(message)
 
     def init_central_area(self):
-        self.central_widget = QtWidgets.QStackedWidget()      
+        self.central_widget = QtWidgets.QStackedWidget()
 
-#-------Trade Widgets----------
+# -------Trade Widgets----------
         tradewidget = QtWidgets.QWidget()
         hbox = QtWidgets.QHBoxLayout()
         #-------------------------------- Top Left ------------------------------------------#
@@ -324,7 +333,6 @@ class MainWindow(QtWidgets.QMainWindow):
         topleft = MarketMonitor(self._events_engine)
         self.market_window = topleft
 
-         
         # -------------------------------- bottom Left ------------------------------------------#
         bottomleft = QtWidgets.QTabWidget()
         bottomleft.setFont(self._font)
@@ -347,19 +355,16 @@ class MainWindow(QtWidgets.QMainWindow):
         tab1_layout.addWidget(self.log_window)
         tab1.setLayout(tab1_layout)
 
-        # self.order_window = OrderWindow(self._order_manager,self._outgoing_queue, self._lang_dict)       # cancel_order outgoing nessage
         self.order_window = OrderMonitor(self._events_engine)
         tab2_layout = QtWidgets.QVBoxLayout()
         tab2_layout.addWidget(self.order_window)
         tab2.setLayout(tab2_layout)
 
-        # self.fill_window = FillWindow(self._order_manager, self._lang_dict)
         self.fill_window = TradeMonitor(self._events_engine)
         tab3_layout = QtWidgets.QVBoxLayout()
         tab3_layout.addWidget(self.fill_window)
         tab3.setLayout(tab3_layout)
 
-        # self.position_window = PositionWindow(self._lang_dict)
         self.position_window = PositionMonitor(self._events_engine)
         tab4_layout = QtWidgets.QVBoxLayout()
         tab4_layout.addWidget(self.position_window)
@@ -370,7 +375,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # tab5_layout.addWidget(self.closeposition_window)
         # tab5.setLayout(tab5_layout)
 
-        #self.account_window = AccountWindow(self.account_manager, self._lang_dict)
         self.account_window = AccountMonitor(self._events_engine)
         tab6_layout = QtWidgets.QVBoxLayout()
         tab6_layout.addWidget(self.account_window)
@@ -382,7 +386,8 @@ class MainWindow(QtWidgets.QMainWindow):
         bottomright.setFont(self._font)
         strategy_manager_layout = QtWidgets.QFormLayout()
         self.ctastrategywindow = CtaManager()
-        self.ctastrategywindow.signal_strategy_out.connect(self._outgoing_general_request_handler) 
+        self.ctastrategywindow.signal_strategy_out.connect(
+            self._outgoing_general_request_handler)
         strategy_manager_layout.addRow(QtWidgets.QLabel('Strategy Manager'))
         strategy_manager_layout.addWidget(self.ctastrategywindow)
 
@@ -391,11 +396,12 @@ class MainWindow(QtWidgets.QMainWindow):
         # --------------------------------------------------------------------------------------#
 
         self.dataviewindow = MarketDataView()
-        self.market_window.symbol_signal.connect(self.dataviewindow.symbol_signal.emit)
+        self.market_window.symbol_signal.connect(
+            self.dataviewindow.symbol_signal.emit)
         splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         splitter1.addWidget(topleft)
         splitter1.addWidget(bottomleft)
-        splitter1.setSizes([500,500])
+        splitter1.setSizes([500, 500])
 
         splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         splitter2.addWidget(self.dataviewindow)
@@ -410,25 +416,28 @@ class MainWindow(QtWidgets.QMainWindow):
         hbox.addWidget(splitter3)
         tradewidget.setLayout(hbox)
 
-#---------Backtest ----------------------------------------
+# ---------Backtest ----------------------------------------
         backtestwidget = BacktesterManager(self._events_engine)
 
-#--------------------mainwindow----------------------
+# --------------------mainwindow----------------------
         manualwidget = ManualWindow(self._config_server['gateway'])
         manualwidget.order_signal.connect(self._outgoing_order_request_handler)
         manualwidget.qry_signal.connect(self._outgoing_qry_request_handler)
         manualwidget.manual_req.connect(self._outgoing_queue.put)
-        manualwidget.subscribe_signal.connect(self._outgoing_general_request_handler)
-        manualwidget.cancelall_signal.connect(self._outgoing_general_request_handler)
+        manualwidget.subscribe_signal.connect(
+            self._outgoing_general_request_handler)
+        manualwidget.cancelall_signal.connect(
+            self._outgoing_general_request_handler)
 
-        
         self.manual_widget = manualwidget
-        dockmanual = QtWidgets.QDockWidget('Manual Control Center',self)
-        dockmanual.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable|QtWidgets.QDockWidget.DockWidgetMovable)
+        dockmanual = QtWidgets.QDockWidget('Manual Control Center', self)
+        dockmanual.setFeatures(
+            QtWidgets.QDockWidget.DockWidgetFloatable | QtWidgets.QDockWidget.DockWidgetMovable)
         # dockmanual.setFloating(True)
-        dockmanual.setAllowedAreas(QtCore.Qt.RightDockWidgetArea|QtCore.Qt.LeftDockWidgetArea)
+        dockmanual.setAllowedAreas(
+            QtCore.Qt.RightDockWidgetArea | QtCore.Qt.LeftDockWidgetArea)
         dockmanual.setWidget(manualwidget)
-        self.addDockWidget(QtCore.Qt.RightDockWidgetArea,dockmanual)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, dockmanual)
 
         self.central_widget.addWidget(tradewidget)
         self.central_widget.addWidget(backtestwidget)
@@ -438,26 +447,3 @@ class MainWindow(QtWidgets.QMainWindow):
     #################################################################################################
     # ------------------------------ User Interface End --------------------------------------------#
     #################################################################################################
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-     

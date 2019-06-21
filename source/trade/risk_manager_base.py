@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from abc import ABCMeta, abstractmethod
 
+
 class RiskManagerBase(metaclass=ABCMeta):
     """
     RiskManager base class

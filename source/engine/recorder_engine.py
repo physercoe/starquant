@@ -1,23 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from threading import Thread
-from nanomsg import Socket, PAIR, SUB, PUB, PUSH,SUB_SUBSCRIBE, AF_SP,SOL_SOCKET,RCVTIMEO
+from nanomsg import Socket, SUB, PUSH, SUB_SUBSCRIBE, SOL_SOCKET, RCVTIMEO
 from datetime import datetime, time
 import os
-import yaml,json
+import yaml
+import json
 from pathlib import Path
 from ..api.ctp_constant import THOST_FTDC_PT_Net
 from ..common.constant import (
-    EngineType,Exchange,Product,OPTIONTYPE_CTP2VT,PRODUCT_CTP2VT,
-    EventType,MSG_TYPE,SYMBOL_TYPE
-    )
+    EngineType, Exchange, Product, OPTIONTYPE_CTP2VT, PRODUCT_CTP2VT,
+    EventType, MSG_TYPE, SYMBOL_TYPE
+)
 from ..common.datastruct import (
-    ContractData,Event,TickData,BarData,SubscribeRequest    
-    )
-from ..common.utility import load_json,save_json
+    ContractData, Event, TickData, BarData, SubscribeRequest
+)
+from ..common.utility import load_json, save_json
 from source.data.data_board import BarGenerator
 from ..data import database_manager
-from ..engine.iengine import BaseEngine,EventEngine
+from ..engine.iengine import BaseEngine, EventEngine
 
 
 class RecorderEngine(BaseEngine):
@@ -27,8 +28,8 @@ class RecorderEngine(BaseEngine):
     config_filename = "config_server.yaml"
     setting_filename = "data_recorder_setting.json"
 
-# init    
-    def __init__(self,configfile:str = '',gateway:str = "CTP.MD"):
+# init
+    def __init__(self, configfile: str = '', gateway: str = "CTP.MD"):
         super(RecorderEngine, self).__init__(event_engine=EventEngine(10))
         """
         two sockets to send and recv msg
@@ -36,11 +37,11 @@ class RecorderEngine(BaseEngine):
         self.__active = False
         self._thread = Thread(target=self._run)
         self.id = os.getpid()
-        self.engine_type = EngineType.LIVE     
+        self.engine_type = EngineType.LIVE
         self._recv_sock = Socket(SUB)
         self._send_sock = Socket(PUSH)
 
-        if configfile:            
+        if configfile:
             self.config_filename = configfile
         if gateway:
             self.gateway = gateway
@@ -56,7 +57,7 @@ class RecorderEngine(BaseEngine):
         self.dayswitched = False
         self.init_engine()
 
-# init functions 
+# init functions
     def init_engine(self):
         self.init_nng()
         self.load_contract()
@@ -64,18 +65,18 @@ class RecorderEngine(BaseEngine):
         self.register_event()
         self.put_event()
 
-
     def init_nng(self):
-        self._recv_sock.set_string_option(SUB, SUB_SUBSCRIBE, '')  # receive msg start with all
-        self._recv_sock.set_int_option(SOL_SOCKET,RCVTIMEO,100)
+        self._recv_sock.set_string_option(
+            SUB, SUB_SUBSCRIBE, '')  # receive msg start with all
+        self._recv_sock.set_int_option(SOL_SOCKET, RCVTIMEO, 100)
         self._recv_sock.connect(self._config['serverpub_url'])
         self._send_sock.connect(self._config['serverpull_url'])
 
     def load_contract(self):
         contractfile = Path.cwd().joinpath("etc/ctpcontract.yaml")
-        with open(contractfile, encoding='utf8') as fc: 
+        with open(contractfile, encoding='utf8') as fc:
             contracts = yaml.load(fc)
-        print('loading contracts, total number:',len(contracts))
+        print('loading contracts, total number:', len(contracts))
         for sym, data in contracts.items():
             contract = ContractData(
                 symbol=data["symbol"],
@@ -84,17 +85,20 @@ class RecorderEngine(BaseEngine):
                 product=PRODUCT_CTP2VT[str(data["product"])],
                 size=data["size"],
                 pricetick=data["pricetick"],
-                net_position = True if str(data["positiontype"]) == THOST_FTDC_PT_Net else False,
-                long_margin_ratio = data["long_margin_ratio"],
-                short_margin_ratio = data["short_margin_ratio"],
-                full_symbol = data["full_symbol"]
-            )            
+                net_position=True if str(
+                    data["positiontype"]) == THOST_FTDC_PT_Net else False,
+                long_margin_ratio=data["long_margin_ratio"],
+                short_margin_ratio=data["short_margin_ratio"],
+                full_symbol=data["full_symbol"]
+            )
             # For option only
             if contract.product == Product.OPTION:
                 contract.option_underlying = data["option_underlying"],
-                contract.option_type = OPTIONTYPE_CTP2VT.get(str(data["option_type"]), None),
+                contract.option_type = OPTIONTYPE_CTP2VT.get(
+                    str(data["option_type"]), None),
                 contract.option_strike = data["option_strike"],
-                contract.option_expiry = datetime.strptime(str(data["option_expiry"]), "%Y%m%d"),
+                contract.option_expiry = datetime.strptime(
+                    str(data["option_expiry"]), "%Y%m%d"),
             self.contracts[contract.full_symbol] = contract
 
     def load_setting(self):
@@ -114,45 +118,46 @@ class RecorderEngine(BaseEngine):
     def register_event(self):
         """"""
         self.event_engine.register(EventType.TICK, self.process_tick_event)
-        self.event_engine.register(EventType.CONTRACT, self.process_contract_event)        
-        self.event_engine.register(EventType.RECORDER_CONTROL,self.process_recordercontrol_event)
-        self.event_engine.register(EventType.HEADER,self.process_general_event)
-        self.event_engine.register(EventType.TIMER,self.process_timer_event)
+        self.event_engine.register(
+            EventType.CONTRACT, self.process_contract_event)
+        self.event_engine.register(
+            EventType.RECORDER_CONTROL, self.process_recordercontrol_event)
+        self.event_engine.register(
+            EventType.HEADER, self.process_general_event)
+        self.event_engine.register(EventType.TIMER, self.process_timer_event)
 
-    def init_subcribe(self,src:str = 'CTP.MD'):
+    def init_subcribe(self, src: str = 'CTP.MD'):
         symset = set(self.tick_recordings.keys())
         symset.update(self.bar_recordings.keys())
         for sym in symset:
-            self.subscribe(sym,src)
-        self.subscribed = True    
+            self.subscribe(sym, src)
+        self.subscribed = True
 
 # event handler
-    def process_timer_event(self,event):
-        #auto subscribe at 8:55, 20:55
+    def process_timer_event(self, event):
+        # auto subscribe at 8:55, 20:55
         nowtime = datetime.now().time()
-        if (nowtime > time(hour=8, minute=55) ) and (nowtime < time(hour=8, minute=56)) and (not self.subscribed): 
+        if (nowtime > time(hour=8, minute=55)) and (nowtime < time(hour=8, minute=56)) and (not self.subscribed):
             self.init_subcribe()
             self.dayswitched = False
-        if (nowtime > time(hour=20, minute=55) ) and (nowtime < time(hour=20, minute=56)) and (not self.subscribed): 
+        if (nowtime > time(hour=20, minute=55)) and (nowtime < time(hour=20, minute=56)) and (not self.subscribed):
             self.init_subcribe()
             self.dayswitched = False
         # reset at 16:00 and 3:00
-        if (nowtime > time(hour=16, minute=0) ) and (nowtime < time(hour=16, minute=1)) and (not self.dayswitched):
+        if (nowtime > time(hour=16, minute=0)) and (nowtime < time(hour=16, minute=1)) and (not self.dayswitched):
             self.subscribed = False
             self.dayswitched = True
-        if (nowtime > time(hour=3, minute=0) ) and (nowtime < time(hour=3, minute=1)) and  (not self.dayswitched):
-            self.subscribed = False                
+        if (nowtime > time(hour=3, minute=0)) and (nowtime < time(hour=3, minute=1)) and (not self.dayswitched):
+            self.subscribed = False
             self.dayswitched = True
-        
 
     def process_general_event(self, event):
         pass
 
-
     def process_tick_event(self, event: Event):
         """"""
         tick = event.data
-        if (tick.open_price):  #exclude onrtnsubscribe return first tick which time not in trade time 
+        if (tick.open_price):  # exclude onrtnsubscribe return first tick which time not in trade time
             if tick.full_symbol in self.tick_recordings:
                 self.record_tick(tick)
 
@@ -160,32 +165,31 @@ class RecorderEngine(BaseEngine):
                 bg = self.get_bar_generator(tick.full_symbol)
                 bg.update_tick(tick)
 
-
     def process_contract_event(self, event: Event):
         """"""
         contract = event.data
         self.contracts[contract.full_symbol] = contract
 
-    def process_recordercontrol_event(self,event:Event):
+    def process_recordercontrol_event(self, event: Event):
         msgtype = event.msg_type
-        deslist = ['@*',str(self.id),'@'+str(self.id)]
-        if (event.destination not in deslist ) :
+        deslist = ['@*', str(self.id), '@'+str(self.id)]
+        if (event.destination not in deslist):
             return
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_STATUS):
             m = Event(type=EventType.RECORDER_CONTROL,
-                des='@0',
-                src=str(self.id),
-                data=str(self.__active),
-                msgtype=MSG_TYPE.MSG_TYPE_RECORDER_STATUS
-                )
+                      des='@0',
+                      src=str(self.id),
+                      data=str(self.__active),
+                      msgtype=MSG_TYPE.MSG_TYPE_RECORDER_STATUS
+                      )
             self._send_sock.send(m.serialize())
             self.put_event()
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_ADD_TICK):
             full_symbol = event.data
-            self.add_tick_recording(full_symbol,event.source)
+            self.add_tick_recording(full_symbol, event.source)
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_ADD_BAR):
             full_symbol = event.data
-            self.add_bar_recording(full_symbol,event.source)
+            self.add_bar_recording(full_symbol, event.source)
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_REMOVE_TICK):
             full_symbol = event.data
             self.remove_tick_recording(full_symbol)
@@ -203,7 +207,6 @@ class RecorderEngine(BaseEngine):
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_GET_DATA):
             self.put_event()
 
-        
     def put_event(self):
         """"""
         tick_symbols = list(self.tick_recordings.keys())
@@ -216,16 +219,17 @@ class RecorderEngine(BaseEngine):
             "bar": bar_symbols
         }
         msg = json.dumps(data)
-        m = Event(type=EventType.RECORDER_CONTROL,data=msg,des='@0',src=str(self.id),msgtype=MSG_TYPE.MSG_TYPE_RECORDER_RTN_DATA)
+        m = Event(type=EventType.RECORDER_CONTROL, data=msg, des='@0', src=str(
+            self.id), msgtype=MSG_TYPE.MSG_TYPE_RECORDER_RTN_DATA)
         self._send_sock.send(m.serialize())
 
-    def add_bar_recording(self, full_symbol: str, src:str = 'CTP.MD'):
+    def add_bar_recording(self, full_symbol: str, src: str = 'CTP.MD'):
         """"""
         if full_symbol in self.bar_recordings:
             self.write_log(f"已在K线记录列表中：{full_symbol}")
             return
 
-        contract = self.contracts.get(full_symbol,None)
+        contract = self.contracts.get(full_symbol, None)
         if not contract:
             self.write_log(f"找不到合约：{full_symbol}")
             return
@@ -236,19 +240,19 @@ class RecorderEngine(BaseEngine):
             "gateway_name": self.gateway
         }
 
-        self.subscribe(full_symbol,src)
+        self.subscribe(full_symbol, src)
         self.save_setting()
         self.put_event()
 
         self.write_log(f"添加K线记录成功：{full_symbol}")
 
-    def add_tick_recording(self, full_symbol: str,src:str = 'CTP.MD'):
+    def add_tick_recording(self, full_symbol: str, src: str = 'CTP.MD'):
         """"""
         if full_symbol in self.tick_recordings:
             self.write_log(f"已在Tick记录列表中：{full_symbol}")
             return
 
-        contract = self.contracts.get(full_symbol,None)
+        contract = self.contracts.get(full_symbol, None)
         if not contract:
             self.write_log(f"找不到合约：{full_symbol}")
             return
@@ -259,7 +263,7 @@ class RecorderEngine(BaseEngine):
             "gateway_name": self.gateway
         }
 
-        self.subscribe(full_symbol,src)
+        self.subscribe(full_symbol, src)
         self.save_setting()
         self.put_event()
 
@@ -307,34 +311,30 @@ class RecorderEngine(BaseEngine):
 
         return bg
 
-    def subscribe(self, full_symbol: str, src:str = 'CTP.MD'):
-        contract = self.contracts.get(full_symbol,None)
+    def subscribe(self, full_symbol: str, src: str = 'CTP.MD'):
+        contract = self.contracts.get(full_symbol, None)
         if contract:
-            m = Event(type=EventType.SUBSCRIBE,msgtype=MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA)
+            m = Event(type=EventType.SUBSCRIBE,
+                      msgtype=MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA)
             m.destination = src
             m.source = str(self.id)
             req = SubscribeRequest()
             if src == 'CTP.MD':
-                req.sym_type = SYMBOL_TYPE.CTP                
+                req.sym_type = SYMBOL_TYPE.CTP
                 req.content = contract.symbol
             else:
-                req.sym_type = SYMBOL_TYPE.FULL                
-                req.content = full_symbol                
+                req.sym_type = SYMBOL_TYPE.FULL
+                req.content = full_symbol
             m.data = req
             self._send_sock.send(m.serialize())
         else:
             self.write_log(f"行情订阅失败，找不到合约{full_symbol}")
-        
-
 
     def clear(self):
         self.bar_recordings.clear()
         self.tick_recordings.clear()
         self.save_setting()
         self.put_event()
-
-
-
 
     def _run(self):
         while self.__active:
@@ -343,7 +343,8 @@ class RecorderEngine(BaseEngine):
                 msgin = msgin.decode("utf-8")
                 if msgin is not None and msgin.index('|') > 0:
                     if msgin[0] == '@':
-                        print('recorder(pid = %d) rec @ msg:'%(self.id), msgin,'at ', datetime.now())
+                        print('recorder(pid = %d) rec @ msg:' %
+                              (self.id), msgin, 'at ', datetime.now())
                     if msgin[-1] == '\0':
                         msgin = msgin[:-1]
                     if msgin[-1] == '\x00':
@@ -353,9 +354,9 @@ class RecorderEngine(BaseEngine):
                     self.event_engine.put(m)
             except Exception as e:
                 pass
-                #print("TradeEngineError {0}".format(str(e.args[0])).encode("utf-8"))        
-  
-# start and stop    
+                #print("TradeEngineError {0}".format(str(e.args[0])).encode("utf-8"))
+
+# start and stop
     def start(self):
         """
         start the dispatcher thread and begin to recv msg through nng
@@ -364,12 +365,12 @@ class RecorderEngine(BaseEngine):
         self.event_engine.start()
         self.__active = True
         self._thread.start()
- 
+
     def stop(self):
         """
         stop 
         """
-        self.__active = False        
+        self.__active = False
         self.event_engine.stop()
         self._thread.join()
 
@@ -380,7 +381,7 @@ class RecorderEngine(BaseEngine):
 
         # log = LogData(msg=msg, gateway_name="CtaStrategy")
         # event = Event(type=EVENT_CTA_LOG, data=log)
-        # self.event_engine.put(event)  
-        print(msg)      
+        # self.event_engine.put(event)
+        print(msg)
 
     # -------------------------------- end of public functions -----------------------------#

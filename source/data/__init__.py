@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from source.common.config import get_settings
 from .database import BaseDatabaseManager, Driver
 
 
@@ -25,7 +26,6 @@ def init_nosql(driver: Driver, settings: dict):
     _database_manager = init(driver, settings=settings)
     return _database_manager
 
-from source.common.config import get_settings
 
 settings = get_settings("database.")
 database_manager: "BaseDatabaseManager" = init(settings=settings)

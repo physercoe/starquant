@@ -140,7 +140,8 @@ def init_models(db: Database, driver: Driver):
                         ).execute()
                 else:
                     for c in chunked(dicts, 50):
-                        DbBarData.insert_many(c).on_conflict_replace().execute()
+                        DbBarData.insert_many(
+                            c).on_conflict_replace().execute()
 
     class DbTickData(ModelBase):
         """
@@ -308,7 +309,8 @@ def init_models(db: Database, driver: Driver):
                         ).execute()
                 else:
                     for c in chunked(dicts, 50):
-                        DbTickData.insert_many(c).on_conflict_replace().execute()
+                        DbTickData.insert_many(
+                            c).on_conflict_replace().execute()
 
     db.connect()
     db.create_tables([DbBarData, DbTickData])

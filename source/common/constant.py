@@ -1,27 +1,35 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from enum import Enum
-from ..api.ctp_constant import THOST_FTDC_D_Buy,THOST_FTDC_D_Sell,THOST_FTDC_PD_Long,THOST_FTDC_PD_Short,THOST_FTDC_PD_Net
+from ..api.ctp_constant import (
+    THOST_FTDC_D_Buy,
+    THOST_FTDC_D_Sell,
+    THOST_FTDC_PD_Long,
+    THOST_FTDC_PD_Short,
+    THOST_FTDC_PD_Net
+)
 
 
-# ################        Begin consts  # ################  
+# ################        Begin consts  # ################
 class ESTATE(Enum):
-    DISCONNECTED = 0         
-    CONNECTING =1
-    CONNECT_ACK = 2         
+    DISCONNECTED = 0
+    CONNECTING = 1
+    CONNECT_ACK = 2
     AUTHENTICATING = 3
-    AUTHENTICATE_ACK = 4      
+    AUTHENTICATE_ACK = 4
     LOGINING = 5
-    LOGIN_ACK = 6             
+    LOGIN_ACK = 6
     LOGOUTING = 7
-    STOP = 8 
+    STOP = 8
+
 
 class SYMBOL_TYPE(Enum):
     FULL = 0
     CTP = 1
 
+
 class MSG_TYPE(Enum):
-  #10* data
+    # 10* data
     MSG_TYPE_TICK = 1000
     MSG_TYPE_TICK_L1 = 1001
     MSG_TYPE_TICK_L5 = 1002
@@ -37,7 +45,7 @@ class MSG_TYPE(Enum):
     MSG_TYPE_BAR_1MON = 1017
     MSG_TYPE_STOCK_TICK = 1020
     MSG_TYPE_STOCK_BAR = 1021
-    MSG_TYPE_Trade =1060
+    MSG_TYPE_Trade = 1060
     MSG_TYPE_Bid = 1061
     MSG_TYPE_Ask = 1062
     MSG_TYPE_Full = 1063
@@ -53,8 +61,8 @@ class MSG_TYPE(Enum):
     MSG_TYPE_ClosePrice = 1073
     MSG_TYPE_Volume = 1074
     MSG_TYPE_OpenInterest = 1075
-    MSG_TYPE_Hist =1076
-  # 11* sys control
+    MSG_TYPE_Hist = 1076
+    # 11* sys control
     MSG_TYPE_ENGINE_STATUS = 1101
     MSG_TYPE_ENGINE_START = 1111
     MSG_TYPE_ENGINE_STOP = 1112
@@ -62,18 +70,18 @@ class MSG_TYPE(Enum):
     MSG_TYPE_ENGINE_CONNECT = 1120
     MSG_TYPE_ENGINE_DISCONNECT = 1121
     MSG_TYPE_SWITCH_TRADING_DAY = 1141
-  # 12* strategy
+    # 12* strategy
     MSG_TYPE_STRATEGY_STATUS = 1200
     MSG_TYPE_STRATEGY_ADD = 1210
     MSG_TYPE_STRATEGY_INIT = 1211
     MSG_TYPE_STRATEGY_INIT_ALL = 1212
     MSG_TYPE_STRATEGY_START = 1213
-    MSG_TYPE_STRATEGY_START_ALL = 1214    
+    MSG_TYPE_STRATEGY_START_ALL = 1214
     MSG_TYPE_STRATEGY_STOP = 1215
     MSG_TYPE_STRATEGY_STOP_ALL = 1216
     MSG_TYPE_STRATEGY_RESET = 1217
     MSG_TYPE_STRATEGY_RESET_ALL = 1218
-    MSG_TYPE_STRATEGY_RELOAD = 1219    
+    MSG_TYPE_STRATEGY_RELOAD = 1219
     MSG_TYPE_STRATEGY_EDIT = 1220
     MSG_TYPE_STRATEGY_REMOVE = 1221
     MSG_TYPE_STRATEGY_REMOVE_DUPLICATE = 1222
@@ -85,14 +93,14 @@ class MSG_TYPE(Enum):
     MSG_TYPE_STRATEGY_GET_CLASS_PARAMETERS = 1234
     MSG_TYPE_STRATEGY_RTN_CLASS_PARAMETERS = 1235
     MSG_TYPE_STRATEGY_GET_PARAMETERS = 1234
-    MSG_TYPE_STRATEGY_RTN_PARAMETERS = 1235    
-  #  13*  task
-    MSG_TYPE_TIMER = 1301 
+    MSG_TYPE_STRATEGY_RTN_PARAMETERS = 1235
+    #  13*  task
+    MSG_TYPE_TIMER = 1301
     MSG_TYPE_TASK_START = 1310
     MSG_TYPE_TASK_STOP = 1311
-  #  14*  recorder
+    #  14*  recorder
     MSG_TYPE_RECORDER_STATUS = 1400
-    MSG_TYPE_RECORDER_START = 1401 
+    MSG_TYPE_RECORDER_START = 1401
     MSG_TYPE_RECORDER_STOP = 1402
     MSG_TYPE_RECORDER_RESET = 1403
     MSG_TYPE_RECORDER_RELOAD = 1404
@@ -102,52 +110,52 @@ class MSG_TYPE(Enum):
     MSG_TYPE_RECORDER_ADD_BAR = 1420
     MSG_TYPE_RECORDER_REMOVE_TICK = 1430
     MSG_TYPE_RECORDER_REMOVE_BAR = 1440
-  #  20* engine action
+    #  20* engine action
     # request
     MSG_TYPE_SUBSCRIBE_MARKET_DATA = 2001
     MSG_TYPE_SUBSCRIBE_L2_MD = 2002
     MSG_TYPE_SUBSCRIBE_INDEX = 2003
     MSG_TYPE_SUBSCRIBE_ORDER_TRADE = 2004
     MSG_TYPE_UNSUBSCRIBE = 2011
-    MSG_TYPE_QRY_COMMODITY = 2021	
-    MSG_TYPE_QRY_CONTRACT   = 2022
-    MSG_TYPE_QRY_POS       = 2023
-    MSG_TYPE_QRY_ACCOUNT   = 2024
-    MSG_TYPE_QRY_ORDER   = 2025
-    MSG_TYPE_QRY_TRADE   = 2026
-    MSG_TYPE_QRY_POSDETAIL   = 2027
-    MSG_TYPE_ORDER         = 2030  #insert order
+    MSG_TYPE_QRY_COMMODITY = 2021
+    MSG_TYPE_QRY_CONTRACT = 2022
+    MSG_TYPE_QRY_POS = 2023
+    MSG_TYPE_QRY_ACCOUNT = 2024
+    MSG_TYPE_QRY_ORDER = 2025
+    MSG_TYPE_QRY_TRADE = 2026
+    MSG_TYPE_QRY_POSDETAIL = 2027
+    MSG_TYPE_ORDER = 2030  # insert order
     MSG_TYPE_ORDER_PAPER = 2031
     MSG_TYPE_ORDER_CTP = 2032
     MSG_TYPE_ORDER_CTP_PARKED = 2033
     MSG_TYPE_ORDER_TAP = 2034
     MSG_TYPE_ORDER_XTP = 2035
-    MSG_TYPE_ORDER_ACTION  = 2040  #cancel order
+    MSG_TYPE_ORDER_ACTION = 2040  # cancel order
     MSG_TYPE_CANCEL_ORDER = 2041
     MSG_TYPE_CANCEL_ALL = 2042
     MSG_TYPE_ORDER_ACTION_CTP = 2043
     MSG_TYPE_ORDER_ACTION_TAP = 2044
-    MSG_TYPE_ORDER_ACTION_XTP =2045
-    #call back
-    MSG_TYPE_RSP_POS       = 2500
-    MSG_TYPE_RTN_ORDER     = 2510
-    MSG_TYPE_RTN_ORDER_CTP     = 2511 
-    MSG_TYPE_RTN_ORDER_TAP     = 2512
-    MSG_TYPE_RTN_ORDER_XTP     = 2513
-    MSG_TYPE_RTN_TRADE     = 2520
-    MSG_TYPE_RTN_TRADE_CTP     = 2521
-    MSG_TYPE_RTN_TRADE_TAP     = 2522
-    MSG_TYPE_RTN_TRADE_XTP     = 2523
-    MSG_TYPE_RSP_ACCOUNT   = 2530
-    MSG_TYPE_RSP_CONTRACT   = 2540
-    MSG_TYPE_RSP_COMMODITY   = 2541
-  #	31*: info class msg mainly about sys
-    MSG_TYPE_INFO   = 3100
+    MSG_TYPE_ORDER_ACTION_XTP = 2045
+    # call back
+    MSG_TYPE_RSP_POS = 2500
+    MSG_TYPE_RTN_ORDER = 2510
+    MSG_TYPE_RTN_ORDER_CTP = 2511
+    MSG_TYPE_RTN_ORDER_TAP = 2512
+    MSG_TYPE_RTN_ORDER_XTP = 2513
+    MSG_TYPE_RTN_TRADE = 2520
+    MSG_TYPE_RTN_TRADE_CTP = 2521
+    MSG_TYPE_RTN_TRADE_TAP = 2522
+    MSG_TYPE_RTN_TRADE_XTP = 2523
+    MSG_TYPE_RSP_ACCOUNT = 2530
+    MSG_TYPE_RSP_CONTRACT = 2540
+    MSG_TYPE_RSP_COMMODITY = 2541
+    #	31*: info class msg mainly about sys
+    MSG_TYPE_INFO = 3100
     MSG_TYPE_INFO_ENGINE_MDCONNECTED = 3101
     MSG_TYPE_INFO_ENGINE_MDDISCONNECTED = 3102
     MSG_TYPE_INFO_ENGINE_TDCONNECTED = 3103
     MSG_TYPE_INFO_ENGINE_TDDISCONNECTED = 3104
-    MSG_TYPE_INFO_HEARTBEAT_WARNING =3105
+    MSG_TYPE_INFO_HEARTBEAT_WARNING = 3105
     MSG_TYPE_INFO_ENGINE_STATUS = 3106
   #	34*:error class msg
     MSG_TYPE_ERROR = 3400
@@ -155,16 +163,18 @@ class MSG_TYPE(Enum):
     MSG_TYPE_ERROR_SUBSCRIBE = 3402
     MSG_TYPE_ERROR_INSERTORDER = 3403
     MSG_TYPE_ERROR_CANCELORDER = 3404
-    MSG_TYPE_ERROR_ORGANORDER = 3405 #order is not tracted by order manager
+    MSG_TYPE_ERROR_ORGANORDER = 3405  # order is not tracted by order manager
     MSG_TYPE_ERROR_QRY_ACC = 3406
     MSG_TYPE_ERROR_QRY_POS = 3407
     MSG_TYPE_ERROR_QRY_CONTRACT = 3408
-    MSG_TYPE_ERROR_CONNECT = 3409  #login fail
+    MSG_TYPE_ERROR_CONNECT = 3409  # login fail
     MSG_TYPE_ERROR_DISCONNECT = 3410
     MSG_TYPE_ERROR_NOACCOUNT = 3411
   #  40*: test class msg
     MSG_TYPE_TEST = 4000
     MSG_TYPE_BASE = 9
+
+
 class EventType(Enum):
     HEADER = 0
     TICK = 1000
@@ -193,53 +203,58 @@ class EventType(Enum):
     OPTIMIZATION_FINISH = 9003
     BACKTEST_LOG = 9010
 
+
 class OrderFlag(Enum):
     OPEN = 0              # in use
     CLOSE = 1
     CLOSE_TODAY = 2          # in use
     CLOSE_YESTERDAY = 3
-    FORCECLOSE =4
+    FORCECLOSE = 4
     FORCEOFF = 5
     LOCALFORCECLOSE = 6        # in use
 
-class OrderType(Enum):    
+
+class OrderType(Enum):
     MKT = 0
-    MKTC = 1    #market on close
-    LMT = 2     #limit
+    MKTC = 1  # market on close
+    LMT = 2  # limit
     LMTC = 3
     PTM = 4        # peggedtomarket
-    STP = 5       
+    STP = 5
     STPLMT = 6
     TRAIING_STOP = 7
-    REL = 8           #relative
+    REL = 8  # relative
     VWAP = 9        # volumeweightedaverageprice
-    TSL = 10            #trailingstoplimit
-    VLT = 11           #volatility
+    TSL = 10  # trailingstoplimit
+    VLT = 11  # volatility
     NONE = 12
     EMPTY = 13
     DEFAULT = 14
-    SCALE = 15        
-    MKTT =16           # market if touched
-    LMTT =17           # limit if touched
+    SCALE = 15
+    MKTT = 16           # market if touched
+    LMTT = 17           # limit if touched
     OPTE = 18         # used in tap opt exec
     OPTA = 19        # opt abandon
-    REQQ = 20        #  request quot
+    REQQ = 20  # request quot
     RSPQ = 21       # response quot
     SWAP = 22        # swap
     FAK = 23
     FOK = 24
-    LPT = 25    #local price condition touched 
+    LPT = 25  # local price condition touched
+
 
 OT2STR = {
-    OrderType.MKT:'市价',
-    OrderType.LMT:'限价',
-    OrderType.STP:'市价止损',
-    OrderType.STPLMT:'限价止损',
-    OrderType.FAK:'FAK',
-    OrderType.FOK:'FOK',
-    OrderType.LPT:'本地条件单',
-    OrderType.DEFAULT:'未知'
+    OrderType.MKT: '市价',
+    OrderType.LMT: '限价',
+    OrderType.STP: '市价止损',
+    OrderType.STPLMT: '限价止损',
+    OrderType.FAK: 'FAK',
+    OrderType.FOK: 'FOK',
+    OrderType.LPT: '本地条件单',
+    OrderType.DEFAULT: '未知'
 }
+
+
 class OrderStatus(Enum):
     UNKNOWN = 0
     NEWBORN = 1              # in use
@@ -252,8 +267,8 @@ class OrderStatus(Enum):
     PENDING_CANCEL = 8
     PENDING_MODIFY = 9
     CANCELED = 10
-    LEFTDELETE =11
-    SUSPENDED =12
+    LEFTDELETE = 11
+    SUSPENDED = 12
     API_PENDING = 13
     API_CANCELLED = 14
     FAIL = 15
@@ -264,11 +279,12 @@ class OrderStatus(Enum):
     TRIG = 20
     EXCTRIG = 21
 
+
 class TickType(Enum):
     # same as msg_type
     Tick_L1 = 1000
     Tick_L5 = 1001
-    Tick_L10 =1002
+    Tick_L10 = 1002
     Tick_L20 = 1003
     Bar_1min = 1011
     Bar_5min = 1012
@@ -277,7 +293,7 @@ class TickType(Enum):
     Bar_1d = 1015
     Bar_1w = 1016
     Bar_1m = 1017
-    Trade = 1060		
+    Trade = 1060
     Bid = 1061
     Ask = 1062
     Full = 1063
@@ -297,6 +313,7 @@ class TickType(Enum):
 
 # ############################# vnpy 's data #########################
 
+
 class Direction(Enum):
     """
     Direction of order/trade/position.
@@ -305,8 +322,9 @@ class Direction(Enum):
     SHORT = "空"
     NET = "净"
 
+
 DIRECTION_VT2CTP = {
-    Direction.LONG: THOST_FTDC_D_Buy, 
+    Direction.LONG: THOST_FTDC_D_Buy,
     Direction.SHORT: THOST_FTDC_D_Sell,
     Direction.NET: THOST_FTDC_PD_Net
 }
@@ -325,13 +343,15 @@ class Offset(Enum):
     CLOSETODAY = "平今"
     CLOSEYESTERDAY = "平昨"
 
+
 ORDERFALG_2VT = {
-    OrderFlag.OPEN:Offset.OPEN, 
-    OrderFlag.CLOSE:Offset.CLOSE,
-    OrderFlag.CLOSE_TODAY:Offset.CLOSETODAY,
-    OrderFlag.CLOSE_YESTERDAY:Offset.CLOSEYESTERDAY,
+    OrderFlag.OPEN: Offset.OPEN,
+    OrderFlag.CLOSE: Offset.CLOSE,
+    OrderFlag.CLOSE_TODAY: Offset.CLOSETODAY,
+    OrderFlag.CLOSE_YESTERDAY: Offset.CLOSEYESTERDAY,
 }
 OFFSET_VT2ORDERFLAG = {v: k for k, v in ORDERFALG_2VT.items()}
+
 
 class OptionType(Enum):
     """
@@ -340,10 +360,12 @@ class OptionType(Enum):
     CALL = "看涨期权"
     PUT = "看跌期权"
 
+
 OPTIONTYPE_CTP2VT = {
     '1': OptionType.CALL,
     '2': OptionType.PUT
 }
+
 
 class Status(Enum):
     """
@@ -358,6 +380,7 @@ class Status(Enum):
     REJECTED = "拒单"
     UNKNOWN = "未知"
 
+
 ORDERSTATUS_2VT = {
     OrderStatus.SUBMITTED: Status.SUBMITTING,
     OrderStatus.NEWBORN: Status.NEWBORN,
@@ -369,7 +392,10 @@ ORDERSTATUS_2VT = {
     OrderStatus.ERROR: Status.REJECTED
 }
 
-ACTIVE_STATUSES = set([Status.NEWBORN,Status.SUBMITTING, Status.NOTTRADED,Status.PARTTRADED,Status.UNKNOWN])
+ACTIVE_STATUSES = set([Status.NEWBORN, Status.SUBMITTING,
+                       Status.NOTTRADED, Status.PARTTRADED, Status.UNKNOWN])
+
+
 class Product(Enum):
     """
     Product class.
@@ -384,7 +410,7 @@ class Product(Enum):
     BOND = "债券"
     WARRANT = "权证"
     SPREAD = "价差"
-    FUND = "基金"    
+    FUND = "基金"
 
 
 PRODUCT_CTP2VT = {
@@ -395,17 +421,17 @@ PRODUCT_CTP2VT = {
 }
 
 PRODUCT_VT2SQ = {
-    Product.EQUITY : "T",
-    Product.FUTURES : "F",
-    Product.OPTION : "O",
-    Product.INDEX : "Z",
-    Product.FOREX : "X",
-    Product.SPOT : "P",
-    Product.ETF : "e",
-    Product.BOND : "B",
-    Product.WARRANT : "W",
-    Product.SPREAD : "S",
-    Product.FUND : "J"
+    Product.EQUITY: "T",
+    Product.FUTURES: "F",
+    Product.OPTION: "O",
+    Product.INDEX: "Z",
+    Product.FOREX: "X",
+    Product.SPOT: "P",
+    Product.ETF: "e",
+    Product.BOND: "B",
+    Product.WARRANT: "W",
+    Product.SPREAD: "S",
+    Product.FUND: "J"
 }
 
 
@@ -447,6 +473,8 @@ EXCHANGE_CTP2VT = {
     "DCE": Exchange.DCE,
     "INE": Exchange.INE
 }
+
+
 class Currency(Enum):
     """
     Currency.
@@ -454,6 +482,7 @@ class Currency(Enum):
     USD = "USD"
     HKD = "HKD"
     CNY = "CNY"
+
 
 class Interval(Enum):
     """
@@ -463,6 +492,8 @@ class Interval(Enum):
     HOUR = "1h"
     DAILY = "d"
     WEEKLY = "w"
+
+
 class EngineType(Enum):
     LIVE = "实盘"
     BACKTESTING = "回测"
@@ -472,9 +503,11 @@ class BacktestingMode(Enum):
     BAR = 1
     TICK = 2
 
+
 class StopOrderStatus(Enum):
     WAITING = "等待中"
     CANCELLED = "已撤销"
     TRIGGERED = "已触发"
+
 
 STOPORDER_PREFIX = "STOP"

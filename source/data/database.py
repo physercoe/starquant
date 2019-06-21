@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import quandl
-import pandas as pd
-from datetime import datetime, timedelta
+
+from datetime import datetime
 from enum import Enum
 from abc import ABC, abstractmethod
 from typing import Optional, Sequence, TYPE_CHECKING
@@ -83,7 +82,3 @@ class BaseDatabaseManager(ABC):
         delete all records for a symbol
         """
         pass
-
-
-
-

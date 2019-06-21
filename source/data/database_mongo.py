@@ -4,7 +4,7 @@ from typing import Sequence, Optional
 
 from mongoengine import DateTimeField, Document, FloatField, StringField, connect
 
-from ..common.datastruct import Exchange, Interval, BarData,TickData
+from ..common.datastruct import Exchange, Interval, BarData, TickData
 from .database import BaseDatabaseManager, Driver
 
 

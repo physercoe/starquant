@@ -1,68 +1,68 @@
 """
-Basic widgets for VN Trader.
+Basic widgets.
 """
 
-import csv
 from enum import Enum
-from typing import Any
 import psutil
-from PyQt5 import QtCore, QtGui, QtWidgets,QtWebEngineWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets, QtWebEngineWidgets
 import yaml
 from typing import TextIO
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-import csv,json
+import csv
+import json
 from copy import copy
 import webbrowser
 from threading import Thread
 from time import time as ttime
 import gzip
-import io
 from ..common.constant import (
-    Exchange,Interval,Product,PRODUCT_CTP2VT,OPTIONTYPE_CTP2VT,
+    Exchange, Interval, Product, PRODUCT_CTP2VT, OPTIONTYPE_CTP2VT,
     EventType
-    )
-from ..common.datastruct import (
-    Event,MSG_TYPE,
-    TickData,BarData,HistoryRequest,ContractData
 )
-from ..engine.iengine import EventEngine
+from ..common.datastruct import (
+    Event, MSG_TYPE,
+    TickData, BarData, HistoryRequest, ContractData
+)
 from source.data import database_manager
 from source.data.rqdata import rqdata_client
 from ..common.utility import (
-    load_json, save_json,generate_full_symbol,extract_full_symbol
-    )    
+    load_json, save_json, generate_full_symbol, extract_full_symbol
+)
 from ..common.config import SETTING_FILENAME, SETTINGS
 from ..api.ctp_constant import THOST_FTDC_PT_Net
 from source.common import sqglobal
-from .ui_basic import EnumCell,BaseCell
+from .ui_basic import EnumCell, BaseCell
+
 
 class WebWindow(QtWidgets.QFrame):
-
 
     def __init__(self):
         super(WebWindow, self).__init__()
 
-        ## member variables
+        # member variables
         self.init_gui()
 
     def init_gui(self):
-        self.setFrameShape(QtWidgets.QFrame.StyledPanel) 
+        self.setFrameShape(QtWidgets.QFrame.StyledPanel)
         weblayout = QtWidgets.QFormLayout()
 
-        self.web =  QtWebEngineWidgets.QWebEngineView()
-        self.web.setSizePolicy(QtWidgets.QSizePolicy.Expanding,QtWidgets.QSizePolicy.Expanding)
+        self.web = QtWebEngineWidgets.QWebEngineView()
+        self.web.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.web.setMinimumHeight(1000)
         # self.web.setSizePolicy(QtWidgets.QSizePolicy.Expanding,QtWidgets.QSizePolicy.Expanding)
         # self.web.setMinimumWidth(1000)
         self.web.load(QtCore.QUrl("http://localhost:8888"))
 
         self.web_addr = QtWidgets.QLineEdit()
-        self.web_btn_jn = QtWidgets.QPushButton('Jupyter Notebook') 
-        self.web_btn_jn.clicked.connect(lambda:self.web.load(QtCore.QUrl("http://localhost:8888")))
-        self.web_btn_go = QtWidgets.QPushButton('Go') 
-        self.web_btn_go.clicked.connect(lambda:self.web.load(QtCore.QUrl(self.web_addr.text())))
-        
+        self.web_btn_jn = QtWidgets.QPushButton('Jupyter Notebook')
+        self.web_btn_jn.clicked.connect(
+            lambda: self.web.load(QtCore.QUrl("http://localhost:8888")))
+        self.web_btn_go = QtWidgets.QPushButton('Go')
+        self.web_btn_go.clicked.connect(
+            lambda: self.web.load(QtCore.QUrl(self.web_addr.text())))
+
         webhboxlayout1 = QtWidgets.QHBoxLayout()
         webhboxlayout1.addWidget(self.web_btn_jn)
         webhboxlayout1.addWidget(QtWidgets.QLabel('Web'))
@@ -77,21 +77,22 @@ class WebWindow(QtWidgets.QFrame):
 class CsvTickLoader(QtCore.QObject):
     startsig = QtCore.pyqtSignal(str)
     finishmsg = QtCore.pyqtSignal(str)
+
     def __init__(self,
-        file_path: str,
-        symbol: str,
-        exchange: Exchange,
-        datetime_head: str,
-        lastprice_head:str,
-        volume_head: str,
-        openinterest_head: str,
-        askprice1_head: str,
-        askvolume1_head: str,
-        bidprice1_head:str,
-        bidvolume1_head: str,
-        datetime_format: str,
-        saveto:str='DataBase'):
-        super(CsvTickLoader,self).__init__()
+                 file_path: str,
+                 symbol: str,
+                 exchange: Exchange,
+                 datetime_head: str,
+                 lastprice_head: str,
+                 volume_head: str,
+                 openinterest_head: str,
+                 askprice1_head: str,
+                 askvolume1_head: str,
+                 bidprice1_head: str,
+                 bidvolume1_head: str,
+                 datetime_format: str,
+                 saveto: str = 'DataBase'):
+        super(CsvTickLoader, self).__init__()
         self.file_path = file_path
         self.symbol = symbol
         self.exchange = exchange
@@ -108,12 +109,12 @@ class CsvTickLoader(QtCore.QObject):
         self.startsig.connect(self.run)
 
     # @QtCore.pyqtSlot()
-    def run(self,suffix:str = 'csv'):
+    def run(self, suffix: str = 'csv'):
         if suffix == 'csv':
             with open(self.file_path, "rt") as f:
                 self.load_tick_by_handle(f)
         elif suffix == 'csv.gz':
-            with gzip.open(self.file_path,'rt') as f:
+            with gzip.open(self.file_path, 'rt') as f:
                 self.load_tick_by_handle(f)
 
     def load_tick_by_handle(self, f: TextIO):
@@ -125,13 +126,14 @@ class CsvTickLoader(QtCore.QObject):
         ticks = []
         start = None
         count = 0
-        full_sym = generate_full_symbol(self.exchange,self.symbol)
-        alreadyhas = bool(sqglobal.history_tick[full_sym])        
+        full_sym = generate_full_symbol(self.exchange, self.symbol)
+        alreadyhas = bool(sqglobal.history_tick[full_sym])
         starttime = ttime()
         try:
-            for item in reader:                
+            for item in reader:
                 if self.datetime_format:
-                    dt = datetime.strptime(item[self.datetime_head], self.datetime_format)
+                    dt = datetime.strptime(
+                        item[self.datetime_head], self.datetime_format)
                 else:
                     dt = datetime.fromisoformat(item[self.datetime_head])
 
@@ -146,7 +148,7 @@ class CsvTickLoader(QtCore.QObject):
                     ask_volume_1=int(item[self.askvolume1_head]),
                     bid_price_1=float(item[self.bidprice1_head]),
                     bid_volume_1=int(item[self.bidvolume1_head]),
-                    depth=1,                
+                    depth=1,
                     gateway_name="DB",
                 )
                 ticks.append(tick)
@@ -156,7 +158,7 @@ class CsvTickLoader(QtCore.QObject):
                 if not start:
                     start = tick.datetime
                 if count % 100000 == 0:
-                    if self.saveto == 'DataBase': 
+                    if self.saveto == 'DataBase':
                         database_manager.save_tick_data(ticks)
                         ticks.clear()
         except Exception as e:
@@ -166,9 +168,9 @@ class CsvTickLoader(QtCore.QObject):
 
         end = tick.datetime
         if self.saveto == 'Memory' and not alreadyhas:
-            sqglobal.history_tick[full_sym] = ticks 
-        elif self.saveto == 'DataBase': 
-            database_manager.save_tick_data(ticks)         
+            sqglobal.history_tick[full_sym] = ticks
+        elif self.saveto == 'DataBase':
+            database_manager.save_tick_data(ticks)
         endtime = ttime()
         totalloadtime = int(endtime-starttime)
         if start and end and count:
@@ -187,20 +189,21 @@ class CsvTickLoader(QtCore.QObject):
 class CsvBarLoader(QtCore.QObject):
     startsig = QtCore.pyqtSignal(str)
     finishmsg = QtCore.pyqtSignal(str)
+
     def __init__(self,
-        file_path: str,
-        symbol: str,
-        exchange: Exchange,
-        interval: Interval,
-        datetime_head: str,
-        open_head: str,
-        high_head: str,
-        low_head: str,
-        close_head: str,
-        volume_head: str,
-        datetime_format: str,
-        saveto:str='DataBase'):
-        super(CsvBarLoader,self).__init__()
+                 file_path: str,
+                 symbol: str,
+                 exchange: Exchange,
+                 interval: Interval,
+                 datetime_head: str,
+                 open_head: str,
+                 high_head: str,
+                 low_head: str,
+                 close_head: str,
+                 volume_head: str,
+                 datetime_format: str,
+                 saveto: str = 'DataBase'):
+        super(CsvBarLoader, self).__init__()
         self.file_path = file_path
         self.symbol = symbol
         self.exchange = exchange
@@ -216,12 +219,12 @@ class CsvBarLoader(QtCore.QObject):
         self.startsig.connect(self.run)
 
     # @QtCore.pyqtSlot()
-    def run(self,suffix:str = 'csv'):
+    def run(self, suffix: str = 'csv'):
         if suffix == 'csv':
             with open(self.file_path, "rt") as f:
                 self.load_by_handle(f)
         elif suffix == 'csv.gz':
-            with gzip.open(self.file_path,"rt") as f:
+            with gzip.open(self.file_path, "rt") as f:
                 self.load_by_handle(f)
 
     def load_by_handle(self, f: TextIO):
@@ -233,13 +236,14 @@ class CsvBarLoader(QtCore.QObject):
         bars = []
         start = None
         count = 0
-        full_sym = generate_full_symbol(self.exchange,self.symbol)
-        alreadyhas = bool(sqglobal.history_bar[full_sym])        
+        full_sym = generate_full_symbol(self.exchange, self.symbol)
+        alreadyhas = bool(sqglobal.history_bar[full_sym])
         starttime = ttime()
         try:
             for item in reader:
                 if self.datetime_format:
-                    dt = datetime.strptime(item[self.datetime_head], self.datetime_format)
+                    dt = datetime.strptime(
+                        item[self.datetime_head], self.datetime_format)
                 else:
                     dt = datetime.fromisoformat(item[self.datetime_head])
 
@@ -263,7 +267,7 @@ class CsvBarLoader(QtCore.QObject):
                 if not start:
                     start = bar.datetime
                 if count % 100000 == 0:
-                    if self.saveto == 'DataBase': 
+                    if self.saveto == 'DataBase':
                         database_manager.save_bar_data(bars)
                         bars.clear()
         except Exception as e:
@@ -276,7 +280,7 @@ class CsvBarLoader(QtCore.QObject):
 
         if self.saveto == 'Memory' and not alreadyhas:
             sqglobal.history_bar[full_sym] = bars
-        elif self.saveto == 'DataBase': 
+        elif self.saveto == 'DataBase':
             database_manager.save_bar_data(bars)
         endtime = ttime()
         totalloadtime = int(endtime-starttime)
@@ -291,7 +295,7 @@ class CsvBarLoader(QtCore.QObject):
                 总数量：{count}\n\
                 耗时：{totalloadtime}s\n\
                 "
-            self.finishmsg.emit(msg)              
+            self.finishmsg.emit(msg)
 
 
 class CsvLoaderWidget(QtWidgets.QWidget):
@@ -302,7 +306,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         super().__init__()
         self.isbusy = False
         self.thread = QtCore.QThread()
-        self.thread.start() 
+        self.thread.start()
         self.worker = None
         self.init_ui()
 
@@ -316,7 +320,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             & ~QtCore.Qt.WindowMaximizeButtonHint)
 
         self.fileformat_combo = QtWidgets.QComboBox()
-        self.fileformat_combo.addItems(['csv.gz','csv','hdf5'])
+        self.fileformat_combo.addItems(['csv.gz', 'csv', 'hdf5'])
 
         file_button = QtWidgets.QPushButton("选择文件")
         file_button.clicked.connect(self.select_file)
@@ -326,8 +330,8 @@ class CsvLoaderWidget(QtWidgets.QWidget):
 
         self.file_edit = QtWidgets.QLineEdit()
 
-        self.saveto_combo =  QtWidgets.QComboBox()
-        self.saveto_combo.addItems(['Memory','DataBase'])
+        self.saveto_combo = QtWidgets.QComboBox()
+        self.saveto_combo.addItems(['Memory', 'DataBase'])
 
         self.symbol_edit = QtWidgets.QLineEdit()
 
@@ -349,7 +353,6 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         self.close_edit = QtWidgets.QLineEdit("Close")
         self.volume_edit = QtWidgets.QLineEdit("Volume")
 
-
         self.tick_last_price = QtWidgets.QLineEdit("Lastprice")
         self.tick_volume = QtWidgets.QLineEdit("Volume")
         self.tick_open_interest = QtWidgets.QLineEdit("Openinterest")
@@ -357,7 +360,6 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         self.tick_ask_volume_1 = QtWidgets.QLineEdit("Askvolume1")
         self.tick_bid_price_1 = QtWidgets.QLineEdit("Bidprice1")
         self.tick_bid_volume_1 = QtWidgets.QLineEdit("Bidvolume1")
-
 
         self.format_edit = QtWidgets.QLineEdit("%Y-%m-%d %H:%M:%S.%f")
 
@@ -371,9 +373,9 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         format_label.setAlignment(QtCore.Qt.AlignCenter)
 
         form = QtWidgets.QFormLayout()
-        form.addRow("文件格式",self.fileformat_combo)
+        form.addRow("文件格式", self.fileformat_combo)
         form.addRow(file_button, self.file_edit)
-        form.addRow("存储位置",self.saveto_combo)
+        form.addRow("存储位置", self.saveto_combo)
         form.addRow(QtWidgets.QLabel())
         form.addRow(info_label)
         form.addRow("代码", self.symbol_edit)
@@ -391,7 +393,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         formbar.addRow("收盘价", self.close_edit)
         formbar.addRow("成交量", self.volume_edit)
         barwidget.setLayout(formbar)
-        barwidget.setContentsMargins(0,0,0,0)
+        barwidget.setContentsMargins(0, 0, 0, 0)
 
         tickwidget = QtWidgets.QWidget()
         formtick = QtWidgets.QFormLayout()
@@ -401,15 +403,15 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         formtick.addRow("买一价", self.tick_ask_price_1)
         formtick.addRow("买一量", self.tick_ask_volume_1)
         formtick.addRow("卖一价", self.tick_bid_price_1)
-        formtick.addRow("卖一量", self.tick_bid_volume_1)        
-        tickwidget.setLayout(formtick)        
-        tickwidget.setContentsMargins(0,0,0,0)
+        formtick.addRow("卖一量", self.tick_bid_volume_1)
+        tickwidget.setLayout(formtick)
+        tickwidget.setContentsMargins(0, 0, 0, 0)
 
         self.headwidget = QtWidgets.QStackedWidget()
         self.headwidget.addWidget(barwidget)
         self.headwidget.addWidget(tickwidget)
         self.headwidget.setCurrentIndex(1)
-        self.headwidget.setContentsMargins(0,0,0,0)
+        self.headwidget.setContentsMargins(0, 0, 0, 0)
 
         form.addRow(self.headwidget)
         form.addRow(QtWidgets.QLabel())
@@ -420,7 +422,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
 
         self.setLayout(form)
 
-    def change_head(self,index):
+    def change_head(self, index):
         if self.interval_combo.currentText() == 'tick':
             self.headwidget.setCurrentIndex(1)
             self.format_edit.setText("%Y-%m-%d %H:%M:%S.%f")
@@ -447,7 +449,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         saveto = self.saveto_combo.currentText()
         if self.isbusy:
             QtWidgets.QMessageBox().information(
-                None, 'Info','已有数据在导入，请等待!',
+                None, 'Info', '已有数据在导入，请等待!',
                 QtWidgets.QMessageBox.Ok)
             return
 
@@ -462,7 +464,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             alreadyhas = bool(sqglobal.history_tick[symbol])
             if alreadyhas:
                 QtWidgets.QMessageBox().information(
-                    None, 'Info','内存已有该数据，若要覆盖请先点击清空内存!',
+                    None, 'Info', '内存已有该数据，若要覆盖请先点击清空内存!',
                     QtWidgets.QMessageBox.Ok)
                 return
 
@@ -484,10 +486,10 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             )
             self.worker.moveToThread(self.thread)
             self.worker.finishmsg.connect(self.load_finished)
-            self.worker.startsig.emit(fileformat)            
+            self.worker.startsig.emit(fileformat)
             # self.thread.started.connect(self.worker.load_data)
-            #self.thread.finished.connect(self.worker.deleteLater)
-                  
+            # self.thread.finished.connect(self.worker.deleteLater)
+
         else:
             interval = self.interval_combo.currentData()
             open_head = self.open_edit.text()
@@ -498,7 +500,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             alreadyhas = bool(sqglobal.history_bar[symbol])
             if alreadyhas:
                 QtWidgets.QMessageBox().information(
-                    None, 'Info','内存已有该数据，若要覆盖请先点击清空内存!',
+                    None, 'Info', '内存已有该数据，若要覆盖请先点击清空内存!',
                     QtWidgets.QMessageBox.Ok)
                 return
 
@@ -515,7 +517,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 close_head,
                 volume_head,
                 datetime_format,
-                saveto                    
+                saveto
             )
             self.worker.moveToThread(self.thread)
             self.worker.finishmsg.connect(self.load_finished)
@@ -524,13 +526,14 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             # self.thread.finished.connect(self.worker.deleteLater)
             # self.thread.start()
 
-    def load_finished(self,msg):
+    def load_finished(self, msg):
         QtWidgets.QMessageBox().information(
-            None, 'Info',msg,
+            None, 'Info', msg,
             QtWidgets.QMessageBox.Ok)
         self.worker.deleteLater()
         # self.thread.wait()
         self.isbusy = False
+
 
 class DataDownloaderWidget(QtWidgets.QWidget):
     """"""
@@ -549,7 +552,7 @@ class DataDownloaderWidget(QtWidgets.QWidget):
         # self.setFixedWidth(300)
 
         self.datasource_combo = QtWidgets.QComboBox()
-        self.datasource_combo.addItems(['RQData','Tushare','JoinQuant'])
+        self.datasource_combo.addItems(['RQData', 'Tushare', 'JoinQuant'])
 
         self.symbol_line = QtWidgets.QLineEdit("")
         self.interval_combo = QtWidgets.QComboBox()
@@ -577,8 +580,8 @@ class DataDownloaderWidget(QtWidgets.QWidget):
 
         form = QtWidgets.QFormLayout()
         form.addRow("数据源", self.datasource_combo)
-        form.addRow("合约全称",self.symbol_line)
-        form.addRow("时间间隔",self.interval_combo)
+        form.addRow("合约全称", self.symbol_line)
+        form.addRow("时间间隔", self.interval_combo)
         form.addRow("开始日期", self.start_date_edit)
         form.addRow("结束日期", self.end_date_edit)
         form.addRow(self.downloading_button)
@@ -595,7 +598,7 @@ class DataDownloaderWidget(QtWidgets.QWidget):
 
         if self.thread:
             QtWidgets.QMessageBox().information(
-                None, 'Info','已有数据在下载，请等待!',
+                None, 'Info', '已有数据在下载，请等待!',
                 QtWidgets.QMessageBox.Ok)
             return False
 
@@ -615,7 +618,7 @@ class DataDownloaderWidget(QtWidgets.QWidget):
 
     def run_downloading(
         self,
-        data_source:str,
+        data_source: str,
         full_symbol: str,
         interval: str,
         start: datetime,
@@ -626,7 +629,7 @@ class DataDownloaderWidget(QtWidgets.QWidget):
         """
 
         self.write_log(f"{full_symbol}-{interval}开始从{data_source}下载历史数据")
-        
+
         symbol, exchange = extract_full_symbol(full_symbol)
 
         req = HistoryRequest(
@@ -642,12 +645,12 @@ class DataDownloaderWidget(QtWidgets.QWidget):
 
         elif data_source == 'Tushare':
             QtWidgets.QMessageBox().information(
-                None, 'Info','待实现!',
+                None, 'Info', '待实现!',
                 QtWidgets.QMessageBox.Ok)
             data = None
         elif data_source == 'JoinQuant':
             QtWidgets.QMessageBox().information(
-                None, 'Info','待实现!',
+                None, 'Info', '待实现!',
                 QtWidgets.QMessageBox.Ok)
             data = None
         if data:
@@ -658,9 +661,10 @@ class DataDownloaderWidget(QtWidgets.QWidget):
         # Clear thread object handler.
         self.thread = None
 
-    def write_log(self,log:str):
+    def write_log(self, log: str):
         logmsg = str(datetime.now()) + " : " + log
         self.log_signal.emit(logmsg)
+
 
 class RecorderManager(QtWidgets.QWidget):
     """"""
@@ -694,13 +698,12 @@ class RecorderManager(QtWidgets.QWidget):
         refresh_button.clicked.connect(self.refresh_status)
 
         self.data_source = QtWidgets.QComboBox()
-        self.data_source.addItems(['CTP.MD','TAP.MD']) 
+        self.data_source.addItems(['CTP.MD', 'TAP.MD'])
 
         start_button = QtWidgets.QPushButton("订阅所有合约")
         start_button.clicked.connect(self.start_engine)
         stop_button = QtWidgets.QPushButton("清空所有合约")
         stop_button.clicked.connect(self.stop_engine)
-
 
         self.symbol_line = QtWidgets.QLineEdit()
         self.symbol_line.setMaximumWidth(300)
@@ -713,10 +716,8 @@ class RecorderManager(QtWidgets.QWidget):
             self.symbol_completer.PopupCompletion)
         self.symbol_line.setCompleter(self.symbol_completer)
 
-
-
         self.record_choice = QtWidgets.QComboBox()
-        self.record_choice.addItems(['tick', 'bar'])        
+        self.record_choice.addItems(['tick', 'bar'])
         add_button = QtWidgets.QPushButton("添加")
         add_button.clicked.connect(self.add_recording)
 
@@ -788,20 +789,21 @@ class RecorderManager(QtWidgets.QWidget):
 
     def start_engine(self):
         m = Event(type=EventType.RECORDER_CONTROL,
-            des='@' + self.engineid,
-            src=self.data_source.currentText(),            
-            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_START
-        )
+                  des='@' + self.engineid,
+                  src=self.data_source.currentText(),
+                  msgtype=MSG_TYPE.MSG_TYPE_RECORDER_START
+                  )
         self.signal_recorder_out.emit(m)
 
     def stop_engine(self):
-        mbox = QtWidgets.QMessageBox().question(None, 'confirm','are you sure',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
+        mbox = QtWidgets.QMessageBox().question(None, 'confirm', 'are you sure',
+                                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
         if mbox == QtWidgets.QMessageBox.Yes:
             m = Event(type=EventType.RECORDER_CONTROL,
-                des='@' + self.engineid,
-                src='0',            
-                msgtype=MSG_TYPE.MSG_TYPE_RECORDER_STOP
-            )
+                      des='@' + self.engineid,
+                      src='0',
+                      msgtype=MSG_TYPE.MSG_TYPE_RECORDER_STOP
+                      )
             self.signal_recorder_out.emit(m)
 
     def refresh_status(self):
@@ -811,10 +813,10 @@ class RecorderManager(QtWidgets.QWidget):
         self.bar_recording_edit.clear()
         self.tick_recording_edit.clear()
         m = Event(type=EventType.RECORDER_CONTROL,
-            des='@*',
-            src='0',            
-            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_STATUS
-        )
+                  des='@*',
+                  src='0',
+                  msgtype=MSG_TYPE.MSG_TYPE_RECORDER_STATUS
+                  )
         self.signal_recorder_out.emit(m)
 
     def process_log_event(self, event: Event):
@@ -850,8 +852,9 @@ class RecorderManager(QtWidgets.QWidget):
         model.setStringList(self.full_symbols)
 
     def add_recording(self):
-        if self.engine_status.text() == 'False' or self.engine_pid.text() == '': 
-            QtWidgets.QMessageBox().information(None, 'Error','RecorderEngine is not running!',QtWidgets.QMessageBox.Ok)
+        if self.engine_status.text() == 'False' or self.engine_pid.text() == '':
+            QtWidgets.QMessageBox().information(
+                None, 'Error', 'RecorderEngine is not running!', QtWidgets.QMessageBox.Ok)
             return
         if self.record_choice.currentText() == 'tick':
             self.add_tick_recording()
@@ -859,8 +862,9 @@ class RecorderManager(QtWidgets.QWidget):
             self.add_bar_recording()
 
     def remove_recording(self):
-        if self.engine_status.text() == 'False' or self.engine_pid.text() == '': 
-            QtWidgets.QMessageBox().information(None, 'Error','RecorderEngine is not running!',QtWidgets.QMessageBox.Ok)
+        if self.engine_status.text() == 'False' or self.engine_pid.text() == '':
+            QtWidgets.QMessageBox().information(
+                None, 'Error', 'RecorderEngine is not running!', QtWidgets.QMessageBox.Ok)
             return
         if self.record_choice.currentText() == 'tick':
             self.remove_tick_recording()
@@ -872,44 +876,44 @@ class RecorderManager(QtWidgets.QWidget):
         full_symbol = self.symbol_line.text()
 
         m = Event(type=EventType.RECORDER_CONTROL,
-            des='@' + self.engineid,
-            src=self.data_source.currentText(),
-            data=full_symbol,            
-            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_ADD_BAR
-        )
+                  des='@' + self.engineid,
+                  src=self.data_source.currentText(),
+                  data=full_symbol,
+                  msgtype=MSG_TYPE.MSG_TYPE_RECORDER_ADD_BAR
+                  )
         self.signal_recorder_out.emit(m)
 
     def add_tick_recording(self):
         """"""
         full_symbol = self.symbol_line.text()
         m = Event(type=EventType.RECORDER_CONTROL,
-            des='@' + self.engineid,
-            src=self.data_source.currentText(), 
-            data=full_symbol,           
-            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_ADD_TICK
-        )
+                  des='@' + self.engineid,
+                  src=self.data_source.currentText(),
+                  data=full_symbol,
+                  msgtype=MSG_TYPE.MSG_TYPE_RECORDER_ADD_TICK
+                  )
         self.signal_recorder_out.emit(m)
 
     def remove_bar_recording(self):
         """"""
         full_symbol = self.symbol_line.text()
         m = Event(type=EventType.RECORDER_CONTROL,
-            des='@' + self.engineid,
-            src='0',
-            data=full_symbol,          
-            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_REMOVE_BAR
-        )
+                  des='@' + self.engineid,
+                  src='0',
+                  data=full_symbol,
+                  msgtype=MSG_TYPE.MSG_TYPE_RECORDER_REMOVE_BAR
+                  )
         self.signal_recorder_out.emit(m)
 
     def remove_tick_recording(self):
         """"""
         full_symbol = self.symbol_line.text()
         m = Event(type=EventType.RECORDER_CONTROL,
-            des='@' + self.engineid,
-            src='0', 
-            data=full_symbol,           
-            msgtype=MSG_TYPE.MSG_TYPE_RECORDER_REMOVE_TICK
-        )
+                  des='@' + self.engineid,
+                  src='0',
+                  data=full_symbol,
+                  msgtype=MSG_TYPE.MSG_TYPE_RECORDER_REMOVE_TICK
+                  )
         self.signal_recorder_out.emit(m)
 
 
@@ -919,7 +923,7 @@ class ContractManager(QtWidgets.QWidget):
     """
 
     headers = {
-        "full_symbol":"全称",
+        "full_symbol": "全称",
         "symbol": "代码",
         "exchange": "交易所",
         "name": "名称",
@@ -927,9 +931,9 @@ class ContractManager(QtWidgets.QWidget):
         "size": "合约乘数",
         "pricetick": "价格跳动",
         "min_volume": "最小委托量",
-        "net_position":"是否净持仓",
-        "long_margin_ratio":"多仓保证金率",
-        "short_margin_ratio":"空仓保证金率"
+        "net_position": "是否净持仓",
+        "long_margin_ratio": "多仓保证金率",
+        "short_margin_ratio": "空仓保证金率"
     }
 
     def __init__(self):
@@ -938,14 +942,13 @@ class ContractManager(QtWidgets.QWidget):
         self.contracts = {}
         self.load_contract()
 
-
         self.init_ui()
 
     def load_contract(self):
         contractfile = Path.cwd().joinpath("etc/ctpcontract.yaml")
-        with open(contractfile, encoding='utf8') as fc: 
+        with open(contractfile, encoding='utf8') as fc:
             contracts = yaml.load(fc)
-        print('loading contracts, total number:',len(contracts))
+        print('loading contracts, total number:', len(contracts))
         for sym, data in contracts.items():
             contract = ContractData(
                 symbol=data["symbol"],
@@ -954,18 +957,21 @@ class ContractManager(QtWidgets.QWidget):
                 product=PRODUCT_CTP2VT[str(data["product"])],
                 size=data["size"],
                 pricetick=data["pricetick"],
-                net_position = True if str(data["positiontype"]) == THOST_FTDC_PT_Net else False,
-                long_margin_ratio = data["long_margin_ratio"],
-                short_margin_ratio = data["short_margin_ratio"],
-                full_symbol = data["full_symbol"]
-            )            
+                net_position=True if str(
+                    data["positiontype"]) == THOST_FTDC_PT_Net else False,
+                long_margin_ratio=data["long_margin_ratio"],
+                short_margin_ratio=data["short_margin_ratio"],
+                full_symbol=data["full_symbol"]
+            )
             # For option only
             if contract.product == Product.OPTION:
                 contract.option_underlying = data["option_underlying"],
-                contract.option_type = OPTIONTYPE_CTP2VT.get(str(data["option_type"]), None),
+                contract.option_type = OPTIONTYPE_CTP2VT.get(
+                    str(data["option_type"]), None),
                 contract.option_strike = data["option_strike"],
-                contract.option_expiry = datetime.strptime(str(data["option_expiry"]), "%Y%m%d"),
-            self.contracts[contract.full_symbol] = contract      
+                contract.option_expiry = datetime.strptime(
+                    str(data["option_expiry"]), "%Y%m%d"),
+            self.contracts[contract.full_symbol] = contract
 
     def init_ui(self):
         """"""
@@ -973,7 +979,8 @@ class ContractManager(QtWidgets.QWidget):
         self.resize(1000, 600)
 
         self.filter_line = QtWidgets.QLineEdit()
-        self.filter_line.setPlaceholderText("输入全称字段（交易所,类别，产品代码，合约编号），留空则查询所有合约")
+        self.filter_line.setPlaceholderText(
+            "输入全称字段（交易所,类别，产品代码，合约编号），留空则查询所有合约")
         self.filter_line.returnPressed.connect(self.show_contracts)
         self.button_show = QtWidgets.QPushButton("查询")
         self.button_show.clicked.connect(self.show_contracts)
@@ -1006,7 +1013,6 @@ class ContractManager(QtWidgets.QWidget):
         """
         flt = str(self.filter_line.text()).upper()
 
-
         if flt:
             contracts = [
                 contract for contract in self.contracts.values() if flt in contract.full_symbol
@@ -1027,10 +1033,9 @@ class ContractManager(QtWidgets.QWidget):
                 self.contract_table.setItem(row, column, cell)
 
         self.contract_table.resizeColumnsToContents()
-    
-    def on_contract(self,contract):
-        self.contracts[contract.full_symbol] = contract
 
+    def on_contract(self, contract):
+        self.contracts[contract.full_symbol] = contract
 
 
 class StatusThread(QtCore.QThread):
@@ -1043,7 +1048,8 @@ class StatusThread(QtCore.QThread):
         while True:
             cpuPercent = psutil.cpu_percent()
             memoryPercent = psutil.virtual_memory().percent
-            self.status_update.emit('CPU Usage: ' + str(cpuPercent) + '% Memory Usage: ' + str(memoryPercent) + '%')
+            self.status_update.emit(
+                'CPU Usage: ' + str(cpuPercent) + '% Memory Usage: ' + str(memoryPercent) + '%')
             self.sleep(2)
 
 
@@ -1119,7 +1125,7 @@ class TextEditDialog(QtWidgets.QDialog):
     Start connection of a certain gateway.
     """
 
-    def __init__(self,filename:str):
+    def __init__(self, filename: str):
         """"""
         super().__init__()
         self.filename = filename
@@ -1127,7 +1133,7 @@ class TextEditDialog(QtWidgets.QDialog):
         self.setMinimumWidth(800)
         self.setMinimumHeight(800)
         self.textedit = QtWidgets.QTextEdit()
-        self.textedit.setFont(QtGui.QFont('Microsoft Sans Serif', 12) )
+        self.textedit.setFont(QtGui.QFont('Microsoft Sans Serif', 12))
         self.init_ui()
 
     def init_ui(self):
@@ -1138,39 +1144,36 @@ class TextEditDialog(QtWidgets.QDialog):
         form.addWidget(self.textedit)
         form.addWidget(savebutton)
         self.setLayout(form)
-        with open(self.filename,'r') as f:
-            my_txt=f.read()
-            self.textedit.setText(my_txt)       
+        with open(self.filename, 'r') as f:
+            my_txt = f.read()
+            self.textedit.setText(my_txt)
 
     def update_file(self):
         """
         .
         """
 
-
-        my_text=self.textedit.toPlainText()
-        with open(self.filename,'w+') as f:            
-            f.write(my_text)   
+        my_text = self.textedit.toPlainText()
+        with open(self.filename, 'w+') as f:
+            f.write(my_text)
         QtWidgets.QMessageBox.information(
             self,
             "注意",
             "配置的修改需要重启后才会生效！",
             QtWidgets.QMessageBox.Ok
-        )          
+        )
         self.accept()
 
 
-
-
-
 class AboutWidget(QtWidgets.QDialog):
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def __init__(self, parent=None):
         """Constructor"""
         super(AboutWidget, self).__init__(parent)
 
         self.initUi()
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
+
     def initUi(self):
         """"""
         self.setWindowTitle('About StarQuant')
@@ -1195,7 +1198,7 @@ class AboutWidget(QtWidgets.QDialog):
         button = QtWidgets.QPushButton("源代码网址")
         button.clicked.connect(self.open_code)
         vbox.addWidget(button)
-        self.setLayout(vbox)  
+        self.setLayout(vbox)
 
     def open_code(self):
 

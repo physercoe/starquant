@@ -2,14 +2,11 @@
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtWidgets, QtGui
 from .ui_basic import (
-    BaseCell,BaseMonitor,
-    EnumCell,TimeCell,DirectionCell,OTCell,PnlCell,MsgCell
-    )
-from source.common.datastruct import Event,OrderData,SubscribeRequest
-from source.common.constant import EventType,MSG_TYPE,ACTIVE_STATUSES,SYMBOL_TYPE
-
-
-
+    BaseCell, BaseMonitor,
+    EnumCell, TimeCell, DirectionCell, OTCell, PnlCell, MsgCell
+)
+from source.common.datastruct import Event, SubscribeRequest
+from source.common.constant import EventType, MSG_TYPE, ACTIVE_STATUSES, SYMBOL_TYPE
 
 
 class MarketMonitor(BaseMonitor):
@@ -22,8 +19,8 @@ class MarketMonitor(BaseMonitor):
         "full_symbol": {"display": "全称代码", "cell": BaseCell, "update": False},
         "last_price": {"display": "最新价", "cell": BaseCell, "update": True},
         "volume": {"display": "成交量", "cell": BaseCell, "update": True},
-        "open_interest": {"display": "持仓量", "cell": BaseCell, "update": True},  
-        "pre_close": {"display": "昨收盘价", "cell": BaseCell, "update": True},                
+        "open_interest": {"display": "持仓量", "cell": BaseCell, "update": True},
+        "pre_close": {"display": "昨收盘价", "cell": BaseCell, "update": True},
         "open_price": {"display": "开盘价", "cell": BaseCell, "update": True},
         "high_price": {"display": "最高价", "cell": BaseCell, "update": True},
         "low_price": {"display": "最低价", "cell": BaseCell, "update": True},
@@ -37,7 +34,7 @@ class MarketMonitor(BaseMonitor):
         super(MarketMonitor, self).init_ui()
         self.setToolTip("双击单元格显示orderbook")
         self.itemDoubleClicked.connect(self.show_detail)
-    
+
     def init_menu(self):
         super(MarketMonitor, self).init_menu()
         unsubsribe_action = QtWidgets.QAction("取消订阅", self)
@@ -51,26 +48,25 @@ class MarketMonitor(BaseMonitor):
         tick = cell.get_data()
         if not tick:
             return
-        req = SubscribeRequest(sym_type = SYMBOL_TYPE.FULL,content = tick.full_symbol)
+        req = SubscribeRequest(sym_type=SYMBOL_TYPE.FULL,
+                               content=tick.full_symbol)
         m = Event(type=EventType.GENERAL_REQ,
-            data= req,
-            des=tick.gateway_name,
-            src='0',
-            msgtype=MSG_TYPE.MSG_TYPE_UNSUBSCRIBE)
+                  data=req,
+                  des=tick.gateway_name,
+                  src='0',
+                  msgtype=MSG_TYPE.MSG_TYPE_UNSUBSCRIBE)
         self.event_engine.put(m)
 
-    def show_detail(self,cell):
+    def show_detail(self, cell):
         data = cell.get_data()
         symbol = data.__getattribute__(self.data_key)
         self.symbol_signal.emit(symbol)
-
 
 
 class OrderMonitor(BaseMonitor):
     '''
     Order Monitor
     '''
-
 
     event_type = EventType.ORDERSTATUS
     data_key = "server_order_id"
@@ -88,16 +84,16 @@ class OrderMonitor(BaseMonitor):
         "traded": {"display": "已成交", "cell": BaseCell, "update": True},
         "status": {"display": "状态", "cell": EnumCell, "update": True},
         "create_time": {"display": "创建时间", "cell": BaseCell, "update": True},
-        "update_time": {"display": "更新时间", "cell": BaseCell, "update": True},        
+        "update_time": {"display": "更新时间", "cell": BaseCell, "update": True},
         "api": {"display": "接口", "cell": BaseCell, "update": False},
-        "client_order_id": {"display": "客户单号", "cell": BaseCell, "update": True}, 
-        "server_order_id": {"display": "本地单号", "cell": BaseCell, "update": True}, 
+        "client_order_id": {"display": "客户单号", "cell": BaseCell, "update": True},
+        "server_order_id": {"display": "本地单号", "cell": BaseCell, "update": True},
         "orderNo": {"display": "交易所单号", "cell": BaseCell, "update": True}
     }
 
     def init_menu(self):
         super(OrderMonitor, self).init_menu()
-        hide_action =  QtWidgets.QAction("隐藏不活动订单", self)
+        hide_action = QtWidgets.QAction("隐藏不活动订单", self)
         hide_action.triggered.connect(self.hide_orders)
         show_action = QtWidgets.QAction("显示所有订单", self)
         show_action.triggered.connect(self.show_orders)
@@ -111,18 +107,19 @@ class OrderMonitor(BaseMonitor):
 
     def hide_orders(self):
         for row in range(self.rowCount()):
-            cell = self.item(row,9)
+            cell = self.item(row, 9)
             order = cell.get_data()
             if order.status not in ACTIVE_STATUSES:
                 self.hideRow(row)
+
     def show_orders(self):
         for row in range(self.rowCount()):
-            cell = self.item(row,9)
+            cell = self.item(row, 9)
             order = cell.get_data()
             if order.status not in ACTIVE_STATUSES:
                 self.showRow(row)
 
-    def cancel_order(self,cell):
+    def cancel_order(self, cell):
         data = cell.get_data()
         oid = data.__getattribute__(self.data_key)
         row_cells = self.cells[oid]
@@ -131,11 +128,13 @@ class OrderMonitor(BaseMonitor):
         if not order:
             return
         if order.status not in ACTIVE_STATUSES:
-            QtWidgets.QMessageBox().information(None, 'Error','Order not active!',QtWidgets.QMessageBox.Ok)
+            QtWidgets.QMessageBox().information(
+                None, 'Error', 'Order not active!', QtWidgets.QMessageBox.Ok)
             return
         req = order.create_cancel_request()
         dest = order.api + '.' + order.account  # gateway_name
-        m = Event(type=EventType.GENERAL_REQ,data=req,des=dest,src='0',msgtype=MSG_TYPE.MSG_TYPE_CANCEL_ORDER)
+        m = Event(type=EventType.GENERAL_REQ, data=req, des=dest,
+                  src='0', msgtype=MSG_TYPE.MSG_TYPE_CANCEL_ORDER)
         self.event_engine.put(m)
 
 
@@ -159,8 +158,9 @@ class PositionMonitor(BaseMonitor):
         "pnl": {"display": "持仓盈亏", "cell": PnlCell, "update": True},
         "realized_pnl": {"display": "平仓盈亏", "cell": PnlCell, "update": True},
         "api": {"display": "接口", "cell": BaseCell, "update": False},
-        "timestamp": {"display": "更新时间", "cell": BaseCell, "update": True} 
+        "timestamp": {"display": "更新时间", "cell": BaseCell, "update": True}
     }
+
 
 class AccountMonitor(BaseMonitor):
     """
@@ -211,6 +211,7 @@ class TradeMonitor(BaseMonitor):
         "server_order_id": {"display": "本地订单编号", "cell": BaseCell, "update": False},
         "client_order_id": {"display": "客户订单编号", "cell": BaseCell, "update": False}
     }
+
 
 class LogMonitor(BaseMonitor):
     """

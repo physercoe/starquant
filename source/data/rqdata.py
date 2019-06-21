@@ -6,7 +6,7 @@ from rqdatac.services.basic import all_instruments as rqdata_all_instruments
 from rqdatac.services.get_price import get_price as rqdata_get_price
 
 from source.common.config import SETTINGS
-from source.common.datastruct import BarData,HistoryRequest
+from source.common.datastruct import BarData, HistoryRequest
 from source.common.constant import Exchange, Interval
 
 
@@ -180,5 +180,6 @@ class RqdataClient:
             data.append(bar)
 
         return data
+
 
 rqdata_client = RqdataClient()

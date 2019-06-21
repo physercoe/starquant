@@ -1,45 +1,37 @@
-import os,sys,gzip
-import random
-import pandas as pd
+from .ui_basic import CandlestickItem, VolumeItem
+from ..common.constant import Interval
+from ..data import database_manager
+from ..common.utility import extract_full_symbol
+from ..common.datastruct import Event
+from ..data.data_board import BarGenerator
+import sys
 import numpy as np
-from PyQt5 import QtCore,QtWidgets,QtGui
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QSizePolicy, QWidget
-
-import mpl_finance as mpf
-from datetime import timedelta,datetime
-from dateutil.parser import parse
-
+from PyQt5 import QtCore, QtWidgets, QtGui
+from datetime import timedelta, datetime
 import pyqtgraph as pg
 
-sys.path.insert(0,"../..")
-
-from .ui_basic import CandlestickItem,VolumeItem
-from source.common.datastruct import Event, TickData
-
-from ..data.data_board import BarGenerator
-from ..common.datastruct import Event
-from ..common.utility import extract_full_symbol
-from ..data import database_manager
-from ..common.constant import Interval
+sys.path.insert(0, "../..")
 
 
 class MarketDataView(QtWidgets.QWidget):
     tick_signal = QtCore.pyqtSignal(Event)
     symbol_signal = QtCore.pyqtSignal(str)
-    def __init__(self,sym:str = ""):
+
+    def __init__(self, sym: str = ""):
         """"""
         super(MarketDataView, self).__init__()
 
         self.full_symbol = ""
         self.init_ui()
-        self.register_event() 
+        self.register_event()
+
     def init_ui(self):
         # self.datachart = DataPGChart()
         self.datachart = QuotesChart(self.full_symbol)
         self.orderbook = OrderBookWidget()
         self.scroll = QtWidgets.QScrollArea()
         self.scroll.setWidget(self.datachart)
-        self.scroll.setWidgetResizable(True)  
+        self.scroll.setWidgetResizable(True)
 
         hbox = QtWidgets.QHBoxLayout()
         hbox.addWidget(self.scroll)
@@ -53,7 +45,7 @@ class MarketDataView(QtWidgets.QWidget):
         self.symbol_signal.connect(self.orderbook.symbol_signal.emit)
         self.orderbook.symbol_signal.connect(self.datachart.reset)
         self.orderbook.day_signal.connect(self.datachart.reload)
-        # self.symbol_signal.connect(self.datachart.reset) 
+        # self.symbol_signal.connect(self.datachart.reset)
 
 
 class DataPGChart(pg.GraphicsWindow):
@@ -84,7 +76,6 @@ class DataPGChart(pg.GraphicsWindow):
         )
         self.nextRow()
 
-
         # Add curves and bars on plot widgets
         self.balance_curve = self.balance_plot.plot(
             pen=pg.mkPen("#ffc107", width=3)
@@ -103,7 +94,6 @@ class DataPGChart(pg.GraphicsWindow):
         self.loss_pnl_bar = pg.BarGraphItem(
             x=[], height=[], width=0.3, brush=loss_color, pen=loss_color
         )
-
 
     def clear_data(self):
         """"""
@@ -142,7 +132,6 @@ class DataPGChart(pg.GraphicsWindow):
         self.loss_pnl_bar.setOpts(x=loss_pnl_x, height=loss_pnl_height)
 
 
-
 class DateAxis(pg.AxisItem):
     """Axis for showing date data"""
 
@@ -163,21 +152,24 @@ class DateAxis(pg.AxisItem):
 class DateAxis2(pg.AxisItem):
     """Axis for showing date data"""
 
-    def __init__(self, datalist:list, *args, **kwargs):
+    def __init__(self, datalist: list, *args, **kwargs):
         """"""
         super().__init__(*args, **kwargs)
         self.data = datalist
+
     def tickStrings(self, values, scale, spacing):
         """"""
         strings = []
-        xstart = 0  # 60*(self.data[0].datetime.hour - 9) + self.data[0].datetime.minute        
+        # 60*(self.data[0].datetime.hour - 9) + self.data[0].datetime.minute
+        xstart = 0
         for value in values:
             v = value - xstart
-            if v > len(self.data) -1 or v <0:
+            if v > len(self.data) - 1 or v < 0:
                 return strings
             dt = self.data[int(v)].datetime
             strings.append(dt.strftime('%H:%M\n %b-%d '))
         return strings
+
 
 class PriceAxis(pg.AxisItem):
     def __init__(self):
@@ -189,6 +181,8 @@ class PriceAxis(pg.AxisItem):
         return [
             ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
         ]
+
+
 class VolumeAxis(pg.AxisItem):
     def __init__(self):
         super().__init__(orientation='right')
@@ -200,7 +194,10 @@ class VolumeAxis(pg.AxisItem):
             ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
         ]
 
+
 CHART_MARGINS = (0, 0, 20, 10)
+
+
 class QuotesChart(QtGui.QWidget):
     signal = QtCore.pyqtSignal(Event)
 
@@ -211,7 +208,7 @@ class QuotesChart(QtGui.QWidget):
 
     zoomIsDisabled = QtCore.pyqtSignal(bool)
 
-    def __init__(self,symbol:str = ""):
+    def __init__(self, symbol: str = ""):
         super().__init__()
         self.full_symbol = symbol
         self.data = []
@@ -223,10 +220,10 @@ class QuotesChart(QtGui.QWidget):
         self.load_bar()
         self.plot()
 
-    def reset(self,symbol:str):
+    def reset(self, symbol: str):
         # if not self.layout.isEmpty():
         #     self.layout.removeWidget(self.splitter)
-        #     self.splitter.deleteLater()     
+        #     self.splitter.deleteLater()
         # self.full_symbol = symbol
         # self.bg = BarGenerator(self.on_bar)
         # self.load_bar()
@@ -237,8 +234,7 @@ class QuotesChart(QtGui.QWidget):
         self.klineitem.generatePicture()
         self.volumeitem.generatePicture()
 
-
-    def plot(self):       
+    def plot(self):
         self.xaxis = DateAxis2(self.data, orientation='bottom')
         self.xaxis.setStyle(
             tickTextOffset=7, textFillLimits=[(0, 0.80)], showValues=True
@@ -248,14 +244,14 @@ class QuotesChart(QtGui.QWidget):
         self.init_chart()
         self.init_chart_item()
 
-    def load_bar(self,days:int =1,interval: Interval = Interval.MINUTE):
+    def load_bar(self, days: int = 1, interval: Interval = Interval.MINUTE):
         symbol, exchange = extract_full_symbol(self.full_symbol)
         end = datetime.now()
         start = end - timedelta(days)
         if start > end:
             tmp = end
             end = start
-            start = tmp 
+            start = tmp
         bars = database_manager.load_bar_data(
             symbol=symbol,
             exchange=exchange,
@@ -266,12 +262,12 @@ class QuotesChart(QtGui.QWidget):
         self.data.clear()
         self.data.extend(bars)
 
-    def reload(self, count = 1):
+    def reload(self, count=1):
         self.load_bar(days=count)
         self.klineitem.generatePicture()
-        self.volumeitem.generatePicture()        
+        self.volumeitem.generatePicture()
 
-    def on_bar(self,bar):
+    def on_bar(self, bar):
         self.data.append(bar)
         self.klineitem.on_bar(bar)
         self.volumeitem.on_bar(bar)
@@ -285,9 +281,9 @@ class QuotesChart(QtGui.QWidget):
         #     minXRange=60,
         #     yMin=self.pmin * 0.95,
         #     yMax=self.pmax * 1.05,
-        # )        
+        # )
 
-    def on_tick(self,tickevent):
+    def on_tick(self, tickevent):
         tick = tickevent.data
         if tick.full_symbol == self.full_symbol:
             self.bg.update_tick(tick)
@@ -316,7 +312,6 @@ class QuotesChart(QtGui.QWidget):
         # self.chart.setCursor(QtCore.Qt.BlankCursor)
         # self.chart.sigXRangeChanged.connect(self._update_yrange_limits)
 
-
     # def _update_yrange_limits(self):
     #     vr = self.chart.viewRect()
     #     lbar, rbar = max(0,int(vr.left())), min(len(self.data),int(vr.right()))
@@ -335,7 +330,6 @@ class QuotesChart(QtGui.QWidget):
     #     self.chart.setLimits(yMin=ylow, yMax=yhigh, minYRange= 0.5*abs(pmax-pmean))
     #     self.chart.setYRange(ylow, yhigh)
 
-
     def init_chart(self):
         self.splitter = QtGui.QSplitter(QtCore.Qt.Vertical)
         self.splitter.setHandleWidth(0)
@@ -345,7 +339,7 @@ class QuotesChart(QtGui.QWidget):
             axisItems={'bottom': self.xaxis, 'right': PriceAxis()},
             enableMenu=True,
         )
-        self.chart.getPlotItem().setContentsMargins(0,0,20,0)
+        self.chart.getPlotItem().setContentsMargins(0, 0, 20, 0)
         self.chart.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
         self.chart.hideAxis('left')
         self.chart.showAxis('right')
@@ -356,18 +350,19 @@ class QuotesChart(QtGui.QWidget):
             axisItems={'bottom': self.xaxis, 'right': VolumeAxis()},
             enableMenu=True,
         )
-        self.chartv.getPlotItem().setContentsMargins(0,0,15,15)
-        self.chartv.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)       
+        self.chartv.getPlotItem().setContentsMargins(0, 0, 15, 15)
+        self.chartv.setFrameStyle(
+            QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
         self.chartv.hideAxis('left')
-        self.chartv.showAxis('right')      
+        self.chartv.showAxis('right')
         self.chartv.setXLink(self.chart)
-
 
 
 class OrderBookWidget(QtWidgets.QWidget):
     tick_signal = QtCore.pyqtSignal(Event)
     symbol_signal = QtCore.pyqtSignal(str)
     day_signal = QtCore.pyqtSignal(int)
+
     def __init__(self):
         """"""
         super(OrderBookWidget, self).__init__()
@@ -376,7 +371,7 @@ class OrderBookWidget(QtWidgets.QWidget):
         self.init_ui()
         self.register_event()
         self.clear_label_text()
-    
+
     def init_ui(self):
         self.symbol_line = QtWidgets.QLineEdit()
         # self.symbol_line.setReadOnly(True)
@@ -385,13 +380,13 @@ class OrderBookWidget(QtWidgets.QWidget):
         self.change_label = self.create_label(alignment=QtCore.Qt.AlignRight)
         self.open_label = self.create_label(alignment=QtCore.Qt.AlignRight)
         self.low_label = self.create_label(alignment=QtCore.Qt.AlignRight)
-        self.high_label = self.create_label(alignment=QtCore.Qt.AlignRight)  
+        self.high_label = self.create_label(alignment=QtCore.Qt.AlignRight)
 
         bid_color = "rgb(255,174,201)"
         ask_color = "rgb(160,255,160)"
 
         self.uplimit_label = self.create_label()
-        
+
         self.bp1_label = self.create_label(bid_color)
         self.bp2_label = self.create_label(bid_color)
         self.bp3_label = self.create_label(bid_color)
@@ -441,14 +436,15 @@ class OrderBookWidget(QtWidgets.QWidget):
         self.histbar_day.setText('1')
         self.histbar_day.returnPressed.connect(self.process_days)
         self.last_days = 1
-        form2.addRow('Days',self.histbar_day)
+        form2.addRow('Days', self.histbar_day)
         self.intervalcombo = QtWidgets.QComboBox()
-        self.intervalcombo.addItems(["1m","1h"])
-        form2.addRow('Interval',self.intervalcombo)
+        self.intervalcombo.addItems(["1m", "1h"])
+        form2.addRow('Interval', self.intervalcombo)
         self.indicators = QtWidgets.QComboBox()
-        self.indicators.addItems(['ma','sma'])
-        form2.addRow('Indicator',self.indicators)
-        form2.addItem(QtWidgets.QSpacerItem(40, 40, QtWidgets.QSizePolicy.Expanding))
+        self.indicators.addItems(['ma', 'sma'])
+        form2.addRow('Indicator', self.indicators)
+        form2.addItem(QtWidgets.QSpacerItem(
+            40, 40, QtWidgets.QSizePolicy.Expanding))
         titlelabel = self.create_label(alignment=QtCore.Qt.AlignCenter)
         titlelabel.setText('OrderBook')
 
@@ -460,8 +456,8 @@ class OrderBookWidget(QtWidgets.QWidget):
         # verticalSpacer = QtWidgets.QSpacerItem(10, 10, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         form2.addRow(titlelabel)
         form2.addRow(self.symbol_line)
-        form2.addRow(self.change_label,self.open_label)
-        form2.addRow(self.low_label,self.high_label)        
+        form2.addRow(self.change_label, self.open_label)
+        form2.addRow(self.low_label, self.high_label)
         form2.addRow(self.uplimit_label)
         form2.addRow(self.ap5_label, self.av5_label)
         form2.addRow(self.ap4_label, self.av4_label)
@@ -475,7 +471,6 @@ class OrderBookWidget(QtWidgets.QWidget):
         form2.addRow(self.bp4_label, self.bv4_label)
         form2.addRow(self.bp5_label, self.bv5_label)
         form2.addRow(self.lplimit_lable)
-
 
         # Overall layout
         vbox = QtWidgets.QVBoxLayout()
@@ -499,7 +494,7 @@ class OrderBookWidget(QtWidgets.QWidget):
         self.tick_signal.connect(self.process_tick_event)
         self.symbol_signal.connect(self.set_full_symbol)
 
-    def process_tick_event(self, tickevent: Event):        
+    def process_tick_event(self, tickevent: Event):
         """"""
         tick = tickevent.data
         if not tick:
@@ -509,7 +504,7 @@ class OrderBookWidget(QtWidgets.QWidget):
         self.lp_label.setText(str(tick.last_price))
         self.open_label.setText(str(tick.open_price))
         self.low_label.setText(str(tick.low_price))
-        self.high_label.setText(str(tick.high_price))        
+        self.high_label.setText(str(tick.high_price))
         self.size_label.setText(str(tick.volume - self.last_volume))
         self.last_volume = tick.volume
         self.bp1_label.setText(str(tick.bid_price_1))
@@ -548,14 +543,14 @@ class OrderBookWidget(QtWidgets.QWidget):
         sym = self.symbol_line.text()
         if sym:
             self.symbol_signal.emit(sym)
+
     def process_days(self):
         days = int(self.histbar_day.text())
-        if days != self.last_days :
+        if days != self.last_days:
             self.last_days = days
             self.day_signal.emit(days)
 
-
-    def set_full_symbol(self,symbol: str):
+    def set_full_symbol(self, symbol: str):
         """
         Set the tick depth data to monitor by full_symbol.
         """
@@ -564,7 +559,6 @@ class OrderBookWidget(QtWidgets.QWidget):
         self.full_symbol = symbol
         self.symbol_line.setText(symbol)
         self.clear_label_text()
-
 
     def clear_label_text(self):
         """
@@ -601,22 +595,3 @@ class OrderBookWidget(QtWidgets.QWidget):
         self.ap3_label.setText("")
         self.ap4_label.setText("")
         self.ap5_label.setText("")
-
-
-
-
-
-
-
-
-
-
-
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ui = MarketDataView()
-
-    ui.show()
-    app.exec_()

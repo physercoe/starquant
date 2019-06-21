@@ -13,9 +13,9 @@ from ..common.constant import EventType
 
 # class Event:
 #     """
-#     Event object consists of a type string which is used 
-#     by event engine for distributing event, and a data 
-#     object which contains the real data. 
+#     Event object consists of a type string which is used
+#     by event engine for distributing event, and a data
+#     object which contains the real data.
 #     """
 
 #     def __init__(self, type: str, data: Any = None):
@@ -58,14 +58,15 @@ class EventEngine:
             try:
                 event = self._queue.get(block=True, timeout=1)
                 if event.event_type in self._handlers:
-                    [handler(event) for handler in self._handlers[event.event_type]]
+                    [handler(event)
+                     for handler in self._handlers[event.event_type]]
             except Empty:
                 pass
 
     # def _process(self, event: Event):
     #     """
     #     First ditribute event to those handlers registered listening
-    #     to this type. 
+    #     to this type.
 
     #     Then distrubute event to those general handlers which listens
     #     to all types.

@@ -1,35 +1,31 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import source.common.sqglobal as sqglobal
 import sys
 import os
 
-from PyQt5 import QtCore, QtWidgets, QtGui,Qt
+from PyQt5 import QtCore, QtWidgets, QtGui, Qt
 import importlib
 import traceback
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 from threading import Thread
 from pathlib import Path
 
-from source.common.constant import Interval,EventType
-from source.common.datastruct import HistoryRequest,Event
-from source.common.utility import extract_full_symbol
-from source.data import database_manager
+from source.common.constant import Interval, EventType
+from source.common.datastruct import HistoryRequest, Event
 from source.engine.iengine import EventEngine
-from source.engine.backtest_engine import BacktestingEngine,OptimizationSetting
+from source.engine.backtest_engine import BacktestingEngine, OptimizationSetting
 from source.strategy.strategy_base import StrategyBase
 from source.gui.ui_basic import VerticalTabBar
 from source.gui.ui_bt_resultsoverview import BacktesterChart
-from source.gui.ui_bt_dataview import BtDataPGChart,BTQuotesChart
-from source.gui.ui_bt_posview import BtPosViewWidget
-from source.gui.ui_bt_txnview import BtTxnViewWidget,TradesTable,DailyTable
+from source.gui.ui_bt_dataview import BTQuotesChart
+from source.gui.ui_bt_txnview import TradesTable, DailyTable
 
 
 CtaTemplate = StrategyBase
 
-sys.path.insert(0,"../..")
-
-import source.common.sqglobal as sqglobal
+sys.path.insert(0, "../..")
 
 
 class Backtester:
@@ -37,7 +33,7 @@ class Backtester:
     For running CTA strategy backtesting.
     """
 
-    def __init__(self,event_engine:EventEngine = None):
+    def __init__(self, event_engine: EventEngine = None):
         """"""
         super().__init__()
         if event_engine:
@@ -74,15 +70,15 @@ class Backtester:
         if self.event_engine:
             event = Event(type=EventType.BACKTEST_LOG)
             event.data = msg
-            self.event_engine.put(event)            
-        else:            
+            self.event_engine.put(event)
+        else:
             print(str)
 
     def reload_strategy(self):
         self.classes.clear()
         self.load_strategy_class(True)
 
-    def load_strategy_class(self,reload:bool=False):
+    def load_strategy_class(self, reload: bool = False):
         """
         Load strategy class from source code.
         """
@@ -92,9 +88,9 @@ class Backtester:
         #     path1, "vnpy.app.cta_strategy.strategies")
 
         path2 = Path.cwd().joinpath("mystrategy")
-        self.load_strategy_class_from_folder(path2, "",reload)
+        self.load_strategy_class_from_folder(path2, "", reload)
 
-    def load_strategy_class_from_folder(self, path: Path, module_name: str = "",reload:bool=False):
+    def load_strategy_class_from_folder(self, path: Path, module_name: str = "", reload: bool = False):
         """
         Load strategy class from certain folder.
         """
@@ -103,9 +99,10 @@ class Backtester:
                 if filename.endswith(".py"):
                     strategy_module_name = "mystrategy.".join(
                         [module_name, filename.replace(".py", "")])
-                    self.load_strategy_class_from_module(strategy_module_name,reload)
+                    self.load_strategy_class_from_module(
+                        strategy_module_name, reload)
 
-    def load_strategy_class_from_module(self, module_name: str,reload:bool=False):
+    def load_strategy_class_from_module(self, module_name: str, reload: bool = False):
         """
         Load strategy class from module file.
         """
@@ -114,8 +111,8 @@ class Backtester:
         # if reload delete old attribute
             if reload:
                 for attr in dir(module):
-                    if attr not in ('__name__','__file__'):
-                        delattr(module,attr)
+                    if attr not in ('__name__', '__file__'):
+                        delattr(module, attr)
                 importlib.reload(module)
             for name in dir(module):
                 value = getattr(module, name)
@@ -142,7 +139,7 @@ class Backtester:
         pricetick: float,
         capital: int,
         setting: dict,
-        datasource:str = "DataBase"
+        datasource: str = "DataBase"
     ):
         """"""
         self.result_df = None
@@ -196,7 +193,7 @@ class Backtester:
         pricetick: float,
         capital: int,
         setting: dict,
-        datasource:str = "DataBase"
+        datasource: str = "DataBase"
     ):
         if self.thread:
             self.write_log("已有任务在运行中，请等待完成")
@@ -261,7 +258,7 @@ class Backtester:
         capital: int,
         optimization_setting: OptimizationSetting,
         use_ga: bool,
-        datasource:str = 'DataBase'
+        datasource: str = 'DataBase'
     ):
         """"""
         if use_ga:
@@ -328,7 +325,7 @@ class Backtester:
         capital: int,
         optimization_setting: OptimizationSetting,
         use_ga: bool,
-        datasource:str = 'DataBase'
+        datasource: str = 'DataBase'
     ):
         if self.thread:
             self.write_log("已有任务在运行中，请等待完成")
@@ -356,7 +353,6 @@ class Backtester:
         self.thread.start()
 
         return True
-
 
 
 class BacktesterManager(QtWidgets.QWidget):
@@ -403,13 +399,12 @@ class BacktesterManager(QtWidgets.QWidget):
         self.class_combo.setSizePolicy(policy)
 
         self.data_source = QtWidgets.QComboBox()
-        self.data_source.addItems(['Memory','DataBase'])
-        loaddatafile_btn =  QtWidgets.QPushButton("内存数据情况")
+        self.data_source.addItems(['Memory', 'DataBase'])
+        loaddatafile_btn = QtWidgets.QPushButton("内存数据情况")
         loaddatafile_btn.clicked.connect(self.load_data_file)
 
         cleardata_btn = QtWidgets.QPushButton("清空内存")
         cleardata_btn.clicked.connect(self.clear_data)
-
 
         self.symbol_line = QtWidgets.QLineEdit("SHFE F RB 1910")
         self.symbol_line.setMaximumWidth(160)
@@ -456,8 +451,6 @@ class BacktesterManager(QtWidgets.QWidget):
         self.result_button.clicked.connect(self.show_optimization_result)
         self.result_button.setEnabled(False)
 
-
-
         for button in [
             backtesting_button,
             optimization_button,
@@ -465,7 +458,6 @@ class BacktesterManager(QtWidgets.QWidget):
             self.result_button
         ]:
             button.setFixedHeight(button.sizeHint().height() * 2)
-
 
         hbox1 = QtWidgets.QHBoxLayout()
         hbox1.addWidget(QtWidgets.QLabel('交易策略'))
@@ -482,32 +474,31 @@ class BacktesterManager(QtWidgets.QWidget):
         hbox2.addWidget(QtWidgets.QLabel('合约全称'))
         hbox2.addWidget(self.symbol_line)
         hbox2.addWidget(QtWidgets.QLabel('时间尺度'))
-        hbox2.addWidget(self.interval_combo)        
+        hbox2.addWidget(self.interval_combo)
 
         hbox3 = QtWidgets.QHBoxLayout()
         hbox3.addWidget(QtWidgets.QLabel('开始日期'))
         hbox3.addWidget(self.start_date_edit)
         hbox3.addWidget(QtWidgets.QLabel('结束日期'))
-        hbox3.addWidget(self.end_date_edit)    
+        hbox3.addWidget(self.end_date_edit)
 
         hbox4 = QtWidgets.QHBoxLayout()
         hbox4.addWidget(QtWidgets.QLabel('手续费率'))
         hbox4.addWidget(self.rate_line)
         hbox4.addWidget(QtWidgets.QLabel('交易滑点'))
-        hbox4.addWidget(self.slippage_line)    
+        hbox4.addWidget(self.slippage_line)
 
         hbox5 = QtWidgets.QHBoxLayout()
         hbox5.addWidget(QtWidgets.QLabel('合约乘数'))
         hbox5.addWidget(self.size_line)
         hbox5.addWidget(QtWidgets.QLabel('价格跳动'))
-        hbox5.addWidget(self.pricetick_line)  
+        hbox5.addWidget(self.pricetick_line)
 
         hbox52 = QtWidgets.QHBoxLayout()
         hbox52.addWidget(QtWidgets.QLabel('保证金率'))
         hbox52.addWidget(self.margin_line)
         hbox52.addWidget(QtWidgets.QLabel('回测资金'))
-        hbox52.addWidget(self.capital_line)  
-
+        hbox52.addWidget(self.capital_line)
 
         hbox6 = QtWidgets.QHBoxLayout()
         hbox6.addWidget(backtesting_button)
@@ -517,7 +508,6 @@ class BacktesterManager(QtWidgets.QWidget):
         hbox7.addWidget(optimization_button)
         hbox7.addWidget(self.result_button)
 
-
         # Result part
         self.statistics_monitor = StatisticsMonitor()
         self.txnstatics_monitor = TxnStatisticsMonitor()
@@ -526,7 +516,7 @@ class BacktesterManager(QtWidgets.QWidget):
         hbox8.addWidget(self.statistics_monitor)
         hbox8.addWidget(self.txnstatics_monitor)
 
-        self.log_monitor = QtWidgets.QTextEdit()        
+        self.log_monitor = QtWidgets.QTextEdit()
         policy = self.log_monitor.sizePolicy()
         policy.setVerticalStretch(1)
         self.log_monitor.setSizePolicy(policy)
@@ -541,29 +531,25 @@ class BacktesterManager(QtWidgets.QWidget):
         form.addRow(hbox3)
         form.addRow(hbox4)
         form.addRow(hbox5)
-        form.addRow(hbox52) 
-        form.addRow(hbox6)       
+        form.addRow(hbox52)
+        form.addRow(hbox6)
         form.addRow(hbox7)
         label2 = QtWidgets.QLabel('回测结果总览')
-        label2.setAlignment(QtCore.Qt.AlignCenter)        
+        label2.setAlignment(QtCore.Qt.AlignCenter)
         form.addWidget(label2)
         form.addRow(hbox8)
         label3 = QtWidgets.QLabel('回测日志')
-        label3.setAlignment(QtCore.Qt.AlignCenter)           
+        label3.setAlignment(QtCore.Qt.AlignCenter)
         form.addWidget(label3)
         form.addRow(self.log_monitor)
-        
-
-
 
         bt_setting = QtWidgets.QWidget()
         bt_setting.setLayout(form)
         bt_setting.setMinimumWidth(400)
-        
+
         self.overviewchart = BacktesterChart()
         self.overviewchart.setMinimumWidth(1000)
         self.overviewchart.setMinimumHeight(1200)
-        
 
         self.scrolltop = QtWidgets.QScrollArea()
         self.scrolltop.setWidget(self.overviewchart)
@@ -573,7 +559,7 @@ class BacktesterManager(QtWidgets.QWidget):
         self.txnviewtable = TradesTable()
         self.txnviewtable.tradesig.connect(self.show_trade)
         self.dailytable = DailyTable()
-        #TradesTable
+        # TradesTable
 
         bt_topmiddle = QtWidgets.QTabWidget()
         # bt_topmiddle.setTabBar(VerticalTabBar(bt_topmiddle))
@@ -589,23 +575,23 @@ class BacktesterManager(QtWidgets.QWidget):
         self.bt_bottommiddle.setTabsClosable(True)
         self.bt_bottommiddle.setMovable(True)
 
-        self.bt_bottommiddle.tabCloseRequested.connect(self.bt_bottommiddle.removeTab)
+        self.bt_bottommiddle.tabCloseRequested.connect(
+            self.bt_bottommiddle.removeTab)
         self.bt_bottommiddle.setTabPosition(QtWidgets.QTabWidget.West)
         # self.dataviewchart = BTQuotesChart()
         # self.bt_bottommiddle.addTab(self.dataviewchart, '历史行情')
-      
-    #-------------------------------- 
- 
+
+    # --------------------------------
+
         bt_splitter1 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         bt_splitter1.addWidget(bt_topmiddle)
         bt_splitter1.addWidget(self.bt_bottommiddle)
-        bt_splitter1.setSizes([500,500])
+        bt_splitter1.setSizes([500, 500])
 
         bt_splitter3 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         bt_splitter3.addWidget(bt_setting)
         bt_splitter3.addWidget(bt_splitter1)
         bt_splitter3.setSizes([300, 1200])
-        
 
         hbox = QtWidgets.QHBoxLayout()
         hbox.addWidget(bt_splitter3)
@@ -619,9 +605,12 @@ class BacktesterManager(QtWidgets.QWidget):
         self.signal_optimization_finished.connect(
             self.process_optimization_finished_event)
 
-        self.event_engine.register(EventType.BACKTEST_LOG, self.signal_log.emit)
-        self.event_engine.register(EventType.OPTIMIZATION_FINISH,self.signal_optimization_finished.emit)
-        self.event_engine.register(EventType.BACKTEST_FINISH,self.signal_backtesting_finished.emit)
+        self.event_engine.register(
+            EventType.BACKTEST_LOG, self.signal_log.emit)
+        self.event_engine.register(
+            EventType.OPTIMIZATION_FINISH, self.signal_optimization_finished.emit)
+        self.event_engine.register(
+            EventType.BACKTEST_FINISH, self.signal_backtesting_finished.emit)
 
     def process_log_event(self, event: Event):
         """"""
@@ -647,7 +636,6 @@ class BacktesterManager(QtWidgets.QWidget):
         dailyresults = self.backtester_engine.get_result_daily()
         self.dailytable.set_data(dailyresults)
 
-
     def process_optimization_finished_event(self, event: Event):
         """"""
         self.write_log("请点击[优化结果]按钮查看")
@@ -657,13 +645,15 @@ class BacktesterManager(QtWidgets.QWidget):
         full_sym = self.symbol_line.text()
         if self.interval_combo.currentText() == 'tick':
             msg = f"will clear Tick data {full_sym} , continue?"
-            mbox = QtWidgets.QMessageBox().question(None, 'Warning',msg,QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
+            mbox = QtWidgets.QMessageBox().question(None, 'Warning', msg,
+                                                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
             if mbox == QtWidgets.QMessageBox.No:
                 return
             sqglobal.history_tick[full_sym].clear()
         elif self.interval_combo.currentText() == '1m':
             msg = f"will clear Bar(1m) data {full_sym} , continue?"
-            mbox = QtWidgets.QMessageBox().question(None, 'Warning',msg,QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
+            mbox = QtWidgets.QMessageBox().question(None, 'Warning', msg,
+                                                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
             if mbox == QtWidgets.QMessageBox.No:
                 return
             sqglobal.history_bar[full_sym].clear()
@@ -671,22 +661,26 @@ class BacktesterManager(QtWidgets.QWidget):
     def load_data_file(self):
         if not self.data_source.currentText() == 'Memory':
             return
-        
+
         full_sym = self.symbol_line.text()
         if self.interval_combo.currentText() == 'tick':
             if sqglobal.history_tick[full_sym]:
-                QtWidgets.QMessageBox().information(None, 'Info','already has data in memory!',QtWidgets.QMessageBox.Ok)
+                QtWidgets.QMessageBox().information(
+                    None, 'Info', 'already has data in memory!', QtWidgets.QMessageBox.Ok)
                 return
-            QtWidgets.QMessageBox().information(None, 'Info','Please load data to from Tools/Data loader!',QtWidgets.QMessageBox.Ok)
+            QtWidgets.QMessageBox().information(None, 'Info',
+                                                'Please load data to from Tools/Data loader!', QtWidgets.QMessageBox.Ok)
             return
         elif self.interval_combo.currentText() == '1m':
             if sqglobal.history_bar[full_sym]:
-                QtWidgets.QMessageBox().information(None, 'Info','already has data in memory!',QtWidgets.QMessageBox.Ok)
+                QtWidgets.QMessageBox().information(
+                    None, 'Info', 'already has data in memory!', QtWidgets.QMessageBox.Ok)
                 return
-            QtWidgets.QMessageBox().information(None, 'Info','Please load data to from Tools/Data loader!',QtWidgets.QMessageBox.Ok)
-            return                            
-        QtWidgets.QMessageBox().information(None, 'Info','not implemented yet!',QtWidgets.QMessageBox.Ok)  
-
+            QtWidgets.QMessageBox().information(None, 'Info',
+                                                'Please load data to from Tools/Data loader!', QtWidgets.QMessageBox.Ok)
+            return
+        QtWidgets.QMessageBox().information(
+            None, 'Info', 'not implemented yet!', QtWidgets.QMessageBox.Ok)
 
     def reload_strategy(self):
         self.class_names.clear()
@@ -711,10 +705,12 @@ class BacktesterManager(QtWidgets.QWidget):
         datasource = self.data_source.currentText()
 
         if end <= start:
-            QtWidgets.QMessageBox().information(None, 'Error','End date should later than start date!',QtWidgets.QMessageBox.Ok)
+            QtWidgets.QMessageBox().information(None, 'Error',
+                                                'End date should later than start date!', QtWidgets.QMessageBox.Ok)
             return
         if (end - start) > timedelta(days=90) and interval == 'tick':
-            mbox = QtWidgets.QMessageBox().question(None, 'Warning','Two many data will slow system performance, continue?',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
+            mbox = QtWidgets.QMessageBox().question(None, 'Warning', 'Two many data will slow system performance, continue?',
+                                                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
             if mbox == QtWidgets.QMessageBox.No:
                 return
 
@@ -762,7 +758,8 @@ class BacktesterManager(QtWidgets.QWidget):
         datasource = self.data_source.currentText()
 
         if (end - start) > timedelta(days=90) and interval == 'tick':
-            mbox = QtWidgets.QMessageBox().question(None, 'Warning','Two many data will slow system performance, continue?',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
+            mbox = QtWidgets.QMessageBox().question(None, 'Warning', 'Two many data will slow system performance, continue?',
+                                                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
             if mbox == QtWidgets.QMessageBox.No:
                 return
 
@@ -793,8 +790,6 @@ class BacktesterManager(QtWidgets.QWidget):
 
         self.result_button.setEnabled(False)
 
-
-
     def show_optimization_result(self):
         """"""
         result_values = self.backtester_engine.get_result_values()
@@ -806,7 +801,7 @@ class BacktesterManager(QtWidgets.QWidget):
         dialog.exec_()
 
     def show_data(self):
-        
+
         full_symbol = self.symbol_line.text()
         interval = self.interval_combo.currentText()
         datasource = self.data_source.currentText()
@@ -818,35 +813,38 @@ class BacktesterManager(QtWidgets.QWidget):
         trades = self.backtester_engine.get_result_trades()
         addtrade = bool(trades) and full_symbol == trades[0].full_symbol
         if (end - start) > timedelta(days=60) and interval == '1m':
-            mbox = QtWidgets.QMessageBox().question(None, 'Warning','Two many data will slow system performance, continue?',QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,QtWidgets.QMessageBox.No)
+            mbox = QtWidgets.QMessageBox().question(None, 'Warning', 'Two many data will slow system performance, continue?',
+                                                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
             if mbox == QtWidgets.QMessageBox.No:
                 return
         for i in range(self.bt_bottommiddle.count()):
             if self.bt_bottommiddle.tabText(i) == full_symbol:
                 widget = self.bt_bottommiddle.widget(i)
-                widget.reset(full_symbol,start,end,Interval(interval),datasource)                
+                widget.reset(full_symbol, start, end,
+                             Interval(interval), datasource)
                 if addtrade:
                     widget.add_trades(trades)
                     widget.show_text_signals()
-                return                    
+                return
         dataviewchart = BTQuotesChart()
-        dataviewchart.reset(full_symbol,start,end,Interval(interval),datasource) 
+        dataviewchart.reset(full_symbol, start, end,
+                            Interval(interval), datasource)
         if addtrade:
             dataviewchart.add_trades(trades)
             dataviewchart.show_text_signals()
-        self.bt_bottommiddle.addTab(dataviewchart,full_symbol)
+        self.bt_bottommiddle.addTab(dataviewchart, full_symbol)
 
-    def show_trade(self,trade):
+    def show_trade(self, trade):
         full_symbol = trade.full_symbol
         tradetime = trade.datetime
 
-        adddaysstart =  2
+        adddaysstart = 2
         if tradetime.date().weekday() == 0:
-            adddaysstart =  4
+            adddaysstart = 4
         elif tradetime.date().weekday() == 1:
-            adddaysstart =  3
+            adddaysstart = 3
         start = tradetime - timedelta(days=adddaysstart)
-       
+
         adddaysend = 1
         if tradetime.date().weekday() == 4:
             adddaysend = 3
@@ -857,16 +855,17 @@ class BacktesterManager(QtWidgets.QWidget):
         for i in range(self.bt_bottommiddle.count()):
             if self.bt_bottommiddle.tabText(i) == full_symbol:
                 widget = self.bt_bottommiddle.widget(i)
-                widget.reset(full_symbol,start.date(),end.date(),Interval.MINUTE,datasource)                
+                widget.reset(full_symbol, start.date(),
+                             end.date(), Interval.MINUTE, datasource)
                 widget.add_trades(trades)
                 widget.show_text_signals()
-                return                    
+                return
         dataviewchart = BTQuotesChart()
-        dataviewchart.reset(full_symbol,start.date(),end.date(),Interval.MINUTE,datasource) 
+        dataviewchart.reset(full_symbol, start.date(),
+                            end.date(), Interval.MINUTE, datasource)
         dataviewchart.add_trades(trades)
         dataviewchart.show_text_signals()
-        self.bt_bottommiddle.addTab(dataviewchart,full_symbol)
-
+        self.bt_bottommiddle.addTab(dataviewchart, full_symbol)
 
     def show(self):
         """"""
@@ -939,6 +938,7 @@ class BacktestingSettingEditor(QtWidgets.QDialog):
             setting[name] = value
 
         return setting
+
 
 class OptimizationSettingEditor(QtWidgets.QDialog):
     """
@@ -1262,11 +1262,3 @@ class TxnStatisticsMonitor(QtWidgets.QTableWidget):
         for key, cell in self.cells.items():
             value = data.get(key, "")
             cell.setText(str(value))
-
-
-
-
-
-
-
-

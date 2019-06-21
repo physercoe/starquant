@@ -1,98 +1,17 @@
-import os,sys,gzip
-import random
-import pandas as pd
-
+import source.common.sqglobal as sqglobal
+import sys
 import numpy as np
-from PyQt5 import QtCore,QtWidgets,QtGui
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QSizePolicy, QWidget
-import matplotlib as mpl
-mpl_agg = 'Qt5Agg'
-mpl.use('Qt5Agg')
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
-plt.style.use('dark_background')
-import matplotlib.dates as mdates
-import matplotlib.ticker as mtk
-import mpl_finance as mpf
-from datetime import datetime,timedelta
-from dateutil.parser import parse
-from matplotlib.pylab import date2num
+from PyQt5 import QtCore, QtWidgets, QtGui
+from datetime import datetime
 import pyqtgraph as pg
 
-from .ui_basic import CandlestickItem,VolumeItem
-from ..data.data_board import BarGenerator
+from .ui_basic import CandlestickItem, VolumeItem
 from ..common.datastruct import Event
 from ..common.utility import extract_full_symbol
 from ..data import database_manager
-from ..common.constant import Interval,Direction,Offset
+from ..common.constant import Interval, Direction, Offset
 
-sys.path.insert(0,"..")
-from pyfolio import plotting
-from pyfolio.utils import (to_utc, to_series)
-import source.common.sqglobal as sqglobal
-
-# def mydate(x,pos=None):
-# 	tt=np.clip(int(x+0.5),0,len(list_ktime)-1)
-# 	return list_ktime[tt]
-
-class BtDataViewFC(FigureCanvas):
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        self.fig = plt.figure("dataview",figsize=(width, height), dpi=dpi)
-        #self.fig = Figure(figsize=(width, height), dpi=dpi)  # 新建一个figure
-        self.fig.set_tight_layout(True)
-        self.ax_k = self.fig.add_subplot(211)  # 建立一个子图，如果要建立复合图，可以在这里修改
-        self.ax_v = self.fig.add_subplot(212,sharex = self.ax_k)
-        FigureCanvas.__init__(self, self.fig)
-        self.setParent(parent)
-        self.setMinimumSize(800,800)
-        FigureCanvas.setSizePolicy(self,QSizePolicy.Expanding,QSizePolicy.Expanding)
-        FigureCanvas.updateGeometry(self)
-
-    def load_data(self,sid):
-        print('dataview load sid',sid)
-        for ax in self.fig.axes:
-            ax.clear()   
-        datapath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-        datapath = datapath + '/../../data/'
-        bar = pd.read_csv(datapath + 'histbar_min.csv', index_col=0, parse_dates=True)
-        bar['date'] = pd.to_datetime(bar["date"],format='%Y-%m-%d %H:%M:%S')
-        barvalue = bar.values
-        def mydate(x,pos=None):
-            tt=np.clip(int(x+0.5),0,len(barvalue[:,0])-1)
-            return barvalue[tt,0]
-        mpf.candlestick2_ohlc(self.ax_k,barvalue[:,1],barvalue[:,3],barvalue[:,4],barvalue[:,2],width=1,colorup='r',colordown='g')
-        self.ax_k.xaxis.set_major_formatter(mtk.FuncFormatter(mydate))
-        #self.ax_k.grid(True)
-        self.ax_v.bar(np.arange(len(barvalue[:,0])),barvalue[:,5],width=0.5)
-        self.ax_v.xaxis.set_major_formatter(mtk.FuncFormatter(mydate))
-        #self.ax_v.grid(True)
-        self.fig.autofmt_xdate()
-        # self.fig.suptitle('Market Data')
-        # self.axes.set_ylabel('静态图：Y轴')
-        # self.axes.set_xlabel('静态图：X轴')
-        # self.axes.grid(True)
-        self.draw()
-
-
-
-class BtDataViewWidget(QWidget):
-    def __init__(self, parent=None):
-        super(BtDataViewWidget, self).__init__(parent)
-        self.initui()
-    def initui(self):
-        self.layout = QVBoxLayout(self)
-        self.mpl = BtDataViewFC(self, width=5, height=4, dpi=100)
-        self.mpl_ntb = NavigationToolbar(self.mpl, self)  # 添加完整的 toolbar
-        self.scroll = QtWidgets.QScrollArea()
-        self.scroll.setWidget(self.mpl)
-        self.scroll.setWidgetResizable(True)
-        self.layout.addWidget(self.scroll)
-        self.layout.addWidget(self.mpl_ntb)
-    def update(self,sid = 1):
-        self.mpl.load_data(sid)
-
+sys.path.insert(0, "..")
 
 
 class BtDataPGChart(pg.GraphicsWindow):
@@ -200,8 +119,6 @@ class BtDataPGChart(pg.GraphicsWindow):
         self.distribution_curve.setData(x, hist)
 
 
-
-
 class DateAxis(pg.AxisItem):
     """Axis for showing date data"""
 
@@ -218,24 +135,28 @@ class DateAxis(pg.AxisItem):
             strings.append(str(dt))
         return strings
 
+
 class DateAxis2(pg.AxisItem):
     """Axis for showing date data"""
 
-    def __init__(self, datalist:list, *args, **kwargs):
+    def __init__(self, datalist: list, *args, **kwargs):
         """"""
         super().__init__(*args, **kwargs)
         self.data = datalist
+
     def tickStrings(self, values, scale, spacing):
         """"""
         strings = []
-        xstart = 0  # 60*(self.data[0].datetime.hour - 9) + self.data[0].datetime.minute        
+        # 60*(self.data[0].datetime.hour - 9) + self.data[0].datetime.minute
+        xstart = 0
         for value in values:
             v = value - xstart
-            if v > len(self.data) -1 or v <0:
+            if v > len(self.data) - 1 or v < 0:
                 return strings
             dt = self.data[int(v)].datetime
             strings.append(dt.strftime('%H:%M\n %b-%d '))
         return strings
+
 
 class PriceAxis(pg.AxisItem):
     def __init__(self):
@@ -247,6 +168,8 @@ class PriceAxis(pg.AxisItem):
         return [
             ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
         ]
+
+
 class VolumeAxis(pg.AxisItem):
     def __init__(self):
         super().__init__(orientation='right')
@@ -258,7 +181,10 @@ class VolumeAxis(pg.AxisItem):
             ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
         ]
 
+
 CHART_MARGINS = (0, 0, 20, 10)
+
+
 class BTQuotesChart(QtGui.QWidget):
     signal = QtCore.pyqtSignal(Event)
 
@@ -270,12 +196,12 @@ class BTQuotesChart(QtGui.QWidget):
 
     zoomIsDisabled = QtCore.pyqtSignal(bool)
 
-    def __init__(self,symbol:str = ""):
+    def __init__(self, symbol: str = ""):
         super().__init__()
         self.full_symbol = symbol
         self.data = []
         self.layout = QtGui.QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)        
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.chart = None
         self.charv = None
         self.signals_group_arrow = None
@@ -287,50 +213,49 @@ class BTQuotesChart(QtGui.QWidget):
         self.signals_visible = False
         self.plot()
 
-    def reset(self,symbol:str,start: datetime, end: datetime,interval: Interval = Interval.MINUTE, datasource:str = 'DataBase'):
+    def reset(self, symbol: str, start: datetime, end: datetime, interval: Interval = Interval.MINUTE, datasource: str = 'DataBase'):
         self.full_symbol = symbol
-        self.load_bar(start,end,interval,datasource)
+        self.load_bar(start, end, interval, datasource)
         self.klineitem.generatePicture()
         self.volumeitem.generatePicture()
         if self.signals_group_arrow:
             self.chart.removeItem(self.signals_group_arrow)
             del self.signals_group_arrow
-        if self.signals_group_text:            
+        if self.signals_group_text:
             self.chart.removeItem(self.signals_group_text)
             del self.signals_group_text
         # del self.signals_text_items
 
-
         self.signals_visible = False
 
-
-    def add_trades(self,trades):
+    def add_trades(self, trades):
         if not self.data:
             return
         self.buy_count_at_x = np.zeros(len(self.data))
-        self.sell_count_at_x = np.zeros(len(self.data))  
+        self.sell_count_at_x = np.zeros(len(self.data))
 
         self.signals_group_text = QtGui.QGraphicsItemGroup()
         self.signals_group_arrow = QtGui.QGraphicsItemGroup()
         self.trades_count = len(trades)
         self.signals_text_items = np.empty(len(trades), dtype=object)
 
-        #TODO:here only last signal in bar will show
+        # TODO:here only last signal in bar will show
 
-        id_bar = 0   
-        for ix,trade in enumerate(trades):
-            if trade.datetime < self.data[0].datetime:             
+        id_bar = 0
+        for ix, trade in enumerate(trades):
+            if trade.datetime < self.data[0].datetime:
                 continue
             if trade.datetime > self.data[-1].datetime:
                 break
-            while self.data[id_bar].datetime < trade.datetime :
-                id_bar = id_bar +1
-            x = id_bar -1
+            while self.data[id_bar].datetime < trade.datetime:
+                id_bar = id_bar + 1
+            x = id_bar - 1
             price = trade.price
             if trade.direction == Direction.LONG:
                 self.buy_count_at_x[x] += 1
                 ya = self.data[x].low_price * 0.999
-                yt = self.data[x].low_price * (1 -0.001*self.buy_count_at_x[x])
+                yt = self.data[x].low_price * \
+                    (1 - 0.001*self.buy_count_at_x[x])
                 pg.ArrowItem(
                     parent=self.signals_group_arrow,
                     pos=(x, ya),
@@ -345,7 +270,7 @@ class BTQuotesChart(QtGui.QWidget):
                 if trade.offset == Offset.CLOSE:
                     opacity = 0.15
                     if trade.short_pnl + trade.long_pnl < 0:
-                        brush = self.short_brush 
+                        brush = self.short_brush
                 text_sig = CenteredTextItem(
                     parent=self.signals_group_text,
                     pos=(x, yt),
@@ -359,7 +284,8 @@ class BTQuotesChart(QtGui.QWidget):
             else:
                 self.sell_count_at_x[x] += 1
                 ya = self.data[x].high_price * 1.001
-                yt = self.data[x].low_price * (1 + 0.001*self.sell_count_at_x[x])
+                yt = self.data[x].low_price * \
+                    (1 + 0.001*self.sell_count_at_x[x])
                 pg.ArrowItem(
                     parent=self.signals_group_arrow,
                     pos=(x, ya),
@@ -374,7 +300,7 @@ class BTQuotesChart(QtGui.QWidget):
                 if trade.offset == Offset.CLOSE:
                     opacity = 0.15
                     if trade.short_pnl + trade.long_pnl < 0:
-                        brush = self.short_brush                
+                        brush = self.short_brush
                 text_sig = CenteredTextItem(
                     parent=self.signals_group_text,
                     pos=(x, yt),
@@ -386,7 +312,7 @@ class BTQuotesChart(QtGui.QWidget):
                 )
                 text_sig.hide()
 
-            self.signals_text_items[ix] = text_sig       
+            self.signals_text_items[ix] = text_sig
         self.chart.addItem(self.signals_group_arrow)
         self.chart.addItem(self.signals_group_text)
         self.signals_visible = True
@@ -396,7 +322,7 @@ class BTQuotesChart(QtGui.QWidget):
             rbar = len(self.data)
         signals = []
         for sig in self.signals_text_items:
-            if isinstance(sig, CenteredTextItem):                
+            if isinstance(sig, CenteredTextItem):
                 x = sig.pos().x()
                 if x > lbar and x < rbar:
                     signals.append(sig)
@@ -426,10 +352,9 @@ class BTQuotesChart(QtGui.QWidget):
                 ymin = bar.low_price
         self.chart.setYRange(ymin*0.996, ymax*1.004)
         if self.signals_visible:
-            self.show_text_signals(lbar, rbar) 
+            self.show_text_signals(lbar, rbar)
 
-
-    def plot(self):       
+    def plot(self):
         self.xaxis = DateAxis2(self.data, orientation='bottom')
         self.xaxis.setStyle(
             tickTextOffset=7, textFillLimits=[(0, 0.80)], showValues=True
@@ -439,7 +364,7 @@ class BTQuotesChart(QtGui.QWidget):
         self.init_chart()
         self.init_chart_item()
 
-    def load_bar(self,start: datetime,end: datetime,interval: Interval = Interval.MINUTE, datasource:str = 'DataBase'):
+    def load_bar(self, start: datetime, end: datetime, interval: Interval = Interval.MINUTE, datasource: str = 'DataBase'):
         symbol, exchange = extract_full_symbol(self.full_symbol)
 
         if start > end:
@@ -448,7 +373,7 @@ class BTQuotesChart(QtGui.QWidget):
             start = tmp
 
         bars = []
-        if datasource == 'DataBase': 
+        if datasource == 'DataBase':
             bars = database_manager.load_bar_data(
                 symbol=symbol,
                 exchange=exchange,
@@ -461,7 +386,8 @@ class BTQuotesChart(QtGui.QWidget):
             endix = 0
             totalbarlist = sqglobal.history_bar[self.full_symbol]
             if not totalbarlist:
-                QtWidgets.QMessageBox().information(None, 'Info','No data in memory!',QtWidgets.QMessageBox.Ok)
+                QtWidgets.QMessageBox().information(
+                    None, 'Info', 'No data in memory!', QtWidgets.QMessageBox.Ok)
                 return
             totalbars = len(totalbarlist)
             for i in range(totalbars):
@@ -473,8 +399,8 @@ class BTQuotesChart(QtGui.QWidget):
                 if totalbarlist[i].datetime.date() > end:
                     continue
                 endix = i
-                break                
-            endix = min(endix+1,totalbars)
+                break
+            endix = min(endix+1, totalbars)
             bars = totalbarlist[startix:endix]
 
         self.data.clear()
@@ -483,8 +409,6 @@ class BTQuotesChart(QtGui.QWidget):
     def init_chart_item(self):
         self.chart.addItem(self.klineitem)
         self.chartv.addItem(self.volumeitem)
-
-
 
     def init_chart(self):
         self.splitter = QtGui.QSplitter(QtCore.Qt.Vertical)
@@ -495,7 +419,7 @@ class BTQuotesChart(QtGui.QWidget):
             axisItems={'bottom': self.xaxis, 'right': PriceAxis()},
             enableMenu=True,
         )
-        self.chart.getPlotItem().setContentsMargins(0,0,20,0)
+        self.chart.getPlotItem().setContentsMargins(0, 0, 20, 0)
         self.chart.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
         self.chart.hideAxis('left')
         self.chart.showAxis('right')
@@ -506,12 +430,13 @@ class BTQuotesChart(QtGui.QWidget):
             axisItems={'bottom': self.xaxis, 'right': VolumeAxis()},
             enableMenu=True,
         )
-        self.chartv.getPlotItem().setContentsMargins(0,0,15,15)
-        self.chartv.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)       
+        self.chartv.getPlotItem().setContentsMargins(0, 0, 15, 15)
+        self.chartv.setFrameStyle(
+            QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
         self.chartv.hideAxis('left')
-        self.chartv.showAxis('right')      
+        self.chartv.showAxis('right')
         self.chartv.setXLink(self.chart)
-        
+
 
 class CenteredTextItem(QtGui.QGraphicsTextItem):
     def __init__(
@@ -550,24 +475,3 @@ class CenteredTextItem(QtGui.QGraphicsTextItem):
             p.fillRect(option.rect, self.brush)
             p.setOpacity(1)
         p.drawText(option.rect, self.text_flags, self.toPlainText())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ui = BtDataViewWidget()
-    ui.mpl.load_data(1)  #
-    ui.show()
-    app.exec_()
