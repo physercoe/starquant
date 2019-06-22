@@ -1315,6 +1315,7 @@ namespace StarQuant
                 <<" Position="<<pInvestorPosition->Position
                 <<" OpenAmount="<<pInvestorPosition->OpenAmount
                 <<" OpenVolume="<<pInvestorPosition->OpenVolume
+                <<" OpenCost=" <<pInvestorPosition->OpenCost
                 <<" PosiDirection="<<pInvestorPosition->PosiDirection
                 <<" PositionProfit="<<pInvestorPosition->PositionProfit
                 <<" PositionCost="<<pInvestorPosition->PositionCost

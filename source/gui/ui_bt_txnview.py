@@ -110,6 +110,7 @@ class TradesTable(QtWidgets.QTableWidget):
             self.tradesig.emit(trade)
 
     def set_data(self, trades):
+        self.setRowCount(0)
         if not trades:
             return
         self.setRowCount(len(trades))
@@ -273,6 +274,7 @@ class DailyTable(QtWidgets.QTableWidget):
         #     self.tradesig.emit(trade)
 
     def set_data(self, dailyresults):
+        self.setRowCount(0)
         if not dailyresults:
             return
         self.setRowCount(len(dailyresults))

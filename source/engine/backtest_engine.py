@@ -379,7 +379,9 @@ class BacktestingEngine:
                     d = d + timedelta(days=3)
                 else:
                     d = d + timedelta(days=1)
-
+            elif t < time(hour=8,minute=0): # 周六凌晨算周一
+                if d.weekday() == 5:
+                    d = d + timedelta(days=2)       
             daily_result = self.daily_results[d]
             daily_result.add_trade(trade)
 
@@ -804,6 +806,9 @@ class BacktestingEngine:
                 d = d + timedelta(days=3)
             else:
                 d = d + timedelta(days=1)
+        elif t < time(hour=8,minute=0): # 周六凌晨算周一
+            if d.weekday() == 5:
+                d = d + timedelta(days=2)            
         daily_result = self.daily_results.get(d, None)
         if daily_result:
             daily_result.close_price = price
@@ -852,6 +857,8 @@ class BacktestingEngine:
             long_best_price = long_cross_price
             short_best_price = short_cross_price
 
+        rejectedoids = []
+
         for order in list(self.active_limit_orders.values()):
             # Push order update with status "not traded" (pending).
             # if order.status == Status.SUBMITTING:
@@ -880,10 +887,7 @@ class BacktestingEngine:
                 nolongpos = (order.direction == Direction.SHORT) and (
                     self.holding.long_pos < order.volume)
                 if nolongpos or noshortpos:
-                    order.status = Status.REJECTED
-                    self.active_limit_orders.pop(order.client_order_id)
-                    # Push update to strategy.
-                    self.strategy.on_order(order)
+                    rejectedoids.append(order.client_order_id)
                     continue
 
             # Push order udpate with status "all traded" (filled).
@@ -942,6 +946,12 @@ class BacktestingEngine:
 
             self.trades[trade.vt_tradeid] = trade
 
+        for oid in rejectedoids:
+            order = self.active_limit_orders.pop(oid)
+            order.status = Status.REJECTED
+            # Push update to strategy.
+            self.strategy.on_order(order)
+
     def cross_stop_order(self):
         """
         Cross stop order with last bar/tick data.
@@ -956,6 +966,8 @@ class BacktestingEngine:
             short_cross_price = self.tick.last_price
             long_best_price = long_cross_price
             short_best_price = short_cross_price
+
+        rejectedoids = []
 
         for stop_order in list(self.active_stop_orders.values()):
             # Check whether stop order can be triggered.
@@ -979,13 +991,7 @@ class BacktestingEngine:
                 nolongpos = (stop_order.direction == Direction.SHORT) and (
                     self.holding.long_pos < stop_order.volume)
                 if nolongpos or noshortpos:
-                    stop_order.status = Status.REJECTED
-                    self.limit_order_count += 1
-                    self.limit_orders[stop_order.client_order_id] = stop_order
-                    self.active_stop_orders.pop(stop_order.client_order_id)
-                    # Push update to strategy.
-                    self.strategy.on_stop_order(stop_order)
-                    self.strategy.on_order(stop_order)
+                    rejectedoids.append(stop_order.client_order_id)
                     continue
 
             self.limit_order_count += 1
@@ -1049,6 +1055,15 @@ class BacktestingEngine:
 
             self.strategy.pos += pos_change
             self.strategy.on_trade(trade)
+
+        for oid in rejectedoids:
+            stop_order = self.active_stop_orders.pop(stop_order.client_order_id)
+            stop_order.status = Status.REJECTED
+            self.limit_order_count += 1
+            self.limit_orders[oid] = stop_order
+            # Push update to strategy.
+            self.strategy.on_stop_order(stop_order)
+            self.strategy.on_order(stop_order)
 
     def load_bar(
         self, full_symbol: str, days: int, interval: Interval, callback: Callable, datasource: str = 'DataBase'
