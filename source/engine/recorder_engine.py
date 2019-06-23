@@ -137,10 +137,10 @@ class RecorderEngine(BaseEngine):
     def process_timer_event(self, event):
         # auto subscribe at 8:55, 20:55
         nowtime = datetime.now().time()
-        if (nowtime > time(hour=8, minute=55)) and (nowtime < time(hour=8, minute=56)) and (not self.subscribed):
+        if (nowtime > time(hour=8, minute=50)) and (nowtime < time(hour=8, minute=51)) and (not self.subscribed):
             self.init_subcribe()
             self.dayswitched = False
-        if (nowtime > time(hour=20, minute=55)) and (nowtime < time(hour=20, minute=56)) and (not self.subscribed):
+        if (nowtime > time(hour=20, minute=50)) and (nowtime < time(hour=20, minute=51)) and (not self.subscribed):
             self.init_subcribe()
             self.dayswitched = False
         # reset at 16:00 and 3:00
@@ -157,7 +157,11 @@ class RecorderEngine(BaseEngine):
     def process_tick_event(self, event: Event):
         """"""
         tick = event.data
-        if (tick.open_price):  # exclude onrtnsubscribe return first tick which time not in trade time
+        dayclosetime = tick.datetime.time() < time(hour=9,minute=0) and tick.datetime.time() > time(hour=8,minute=0)
+        nightclosetime = tick.datetime.time() < time(hour=21,minute=0) and tick.datetime.time() > time(hour=16,minute=0)
+        if dayclosetime or nightclosetime:
+            return
+        if (tick.open_price) and tick.last_price and tick.ask_price_1:  # exclude onrtnsubscribe return first tick which time not in trade time
             if tick.full_symbol in self.tick_recordings:
                 self.record_tick(tick)
 
