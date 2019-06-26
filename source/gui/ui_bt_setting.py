@@ -87,7 +87,7 @@ class Backtester:
         # self.load_strategy_class_from_folder(
         #     path1, "vnpy.app.cta_strategy.strategies")
 
-        path2 = Path.cwd().joinpath("mystrategy")
+        path2 = Path.cwd().joinpath("teststrategy")
         self.load_strategy_class_from_folder(path2, "", reload)
 
     def load_strategy_class_from_folder(self, path: Path, module_name: str = "", reload: bool = False):
@@ -97,7 +97,7 @@ class Backtester:
         for dirpath, dirnames, filenames in os.walk(path):
             for filename in filenames:
                 if filename.endswith(".py"):
-                    strategy_module_name = "mystrategy.".join(
+                    strategy_module_name = "teststrategy.".join(
                         [module_name, filename.replace(".py", "")])
                     self.load_strategy_class_from_module(
                         strategy_module_name, reload)
@@ -546,6 +546,7 @@ class BacktesterManager(QtWidgets.QWidget):
         bt_setting = QtWidgets.QWidget()
         bt_setting.setLayout(form)
         bt_setting.setMinimumWidth(400)
+        self.bt_setting = bt_setting
 
         self.overviewchart = BacktesterChart()
         self.overviewchart.setMinimumWidth(1000)
@@ -568,7 +569,7 @@ class BacktesterManager(QtWidgets.QWidget):
         bt_topmiddle.addTab(self.txnviewtable, '成交明细')
         bt_topmiddle.addTab(self.dailytable, '每日明细')
         # bt_topmiddle.addTab(self.posviewchart, '持仓')
-
+        self.bt_topmiddle = bt_topmiddle
     #  bottom middle:  data
 
         self.bt_bottommiddle = QtWidgets.QTabWidget()

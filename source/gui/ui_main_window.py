@@ -261,6 +261,42 @@ class MainWindow(QtWidgets.QMainWindow):
         tool_datadownloader.triggered.connect(self.data_downloader.show)
         toolMenu.addAction(tool_datadownloader)
 
+        # view menu
+        viewMenu = menubar.addMenu('View')
+        viewManual = QtWidgets.QAction('Manual Control Center', self,checkable=True)
+        viewManual.setChecked(True)
+        viewManual.triggered.connect(self.toggleviewmanual)
+        viewMenu.addAction(viewManual)
+        viewMarketMonitor = QtWidgets.QAction('Market Monitor', self,checkable=True)
+        viewMarketMonitor.setChecked(True)
+        viewMarketMonitor.triggered.connect(self.toggleviewMarketMonitor)
+        viewMenu.addAction(viewMarketMonitor)
+        viewTradeMonitor = QtWidgets.QAction('Trade Monitor', self,checkable=True)
+        viewTradeMonitor.setChecked(True)
+        viewTradeMonitor.triggered.connect(self.toggleviewTradeMonitor)
+        viewMenu.addAction(viewTradeMonitor)
+        viewMarketChart = QtWidgets.QAction('Market Chart', self,checkable=True)
+        viewMarketChart.setChecked(True)
+        viewMarketChart.triggered.connect(self.toggleviewMarketChart)
+        viewMenu.addAction(viewMarketChart)
+        viewCtaManager = QtWidgets.QAction('Strategy Manager', self,checkable=True)
+        viewCtaManager.setChecked(True)
+        viewCtaManager.triggered.connect(self.toggleviewCtaManager)
+        viewMenu.addAction(viewCtaManager)
+        viewBtSetting = QtWidgets.QAction('Backtest Setting', self,checkable=True)
+        viewBtSetting.setChecked(True)
+        viewBtSetting.triggered.connect(self.toggleviewBtSetting)
+        viewMenu.addAction(viewBtSetting)
+        viewBtTopM = QtWidgets.QAction('Backtest Details', self,checkable=True)
+        viewBtTopM.setChecked(True)
+        viewBtTopM.triggered.connect(self.toggleviewBtTopM)
+        viewMenu.addAction(viewBtTopM)
+        viewBtBottomM = QtWidgets.QAction('Backtest QuotesChart', self,checkable=True)
+        viewBtBottomM.setChecked(True)
+        viewBtBottomM.triggered.connect(self.toggleviewBtBottomM)
+        viewMenu.addAction(viewBtBottomM)
+
+
         # help menu
         helpMenu = menubar.addMenu('Help')
         help_contractaction = QtWidgets.QAction('Query Contracts', self)
@@ -272,6 +308,54 @@ class MainWindow(QtWidgets.QMainWindow):
         help_action = QtWidgets.QAction('About', self)
         help_action.triggered.connect(self.openabout)
         helpMenu.addAction(help_action)
+
+    def toggleviewmanual(self,state):
+        if state:
+            self.dockmanual.setVisible(True)            
+        else:
+            self.dockmanual.hide()
+
+    def toggleviewMarketMonitor(self,state):
+        if state:
+            self.market_window.setVisible(True)            
+        else:
+            self.market_window.hide()
+
+    def toggleviewTradeMonitor(self,state):
+        if state:
+            self.bottomleft.setVisible(True)            
+        else:
+            self.bottomleft.hide()
+
+    def toggleviewMarketChart(self,state):
+        if state:
+            self.dataviewindow.setVisible(True)            
+        else:
+            self.dataviewindow.hide() 
+
+    def toggleviewCtaManager(self,state):
+        if state:
+            self.bottomright.setVisible(True)            
+        else:
+            self.bottomright.hide()                       
+
+    def toggleviewBtSetting(self,state):
+        if state:
+            self.backtestwidget.bt_setting.setVisible(True)            
+        else:
+            self.backtestwidget.bt_setting.hide()    
+
+    def toggleviewBtTopM(self,state):
+        if state:
+            self.backtestwidget.bt_topmiddle.setVisible(True)            
+        else:
+            self.backtestwidget.bt_topmiddle.hide()
+
+    def toggleviewBtBottomM(self,state):
+        if state:
+            self.backtestwidget.bt_bottommiddle.setVisible(True)            
+        else:
+            self.backtestwidget.bt_bottommiddle.hide()
 
     def file_edit(self):
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -379,7 +463,7 @@ class MainWindow(QtWidgets.QMainWindow):
         tab6_layout = QtWidgets.QVBoxLayout()
         tab6_layout.addWidget(self.account_window)
         tab6.setLayout(tab6_layout)
-
+        self.bottomleft = bottomleft
         # -------------------------------- bottom right ------------------------------------------#
         bottomright = QtWidgets.QFrame()
         bottomright.setFrameShape(QtWidgets.QFrame.StyledPanel)
@@ -392,7 +476,7 @@ class MainWindow(QtWidgets.QMainWindow):
         strategy_manager_layout.addWidget(self.ctastrategywindow)
 
         bottomright.setLayout(strategy_manager_layout)
-
+        self.bottomright = bottomright
         # --------------------------------------------------------------------------------------#
 
         self.dataviewindow = MarketDataView()
@@ -417,7 +501,7 @@ class MainWindow(QtWidgets.QMainWindow):
         tradewidget.setLayout(hbox)
 
 # ---------Backtest ----------------------------------------
-        backtestwidget = BacktesterManager(self._events_engine)
+        self.backtestwidget = BacktesterManager(self._events_engine)
 
 # --------------------mainwindow----------------------
         manualwidget = ManualWindow(self._config_server['gateway'])
@@ -437,10 +521,11 @@ class MainWindow(QtWidgets.QMainWindow):
         dockmanual.setAllowedAreas(
             QtCore.Qt.RightDockWidgetArea | QtCore.Qt.LeftDockWidgetArea)
         dockmanual.setWidget(manualwidget)
+        self.dockmanual = dockmanual 
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, dockmanual)
 
         self.central_widget.addWidget(tradewidget)
-        self.central_widget.addWidget(backtestwidget)
+        self.central_widget.addWidget(self.backtestwidget)
         self.central_widget.setCurrentIndex(0)
         self.setCentralWidget(self.central_widget)
 

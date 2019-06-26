@@ -197,7 +197,7 @@ class StrategyEngine(BaseEngine):
             self.autostarted = True
             self.dayswitched = False
 
-        # auto stop strategy at 14:57 and 22:57, 23:27, 00:27, 2:27
+        # auto stop strategy at 16:00 and 3:00
         if (nowtime > time(hour=16, minute=0)) and (nowtime < time(hour=16, minute=1)) and (not self.dayswitched):
             for name, strategy in self.strategies.items():
                 if strategy.autostart:
@@ -299,12 +299,14 @@ class StrategyEngine(BaseEngine):
         self.put_strategy_event(strategy)
 
         self.trades[trade.vt_tradeid] = trade
+
         # send qry pos to update position
         m = Event(type=EventType.QRY,
                   des=event.source,
                   src=str(self.id),
                   msgtype=MSG_TYPE.MSG_TYPE_QRY_POS)
-        self.put(m)
+        self._send_sock.send(m.serialize())
+        # self.put(m)
 
     def process_position_event(self, event: Event):
         """"""
@@ -518,6 +520,18 @@ class StrategyEngine(BaseEngine):
         if strategy.trading:
             self.write_log(f"{strategy_name}已经启动，请勿重复操作")
             return
+
+        # qry pos and acc
+        m = Event(type=EventType.QRY, msgtype=MSG_TYPE.MSG_TYPE_QRY_POS)
+        m.destination = strategy.api + '.' + strategy.account
+        m.source = str(self.id)
+        self._send_sock.send(m.serialize())
+
+        m = Event(type=EventType.QRY,
+                    msgtype=MSG_TYPE.MSG_TYPE_QRY_ACCOUNT)
+        m.destination = strategy.api + '.' + strategy.account
+        m.source = str(self.id)
+        self._send_sock.send(m.serialize())
 
         self.call_strategy_func(strategy, strategy.on_start)
         strategy.trading = True
@@ -809,7 +823,7 @@ class StrategyEngine(BaseEngine):
 
         symbol, exchange = extract_full_symbol(full_symbol)
         end = datetime.now()
-        start = end - timedelta(tradedays)
+        start = end - timedelta(days=tradedays)
         # Query bars from RQData by default, if not found, load from database.
         bars = self.query_bar_from_rq(symbol, exchange, interval, start, end)
         if not bars:

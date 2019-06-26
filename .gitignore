@@ -72,6 +72,7 @@ extra_dump.py
 /legacy/*
 /docs/*
 /mystrategy/*
+/teststrategy/*
 !/mystrategy/Examplestrategy.py
 !/mystrategy/__init__.py
 *.ipynb_checkpoints/
