@@ -224,7 +224,8 @@ class ManualWindow(QtWidgets.QFrame):
             self.manualorderid = self.manualorderid + 1
             # o.create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
             o.orderfield = of
-            self.order_signal.emit(o)
+            m.data = o
+            self.order_signal.emit(m)
         except:
             print('place paper order error')
 
@@ -701,8 +702,9 @@ class PaperApiWindow(QtWidgets.QFrame):
         self.setLayout(paperapilayout)
 
     def place_order(self):
-        fullname = self.exchange.currentText() + ' ' + self.sec_type.currentText() + \
-            ' ' + self.sym.text() + ' ' + self.sym_no.text()
+        sectype = self.orderfielddict['sectype'][self.sec_type.currentIndex()]
+        fullname = self.exchange.currentText() + ' ' + sectype + \
+            ' ' + str(self.sym.text()).upper() + ' ' + self.sym_no.text()
         o = PaperOrderField()
         o.full_symbol = fullname
         o.order_type = self.orderfielddict['ordertype'][self.order_type.currentIndex(
@@ -742,9 +744,3 @@ class ItchatMsgThread(QtCore.QThread):
             self.sleep(1)
 
 
-if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
-    apilist = ['CTP', 'PAPER']
-    ui = ManualWindow(apilist)
-    ui.show()
-    app.exec_()

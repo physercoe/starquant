@@ -4,7 +4,7 @@ from queue import Queue
 from PyQt5 import QtCore, QtWidgets, QtGui
 from datetime import datetime
 import requests
-
+import itchat
 from source.common.constant import EventType
 
 
@@ -146,7 +146,13 @@ class MainWindow(QtWidgets.QMainWindow):
         pass
 
     def _fill_event_handler(self, fill_event):
-        pass
+        try:
+            trade = fill_event.data
+            msg = f"{trade.full_symbol}: ({trade.direction.value},{trade.offset.value}),({trade.price},{trade.volume})"
+            itchat.send_msg(msg,'filehelper')
+        except:
+            pass
+
 
     def _position_event_handler(self, position_event):
         pass

@@ -71,6 +71,9 @@ extra_dump.py
 /log/*
 /legacy/*
 /docs/*
+/dist/*
+/build/*
+*.spec
 /mystrategy/*
 /teststrategy/*
 !/mystrategy/Examplestrategy.py
