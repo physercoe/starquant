@@ -376,12 +376,12 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         form.addRow("文件格式", self.fileformat_combo)
         form.addRow(file_button, self.file_edit)
         form.addRow("存储位置", self.saveto_combo)
-        form.addRow(QtWidgets.QLabel())
+        # form.addRow(QtWidgets.QLabel())
         form.addRow(info_label)
         form.addRow("代码", self.symbol_edit)
         form.addRow("交易所", self.exchange_combo)
         form.addRow("时间尺度", self.interval_combo)
-        form.addRow(QtWidgets.QLabel())
+        # form.addRow(QtWidgets.QLabel())
         form.addRow(head_label)
         form.addRow("时间戳", self.datetime_edit)
 
@@ -414,10 +414,10 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         self.headwidget.setContentsMargins(0, 0, 0, 0)
 
         form.addRow(self.headwidget)
-        form.addRow(QtWidgets.QLabel())
+        # form.addRow(QtWidgets.QLabel())
         form.addRow(format_label)
         form.addRow("时间格式", self.format_edit)
-        form.addRow(QtWidgets.QLabel())
+        # form.addRow(QtWidgets.QLabel())
         form.addRow(load_button)
 
         self.setLayout(form)
