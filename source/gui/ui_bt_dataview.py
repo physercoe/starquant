@@ -218,6 +218,7 @@ class BTQuotesChart(QtGui.QWidget):
         self.load_bar(start, end, interval, datasource)
         self.klineitem.generatePicture()
         self.volumeitem.generatePicture()
+        self.oicurve.setData([bar.open_price for bar in self.data])
         if self.signals_group_arrow:
             self.chart.removeItem(self.signals_group_arrow)
             del self.signals_group_arrow
@@ -361,6 +362,7 @@ class BTQuotesChart(QtGui.QWidget):
         )
         self.klineitem = CandlestickItem(self.data)
         self.volumeitem = VolumeItem(self.data)
+        self.oicurve = pg.PlotCurveItem([bar.open_price for bar in self.data],pen='w')
         self.init_chart()
         self.init_chart_item()
 
@@ -433,10 +435,24 @@ class BTQuotesChart(QtGui.QWidget):
         self.chartv.getPlotItem().setContentsMargins(0, 0, 15, 15)
         self.chartv.setFrameStyle(
             QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
-        self.chartv.hideAxis('left')
+        self.chartv.showAxis('left')
         self.chartv.showAxis('right')
         self.chartv.setXLink(self.chart)
 
+        self.chartoi = pg.ViewBox()
+        p1 = self.chartv.getPlotItem()
+        p1.scene().addItem(self.chartoi)
+        p1.getAxis('left').linkToView(self.chartoi)
+        self.chartoi.setXLink(p1)
+        p1.vb.sigResized.connect(self.updateViews)
+
+        self.chartoi.addItem(self.oicurve)
+      
+    def updateViews(self):
+        p1 = self.chartv.getPlotItem()
+        p2 = self.chartoi
+        p2.setGeometry(p1.vb.sceneBoundingRect())
+        p2.linkedViewChanged(p1.vb, p2.XAxis)
 
 class CenteredTextItem(QtGui.QGraphicsTextItem):
     def __init__(

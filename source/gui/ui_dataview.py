@@ -26,7 +26,6 @@ class MarketDataView(QtWidgets.QWidget):
         self.register_event()
 
     def init_ui(self):
-        # self.datachart = DataPGChart()
         self.datachart = QuotesChart(self.full_symbol)
         self.orderbook = OrderBookWidget()
         self.scroll = QtWidgets.QScrollArea()
@@ -47,89 +46,6 @@ class MarketDataView(QtWidgets.QWidget):
         self.orderbook.day_signal.connect(self.datachart.reload)
         # self.symbol_signal.connect(self.datachart.reset)
 
-
-class DataPGChart(pg.GraphicsWindow):
-    """"""
-
-    def __init__(self):
-        """"""
-        super().__init__(title="Live Market Chart")
-
-        self.dates = {}
-
-        self.init_ui()
-
-    def init_ui(self):
-        """"""
-        pg.setConfigOptions(antialias=True)
-
-        # Create plot widgets
-        self.balance_plot = self.addPlot(
-            title="K line",
-            axisItems={"bottom": DateAxis(self.dates, orientation="bottom")}
-        )
-        self.nextRow()
-
-        self.drawdown_plot = self.addPlot(
-            title="Volume",
-            axisItems={"bottom": DateAxis(self.dates, orientation="bottom")}
-        )
-        self.nextRow()
-
-        # Add curves and bars on plot widgets
-        self.balance_curve = self.balance_plot.plot(
-            pen=pg.mkPen("#ffc107", width=3)
-        )
-
-        dd_color = "#303f9f"
-        self.drawdown_curve = self.drawdown_plot.plot(
-            fillLevel=-0.3, brush=dd_color, pen=dd_color
-        )
-
-        profit_color = 'r'
-        loss_color = 'g'
-        self.profit_pnl_bar = pg.BarGraphItem(
-            x=[], height=[], width=0.3, brush=profit_color, pen=profit_color
-        )
-        self.loss_pnl_bar = pg.BarGraphItem(
-            x=[], height=[], width=0.3, brush=loss_color, pen=loss_color
-        )
-
-    def clear_data(self):
-        """"""
-        self.balance_curve.setData([], [])
-        self.drawdown_curve.setData([], [])
-        self.profit_pnl_bar.setOpts(x=[], height=[])
-        self.loss_pnl_bar.setOpts(x=[], height=[])
-
-    def set_data(self, df):
-        """"""
-        count = len(df)
-
-        self.dates.clear()
-        for n, date in enumerate(df.index):
-            self.dates[n] = date
-
-        # Set data for curve of balance and drawdown
-        self.balance_curve.setData(df["balance"])
-        self.drawdown_curve.setData(df["drawdown"])
-
-        # Set data for daily pnl bar
-        profit_pnl_x = []
-        profit_pnl_height = []
-        loss_pnl_x = []
-        loss_pnl_height = []
-
-        for count, pnl in enumerate(df["net_pnl"]):
-            if pnl >= 0:
-                profit_pnl_height.append(pnl)
-                profit_pnl_x.append(count)
-            else:
-                loss_pnl_height.append(pnl)
-                loss_pnl_x.append(count)
-
-        self.profit_pnl_bar.setOpts(x=profit_pnl_x, height=profit_pnl_height)
-        self.loss_pnl_bar.setOpts(x=loss_pnl_x, height=loss_pnl_height)
 
 
 class DateAxis(pg.AxisItem):
@@ -194,6 +110,16 @@ class VolumeAxis(pg.AxisItem):
             ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
         ]
 
+class OpenInterestAxis(pg.AxisItem):
+    def __init__(self):
+        super().__init__(orientation='left')
+        self.style.update({'textFillLimits': [(0, 0.8)]})
+
+    def tickStrings(self, vals, scale, spacing):
+        digts = max(0, np.ceil(-np.log10(spacing * scale)))
+        return [
+            ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
+        ]
 
 CHART_MARGINS = (0, 0, 20, 10)
 
@@ -233,6 +159,7 @@ class QuotesChart(QtGui.QWidget):
         self.load_bar()
         self.klineitem.generatePicture()
         self.volumeitem.generatePicture()
+        self.oicurve.setData([bar.open_price for bar in self.data])
 
     def plot(self):
         self.xaxis = DateAxis2(self.data, orientation='bottom')
@@ -240,7 +167,8 @@ class QuotesChart(QtGui.QWidget):
             tickTextOffset=7, textFillLimits=[(0, 0.80)], showValues=True
         )
         self.klineitem = CandlestickItem(self.data)
-        self.volumeitem = VolumeItem(self.data)
+        self.volumeitem = VolumeItem(self.data)        
+        self.oicurve = pg.PlotCurveItem([bar.open_price for bar in self.data],pen='w')
         self.init_chart()
         self.init_chart_item()
 
@@ -266,11 +194,13 @@ class QuotesChart(QtGui.QWidget):
         self.load_bar(days=count)
         self.klineitem.generatePicture()
         self.volumeitem.generatePicture()
+        self.oicurve.setData([bar.open_price for bar in self.data])
 
     def on_bar(self, bar):
         self.data.append(bar)
         self.klineitem.on_bar(bar)
         self.volumeitem.on_bar(bar)
+        self.oicurve.setData([bar.open_price for bar in self.data])
         # self.xaxis.on_bar(bar)
         # self.tmax += 1
         # self.pmax = max(self.pmax,bar.high_price)
@@ -347,15 +277,34 @@ class QuotesChart(QtGui.QWidget):
 
         self.chartv = pg.PlotWidget(
             parent=self.splitter,
-            axisItems={'bottom': self.xaxis, 'right': VolumeAxis()},
+            axisItems={'bottom': self.xaxis, 'right': VolumeAxis(),'left':OpenInterestAxis()},
             enableMenu=True,
         )
         self.chartv.getPlotItem().setContentsMargins(0, 0, 15, 15)
         self.chartv.setFrameStyle(
             QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
-        self.chartv.hideAxis('left')
+        # self.chartv.hideAxis('left')
+        self.chartv.showAxis('left')
         self.chartv.showAxis('right')
         self.chartv.setXLink(self.chart)
+
+        self.chartoi = pg.ViewBox()
+        p1 = self.chartv.getPlotItem()
+        p1.scene().addItem(self.chartoi)
+        p1.getAxis('left').linkToView(self.chartoi)
+        self.chartoi.setXLink(p1)
+        p1.vb.sigResized.connect(self.updateViews)
+
+        self.chartoi.addItem(self.oicurve)
+
+
+
+    def updateViews(self):
+        p1 = self.chartv.getPlotItem()
+        p2 = self.chartoi
+        p2.setGeometry(p1.vb.sceneBoundingRect())
+        p2.linkedViewChanged(p1.vb, p2.XAxis)
+
 
 
 class OrderBookWidget(QtWidgets.QWidget):

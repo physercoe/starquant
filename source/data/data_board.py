@@ -79,6 +79,7 @@ class BarGenerator:
                 high_price=tick.last_price,
                 low_price=tick.last_price,
                 close_price=tick.last_price,
+                open_interest=tick.open_interest
             )
             self.tick_counts = 1
         else:
@@ -87,6 +88,7 @@ class BarGenerator:
                 self.bar.high_price = max(self.bar.high_price, tick.last_price)
                 self.bar.low_price = min(self.bar.low_price, tick.last_price)
                 self.bar.close_price = tick.last_price
+                self.bar.open_interest = tick.open_interest
                 self.bar.datetime = tick.datetime
 
         if self.last_tick:
@@ -126,7 +128,8 @@ class BarGenerator:
         # Update close price/volume into window bar
         self.window_bar.close_price = bar.close_price
         self.window_bar.volume += int(bar.volume)
-
+        self.window_bar.open_interest = bar.open_interest
+        
         # Check if window bar completed
         finished = False
 

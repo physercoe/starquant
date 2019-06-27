@@ -487,7 +487,7 @@ class VolumeItem(pg.GraphicsObject):
                 p.setBrush(self.bear_brush)
                 sign = -1
             p.drawRect(QtCore.QRectF(t - self.w, 0,
-                                     self.w * 2, sign*bar.volume))
+                                     self.w * 2, bar.volume))
         p.end()
         self.update()
 

@@ -273,6 +273,7 @@ class BarData(BaseData):
     close_price: float = 0
 
     adj_close_price: float = 0.0
+    open_interest:int = 0
 
     def __post_init__(self):
         """"""

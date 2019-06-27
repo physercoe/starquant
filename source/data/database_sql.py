@@ -74,6 +74,7 @@ def init_models(db: Database, driver: Driver):
         interval: str = CharField()
 
         volume: float = FloatField()
+        open_interest: float = FloatField()
         open_price: float = FloatField()
         high_price: float = FloatField()
         low_price: float = FloatField()
@@ -95,6 +96,7 @@ def init_models(db: Database, driver: Driver):
             db_bar.datetime = bar.datetime
             db_bar.interval = bar.interval.value
             db_bar.volume = bar.volume
+            db_bar.open_interest = bar.open_interest
             db_bar.open_price = bar.open_price
             db_bar.high_price = bar.high_price
             db_bar.low_price = bar.low_price
@@ -158,6 +160,7 @@ def init_models(db: Database, driver: Driver):
 
         name: str = CharField()
         volume: float = FloatField()
+        open_interest: float = FloatField()
         last_price: float = FloatField()
         last_volume: float = FloatField()
         limit_up: float = FloatField()
@@ -208,6 +211,7 @@ def init_models(db: Database, driver: Driver):
             db_tick.datetime = tick.datetime
             db_tick.name = tick.name
             db_tick.volume = tick.volume
+            db_tick.open_interest = tick.open_interest
             db_tick.last_price = tick.last_price
             db_tick.last_volume = tick.last_volume
             db_tick.limit_up = tick.limit_up
@@ -255,6 +259,7 @@ def init_models(db: Database, driver: Driver):
                 datetime=self.datetime,
                 name=self.name,
                 volume=self.volume,
+                open_interest=self.open_interest,
                 last_price=self.last_price,
                 last_volume=self.last_volume,
                 limit_up=self.limit_up,
