@@ -159,7 +159,7 @@ class QuotesChart(QtGui.QWidget):
         self.load_bar()
         self.klineitem.generatePicture()
         self.volumeitem.generatePicture()
-        self.oicurve.setData([bar.open_price for bar in self.data])
+        self.oicurve.setData([bar.open_interest for bar in self.data])
 
     def plot(self):
         self.xaxis = DateAxis2(self.data, orientation='bottom')
@@ -168,7 +168,7 @@ class QuotesChart(QtGui.QWidget):
         )
         self.klineitem = CandlestickItem(self.data)
         self.volumeitem = VolumeItem(self.data)        
-        self.oicurve = pg.PlotCurveItem([bar.open_price for bar in self.data],pen='w')
+        self.oicurve = pg.PlotCurveItem([bar.open_interest for bar in self.data],pen='w')
         self.init_chart()
         self.init_chart_item()
 
@@ -194,13 +194,13 @@ class QuotesChart(QtGui.QWidget):
         self.load_bar(days=count)
         self.klineitem.generatePicture()
         self.volumeitem.generatePicture()
-        self.oicurve.setData([bar.open_price for bar in self.data])
+        self.oicurve.setData([bar.open_interest for bar in self.data])
 
     def on_bar(self, bar):
         self.data.append(bar)
         self.klineitem.on_bar(bar)
         self.volumeitem.on_bar(bar)
-        self.oicurve.setData([bar.open_price for bar in self.data])
+        self.oicurve.setData([bar.open_interest for bar in self.data])
         # self.xaxis.on_bar(bar)
         # self.tmax += 1
         # self.pmax = max(self.pmax,bar.high_price)

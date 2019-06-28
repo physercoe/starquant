@@ -1,0 +1,380 @@
+source/common/client_mq.py:6:1: F401 'os' imported but unused
+source/common/client_mq.py:36:13: F841 local variable 'e' is assigned to but never used
+source/common/client_mq.py:45:13: F841 local variable 'e' is assigned to but never used
+source/common/utility.py:166:80: E501 line too long (81 > 79 characters)
+source/common/constant.py:152:5: E265 block comment should start with '# '
+source/common/constant.py:160:3: E114 indentation is not a multiple of four (comment)
+source/common/constant.py:160:3: E265 block comment should start with '# '
+source/common/constant.py:173:3: E114 indentation is not a multiple of four (comment)
+source/common/config.py:42:80: E501 line too long (86 > 79 characters)
+source/common/datastruct.py:8:1: F401 'typing.Callable' imported but unused
+source/common/datastruct.py:11:80: E501 line too long (118 > 79 characters)
+source/common/datastruct.py:14:80: E501 line too long (89 > 79 characters)
+source/common/datastruct.py:16:80: E501 line too long (82 > 79 characters)
+source/common/datastruct.py:68:80: E501 line too long (106 > 79 characters)
+source/common/datastruct.py:127:51: W291 trailing whitespace
+source/common/datastruct.py:276:18: E231 missing whitespace after ':'
+source/common/datastruct.py:288:64: W291 trailing whitespace
+source/common/datastruct.py:532:80: E501 line too long (80 > 79 characters)
+source/strategy/__init__.py:2:24: W292 no newline at end of file
+source/strategy/__init__.py:2:24: W292 no newline at end of file
+source/strategy/__init__.py:2:24: W292 no newline at end of file
+source/strategy/strategy_base.py:201:9: E265 block comment should start with '# '
+source/strategy/strategy_base.py:207:17: W291 trailing whitespace
+source/strategy/strategy_base.py:269:54: W291 trailing whitespace
+source/strategy/strategy_base.py:277:3: E114 indentation is not a multiple of four (comment)
+source/strategy/strategy_base.py:280:5: E303 too many blank lines (2)
+source/strategy/strategy_base.py:1084:3: E114 indentation is not a multiple of four (comment)
+source/data/rqdata.py:152:80: E501 line too long (86 > 79 characters)
+source/data/data_board.py:16:9: W291 trailing whitespace
+source/data/data_board.py:21:80: E501 line too long (80 > 79 characters)
+source/data/data_board.py:62:80: E501 line too long (110 > 79 characters)
+source/data/data_board.py:132:1: W293 blank line contains whitespace
+source/data/data_board.py:141:80: E501 line too long (82 > 79 characters)
+source/data/data_board.py:342:80: E501 line too long (93 > 79 characters)
+source/data/data_board.py:362:80: E501 line too long (91 > 79 characters)
+source/data/data_board.py:373:80: E501 line too long (90 > 79 characters)
+source/data/database_mongo.py:5:80: E501 line too long (81 > 79 characters)
+source/data/database_mongo.py:83:9: E303 too many blank lines (2)
+source/data/database_mongo.py:311:80: E501 line too long (83 > 79 characters)
+source/data/database_mongo.py:325:80: E501 line too long (83 > 79 characters)
+source/data/database.py:7:1: F401 'typing.TYPE_CHECKING' imported but unused
+source/data/database.py:23:19: F821 undefined name 'Exchange'
+source/data/database.py:24:19: F821 undefined name 'Interval'
+source/data/database.py:34:19: F821 undefined name 'Exchange'
+source/data/database.py:58:19: F821 undefined name 'Exchange'
+source/data/database.py:59:19: F821 undefined name 'Interval'
+source/data/database.py:62:80: E501 line too long (87 > 79 characters)
+source/data/database.py:71:19: F821 undefined name 'Exchange'
+source/data/database.py:74:80: E501 line too long (87 > 79 characters)
+source/data/database_sql.py:411:80: E501 line too long (80 > 79 characters)
+source/data/database_sql.py:412:80: E501 line too long (82 > 79 characters)
+source/engine/__init__.py:2:24: W292 no newline at end of file
+source/engine/__init__.py:2:24: W292 no newline at end of file
+source/engine/__init__.py:2:24: W292 no newline at end of file
+source/engine/recorder_engine.py:26:25: W291 trailing whitespace
+source/engine/recorder_engine.py:140:80: E501 line too long (113 > 79 characters)
+source/engine/recorder_engine.py:143:80: E501 line too long (115 > 79 characters)
+source/engine/recorder_engine.py:147:80: E501 line too long (114 > 79 characters)
+source/engine/recorder_engine.py:150:80: E501 line too long (112 > 79 characters)
+source/engine/recorder_engine.py:160:58: E231 missing whitespace after ','
+source/engine/recorder_engine.py:160:80: E501 line too long (116 > 79 characters)
+source/engine/recorder_engine.py:160:107: E231 missing whitespace after ','
+source/engine/recorder_engine.py:161:61: E231 missing whitespace after ','
+source/engine/recorder_engine.py:161:80: E501 line too long (120 > 79 characters)
+source/engine/recorder_engine.py:161:111: E231 missing whitespace after ','
+source/engine/recorder_engine.py:164:80: E501 line too long (143 > 79 characters)
+source/engine/recorder_engine.py:359:13: F841 local variable 'e' is assigned to but never used
+source/engine/recorder_engine.py:361:17: E265 block comment should start with '# '
+source/engine/recorder_engine.py:361:80: E501 line too long (85 > 79 characters)
+source/engine/recorder_engine.py:375:13: W291 trailing whitespace
+source/engine/recorder_engine.py:391:80: E501 line too long (93 > 79 characters)
+source/engine/iengine.py:9:1: F401 'typing.Any' imported but unused
+source/engine/iengine.py:33:60: W291 trailing whitespace
+source/engine/iengine.py:113:73: W291 trailing whitespace
+source/engine/iengine.py:134:67: W291 trailing whitespace
+source/engine/backtest_engine.py:7:1: F401 'typing.Any' imported but unused
+source/engine/backtest_engine.py:19:1: F401 '..common.constant.STOPORDER_PREFIX' imported but unused
+source/engine/backtest_engine.py:19:1: F401 '..common.constant.StopOrderStatus' imported but unused
+source/engine/backtest_engine.py:24:1: F401 '..common.datastruct.StopOrder' imported but unused
+source/engine/backtest_engine.py:134:80: E501 line too long (88 > 79 characters)
+source/engine/backtest_engine.py:135:80: E501 line too long (90 > 79 characters)
+source/engine/backtest_engine.py:142:80: E501 line too long (80 > 79 characters)
+source/engine/backtest_engine.py:316:80: E501 line too long (82 > 79 characters)
+source/engine/backtest_engine.py:320:80: E501 line too long (89 > 79 characters)
+source/engine/backtest_engine.py:337:80: E501 line too long (90 > 79 characters)
+source/engine/backtest_engine.py:340:80: E501 line too long (93 > 79 characters)
+source/engine/backtest_engine.py:360:80: E501 line too long (89 > 79 characters)
+source/engine/backtest_engine.py:382:33: E231 missing whitespace after ','
+source/engine/backtest_engine.py:382:44: E261 at least two spaces before inline comment
+source/engine/backtest_engine.py:384:46: W291 trailing whitespace
+source/engine/backtest_engine.py:616:80: E501 line too long (117 > 79 characters)
+source/engine/backtest_engine.py:630:80: E501 line too long (81 > 79 characters)
+source/engine/backtest_engine.py:667:80: E501 line too long (155 > 79 characters)
+source/engine/backtest_engine.py:743:80: E501 line too long (84 > 79 characters)
+source/engine/backtest_engine.py:744:80: E501 line too long (83 > 79 characters)
+source/engine/backtest_engine.py:809:29: E231 missing whitespace after ','
+source/engine/backtest_engine.py:809:40: E261 at least two spaces before inline comment
+source/engine/backtest_engine.py:811:42: W291 trailing whitespace
+source/engine/backtest_engine.py:987:80: E501 line too long (89 > 79 characters)
+source/engine/backtest_engine.py:1060:80: E501 line too long (80 > 79 characters)
+source/engine/backtest_engine.py:1069:80: E501 line too long (111 > 79 characters)
+source/engine/backtest_engine.py:1123:80: E501 line too long (103 > 79 characters)
+source/engine/strategy_engine.py:22:1: F401 '..common.datastruct.OrderData' imported but unused
+source/engine/strategy_engine.py:22:1: F401 '..common.datastruct.TradeData' imported but unused
+source/engine/strategy_engine.py:22:1: F401 '..common.datastruct.TickData' imported but unused
+source/engine/strategy_engine.py:22:1: F401 '..common.datastruct.PositionData' imported but unused
+source/engine/strategy_engine.py:22:1: F401 '..common.datastruct.CtpOrderField' imported but unused
+source/engine/strategy_engine.py:22:1: F401 '..common.datastruct.AccountData' imported but unused
+source/engine/strategy_engine.py:23:80: E501 line too long (83 > 79 characters)
+source/engine/strategy_engine.py:38:60: W291 trailing whitespace
+source/engine/strategy_engine.py:201:80: E501 line too long (114 > 79 characters)
+source/engine/strategy_engine.py:208:80: E501 line too long (112 > 79 characters)
+source/engine/strategy_engine.py:259:80: E501 line too long (83 > 79 characters)
+source/engine/strategy_engine.py:414:80: E501 line too long (82 > 79 characters)
+source/engine/strategy_engine.py:531:21: E127 continuation line over-indented for visual indent
+source/engine/strategy_engine.py:630:80: E501 line too long (103 > 79 characters)
+source/engine/strategy_engine.py:642:80: E501 line too long (86 > 79 characters)
+source/engine/strategy_engine.py:656:80: E501 line too long (109 > 79 characters)
+source/engine/strategy_engine.py:791:9: E265 block comment should start with '# '
+source/engine/strategy_engine.py:794:3: E114 indentation is not a multiple of four (comment)
+source/engine/strategy_engine.py:794:3: E265 block comment should start with '# '
+source/engine/strategy_engine.py:796:80: E501 line too long (97 > 79 characters)
+source/engine/strategy_engine.py:841:80: E501 line too long (103 > 79 characters)
+source/engine/strategy_engine.py:954:3: E114 indentation is not a multiple of four (comment)
+source/engine/strategy_engine.py:954:3: E265 block comment should start with '# '
+source/engine/strategy_engine.py:1063:13: F841 local variable 'e' is assigned to but never used
+source/engine/strategy_engine.py:1065:17: E265 block comment should start with '# '
+source/engine/strategy_engine.py:1065:80: E501 line too long (85 > 79 characters)
+source/engine/strategy_engine.py:1069:13: W291 trailing whitespace
+source/engine/strategy_engine.py:1118:80: E501 line too long (93 > 79 characters)
+source/gui/ui_main_window.py:6:1: F401 'requests' imported but unused
+source/gui/ui_main_window.py:88:1: W293 blank line contains whitespace
+source/gui/ui_main_window.py:137:80: E501 line too long (101 > 79 characters)
+source/gui/ui_main_window.py:138:80: E501 line too long (100 > 79 characters)
+source/gui/ui_main_window.py:139:80: E501 line too long (101 > 79 characters)
+source/gui/ui_main_window.py:144:80: E501 line too long (82 > 79 characters)
+source/gui/ui_main_window.py:146:80: E501 line too long (82 > 79 characters)
+source/gui/ui_main_window.py:152:80: E501 line too long (119 > 79 characters)
+source/gui/ui_main_window.py:153:32: E231 missing whitespace after ','
+source/gui/ui_main_window.py:154:9: E722 do not use bare 'except'
+source/gui/ui_main_window.py:158:5: E303 too many blank lines (2)
+source/gui/ui_main_window.py:185:80: E501 line too long (93 > 79 characters)
+source/gui/ui_main_window.py:199:80: E501 line too long (137 > 79 characters)
+source/gui/ui_main_window.py:213:80: E501 line too long (101 > 79 characters)
+source/gui/ui_main_window.py:214:80: E501 line too long (101 > 79 characters)
+source/gui/ui_main_window.py:215:80: E501 line too long (101 > 79 characters)
+source/gui/ui_main_window.py:217:80: E501 line too long (101 > 79 characters)
+source/gui/ui_main_window.py:218:80: E501 line too long (100 > 79 characters)
+source/gui/ui_main_window.py:219:80: E501 line too long (101 > 79 characters)
+source/gui/ui_main_window.py:276:69: E231 missing whitespace after ','
+source/gui/ui_main_window.py:276:80: E501 line too long (84 > 79 characters)
+source/gui/ui_main_window.py:280:69: E231 missing whitespace after ','
+source/gui/ui_main_window.py:280:80: E501 line too long (84 > 79 characters)
+source/gui/ui_main_window.py:284:67: E231 missing whitespace after ','
+source/gui/ui_main_window.py:284:80: E501 line too long (82 > 79 characters)
+source/gui/ui_main_window.py:288:65: E231 missing whitespace after ','
+source/gui/ui_main_window.py:288:80: E501 line too long (80 > 79 characters)
+source/gui/ui_main_window.py:292:68: E231 missing whitespace after ','
+source/gui/ui_main_window.py:292:80: E501 line too long (83 > 79 characters)
+source/gui/ui_main_window.py:296:67: E231 missing whitespace after ','
+source/gui/ui_main_window.py:296:80: E501 line too long (82 > 79 characters)
+source/gui/ui_main_window.py:300:64: E231 missing whitespace after ','
+source/gui/ui_main_window.py:304:71: E231 missing whitespace after ','
+source/gui/ui_main_window.py:304:80: E501 line too long (86 > 79 characters)
+source/gui/ui_main_window.py:310:9: E303 too many blank lines (2)
+source/gui/ui_main_window.py:322:30: E231 missing whitespace after ','
+source/gui/ui_main_window.py:324:45: W291 trailing whitespace
+source/gui/ui_main_window.py:328:37: E231 missing whitespace after ','
+source/gui/ui_main_window.py:330:48: W291 trailing whitespace
+source/gui/ui_main_window.py:334:36: E231 missing whitespace after ','
+source/gui/ui_main_window.py:336:45: W291 trailing whitespace
+source/gui/ui_main_window.py:340:35: E231 missing whitespace after ','
+source/gui/ui_main_window.py:342:48: W291 trailing whitespace
+source/gui/ui_main_window.py:344:38: W291 trailing whitespace
+source/gui/ui_main_window.py:346:34: E231 missing whitespace after ','
+source/gui/ui_main_window.py:348:46: W291 trailing whitespace
+source/gui/ui_main_window.py:350:36: W291 trailing whitespace
+source/gui/ui_main_window.py:352:33: E231 missing whitespace after ','
+source/gui/ui_main_window.py:354:60: W291 trailing whitespace
+source/gui/ui_main_window.py:356:50: W291 trailing whitespace
+source/gui/ui_main_window.py:358:30: E231 missing whitespace after ','
+source/gui/ui_main_window.py:360:62: W291 trailing whitespace
+source/gui/ui_main_window.py:364:33: E231 missing whitespace after ','
+source/gui/ui_main_window.py:366:65: W291 trailing whitespace
+source/gui/ui_main_window.py:425:9: E265 block comment should start with '# '
+source/gui/ui_main_window.py:425:80: E501 line too long (94 > 79 characters)
+source/gui/ui_main_window.py:430:80: E501 line too long (98 > 79 characters)
+source/gui/ui_main_window.py:477:80: E501 line too long (99 > 79 characters)
+source/gui/ui_main_window.py:529:80: E501 line too long (96 > 79 characters)
+source/gui/ui_main_window.py:534:37: W291 trailing whitespace
+source/gui/ui_main_window.py:542:80: E501 line too long (101 > 79 characters)
+source/gui/ui_main_window.py:543:80: E501 line too long (101 > 79 characters)
+source/gui/ui_main_window.py:544:80: E501 line too long (101 > 79 characters)
+source/gui/ui_dataview.py:51:1: E303 too many blank lines (3)
+source/gui/ui_dataview.py:113:1: E302 expected 2 blank lines, found 1
+source/gui/ui_dataview.py:124:1: E305 expected 2 blank lines after class or function definition, found 1
+source/gui/ui_dataview.py:170:48: W291 trailing whitespace
+source/gui/ui_dataview.py:171:80: E501 line too long (89 > 79 characters)
+source/gui/ui_dataview.py:171:81: E231 missing whitespace after ','
+source/gui/ui_dataview.py:247:80: E501 line too long (81 > 79 characters)
+source/gui/ui_dataview.py:260:80: E501 line too long (85 > 79 characters)
+source/gui/ui_dataview.py:280:67: E231 missing whitespace after ','
+source/gui/ui_dataview.py:280:74: E231 missing whitespace after ':'
+source/gui/ui_dataview.py:280:80: E501 line too long (94 > 79 characters)
+source/gui/ui_dataview.py:302:5: E303 too many blank lines (3)
+source/gui/ui_dataview.py:310:1: E303 too many blank lines (3)
+source/gui/ui_dataview.py:405:80: E501 line too long (120 > 79 characters)
+source/gui/ui_dataview.py:431:80: E501 line too long (82 > 79 characters)
+source/gui/__init__.py:2:24: W292 no newline at end of file
+source/gui/__init__.py:2:24: W292 no newline at end of file
+source/gui/__init__.py:2:24: W292 no newline at end of file
+source/gui/ui_bt_dataview.py:184:1: E302 expected 2 blank lines, found 1
+source/gui/ui_bt_dataview.py:195:1: E305 expected 2 blank lines after class or function definition, found 1
+source/gui/ui_bt_dataview.py:226:80: E501 line too long (133 > 79 characters)
+source/gui/ui_bt_dataview.py:375:80: E501 line too long (89 > 79 characters)
+source/gui/ui_bt_dataview.py:375:81: E231 missing whitespace after ','
+source/gui/ui_bt_dataview.py:379:80: E501 line too long (123 > 79 characters)
+source/gui/ui_bt_dataview.py:402:80: E501 line too long (81 > 79 characters)
+source/gui/ui_bt_dataview.py:442:67: E231 missing whitespace after ','
+source/gui/ui_bt_dataview.py:442:74: E231 missing whitespace after ':'
+source/gui/ui_bt_dataview.py:442:80: E501 line too long (94 > 79 characters)
+source/gui/ui_bt_dataview.py:460:1: W293 blank line contains whitespace
+source/gui/ui_bt_dataview.py:467:1: E302 expected 2 blank lines, found 1
+source/gui/ui_monitors.py:3:1: F401 'PyQt5.QtGui' imported but unused
+source/gui/ui_monitors.py:9:80: E501 line too long (84 > 79 characters)
+source/gui/ui_monitors.py:89:80: E501 line too long (81 > 79 characters)
+source/gui/ui_monitors.py:90:80: E501 line too long (81 > 79 characters)
+source/gui/ui_monitors.py:211:80: E501 line too long (84 > 79 characters)
+source/gui/ui_monitors.py:212:80: E501 line too long (83 > 79 characters)
+source/gui/ui_bt_txnview.py:121:80: E501 line too long (89 > 79 characters)
+source/gui/ui_bt_txnview.py:123:80: E501 line too long (92 > 79 characters)
+source/gui/ui_bt_txnview.py:125:80: E501 line too long (92 > 79 characters)
+source/gui/ui_bt_txnview.py:127:80: E501 line too long (93 > 79 characters)
+source/gui/ui_bt_txnview.py:132:80: E501 line too long (94 > 79 characters)
+source/gui/ui_bt_txnview.py:267:9: F841 local variable 'row' is assigned to but never used
+source/gui/ui_manual_window.py:143:9: E722 do not use bare 'except'
+source/gui/ui_manual_window.py:158:80: E501 line too long (143 > 79 characters)
+source/gui/ui_manual_window.py:160:80: E501 line too long (147 > 79 characters)
+source/gui/ui_manual_window.py:162:80: E501 line too long (166 > 79 characters)
+source/gui/ui_manual_window.py:164:80: E501 line too long (168 > 79 characters)
+source/gui/ui_manual_window.py:166:80: E501 line too long (160 > 79 characters)
+source/gui/ui_manual_window.py:168:80: E501 line too long (160 > 79 characters)
+source/gui/ui_manual_window.py:187:9: E722 do not use bare 'except'
+source/gui/ui_manual_window.py:197:80: E501 line too long (90 > 79 characters)
+source/gui/ui_manual_window.py:210:9: E722 do not use bare 'except'
+source/gui/ui_manual_window.py:229:9: E722 do not use bare 'except'
+source/gui/ui_manual_window.py:369:80: E501 line too long (84 > 79 characters)
+source/gui/ui_manual_window.py:385:80: E501 line too long (91 > 79 characters)
+source/gui/ui_manual_window.py:386:80: E501 line too long (91 > 79 characters)
+source/gui/ui_manual_window.py:387:80: E501 line too long (137 > 79 characters)
+source/gui/ui_manual_window.py:403:80: E501 line too long (112 > 79 characters)
+source/gui/ui_manual_window.py:404:80: E501 line too long (110 > 79 characters)
+source/gui/ui_manual_window.py:405:80: E501 line too long (154 > 79 characters)
+source/gui/ui_manual_window.py:415:80: E501 line too long (91 > 79 characters)
+source/gui/ui_manual_window.py:416:80: E501 line too long (95 > 79 characters)
+source/gui/ui_manual_window.py:417:80: E501 line too long (147 > 79 characters)
+source/gui/ui_manual_window.py:443:80: E501 line too long (106 > 79 characters)
+source/gui/ui_manual_window.py:444:80: E501 line too long (118 > 79 characters)
+source/gui/ui_manual_window.py:445:80: E501 line too long (159 > 79 characters)
+source/gui/ui_manual_window.py:459:80: E501 line too long (85 > 79 characters)
+source/gui/ui_manual_window.py:460:80: E501 line too long (123 > 79 characters)
+source/gui/ui_manual_window.py:546:80: E501 line too long (100 > 79 characters)
+source/gui/ui_manual_window.py:548:80: E501 line too long (93 > 79 characters)
+source/gui/ui_manual_window.py:550:80: E501 line too long (99 > 79 characters)
+source/gui/ui_manual_window.py:552:80: E501 line too long (89 > 79 characters)
+source/gui/ui_manual_window.py:554:80: E501 line too long (106 > 79 characters)
+source/gui/ui_manual_window.py:557:80: E501 line too long (112 > 79 characters)
+source/gui/ui_manual_window.py:559:80: E501 line too long (109 > 79 characters)
+source/gui/ui_manual_window.py:567:13: E722 do not use bare 'except'
+source/gui/ui_manual_window.py:575:80: E501 line too long (100 > 79 characters)
+source/gui/ui_manual_window.py:577:80: E501 line too long (93 > 79 characters)
+source/gui/ui_manual_window.py:579:80: E501 line too long (99 > 79 characters)
+source/gui/ui_manual_window.py:581:80: E501 line too long (89 > 79 characters)
+source/gui/ui_manual_window.py:583:80: E501 line too long (106 > 79 characters)
+source/gui/ui_manual_window.py:586:80: E501 line too long (112 > 79 characters)
+source/gui/ui_manual_window.py:588:80: E501 line too long (109 > 79 characters)
+source/gui/ui_manual_window.py:596:13: E722 do not use bare 'except'
+source/gui/ui_manual_window.py:601:80: E501 line too long (100 > 79 characters)
+source/gui/ui_manual_window.py:661:80: E501 line too long (106 > 79 characters)
+source/gui/ui_manual_window.py:669:80: E501 line too long (94 > 79 characters)
+source/gui/ui_manual_window.py:710:80: E501 line too long (85 > 79 characters)
+source/gui/ui_manual_window.py:712:80: E501 line too long (85 > 79 characters)
+source/gui/ui_manual_window.py:716:80: E501 line too long (80 > 79 characters)
+source/gui/ui_manual_window.py:719:9: E722 do not use bare 'except'
+source/gui/ui_manual_window.py:746:1: W391 blank line at end of file
+source/gui/ui_strategy_window.py:59:80: E501 line too long (103 > 79 characters)
+source/gui/ui_strategy_window.py:71:80: E501 line too long (86 > 79 characters)
+source/gui/ui_strategy_window.py:85:80: E501 line too long (109 > 79 characters)
+source/gui/ui_strategy_window.py:220:80: E501 line too long (95 > 79 characters)
+source/gui/ui_strategy_window.py:222:80: E501 line too long (83 > 79 characters)
+source/gui/ui_strategy_window.py:230:80: E501 line too long (90 > 79 characters)
+source/gui/ui_strategy_window.py:242:80: E501 line too long (98 > 79 characters)
+source/gui/ui_strategy_window.py:249:80: E501 line too long (89 > 79 characters)
+source/gui/ui_strategy_window.py:292:80: E501 line too long (80 > 79 characters)
+source/gui/ui_strategy_window.py:302:80: E501 line too long (80 > 79 characters)
+source/gui/ui_strategy_window.py:311:80: E501 line too long (93 > 79 characters)
+source/gui/ui_strategy_window.py:313:80: E501 line too long (84 > 79 characters)
+source/gui/ui_strategy_window.py:314:80: E501 line too long (87 > 79 characters)
+source/gui/ui_strategy_window.py:317:80: E501 line too long (85 > 79 characters)
+source/gui/ui_strategy_window.py:345:80: E501 line too long (92 > 79 characters)
+source/gui/ui_strategy_window.py:348:80: E501 line too long (89 > 79 characters)
+source/gui/ui_strategy_window.py:350:80: E501 line too long (81 > 79 characters)
+source/gui/ui_strategy_window.py:411:80: E501 line too long (105 > 79 characters)
+source/gui/ui_strategy_window.py:478:80: E501 line too long (80 > 79 characters)
+source/gui/ui_strategy_window.py:479:80: E501 line too long (128 > 79 characters)
+source/gui/ui_basic.py:184:50: W291 trailing whitespace
+source/gui/ui_basic.py:356:80: E501 line too long (86 > 79 characters)
+source/gui/ui_basic.py:385:80: E501 line too long (96 > 79 characters)
+source/gui/ui_basic.py:437:80: E501 line too long (83 > 79 characters)
+source/gui/ui_basic.py:452:80: E501 line too long (89 > 79 characters)
+source/gui/ui_basic.py:453:80: E501 line too long (109 > 79 characters)
+source/gui/ui_basic.py:488:17: F841 local variable 'sign' is assigned to but never used
+source/gui/ui_bt_setting.py:8:1: F401 'PyQt5.Qt' imported but unused
+source/gui/ui_bt_setting.py:17:1: F401 'source.common.datastruct.HistoryRequest' imported but unused
+source/gui/ui_bt_setting.py:19:80: E501 line too long (80 > 79 characters)
+source/gui/ui_bt_setting.py:21:1: F401 'source.gui.ui_basic.VerticalTabBar' imported but unused
+source/gui/ui_bt_setting.py:94:80: E501 line too long (103 > 79 characters)
+source/gui/ui_bt_setting.py:106:80: E501 line too long (86 > 79 characters)
+source/gui/ui_bt_setting.py:120:80: E501 line too long (109 > 79 characters)
+source/gui/ui_bt_setting.py:248:5: E303 too many blank lines (5)
+source/gui/ui_bt_setting.py:326:5: E303 too many blank lines (2)
+source/gui/ui_bt_setting.py:586:1: W293 blank line contains whitespace
+source/gui/ui_bt_setting.py:729:80: E501 line too long (82 > 79 characters)
+source/gui/ui_bt_setting.py:767:80: E501 line too long (131 > 79 characters)
+source/gui/ui_bt_setting.py:774:80: E501 line too long (131 > 79 characters)
+source/gui/ui_bt_setting.py:787:80: E501 line too long (90 > 79 characters)
+source/gui/ui_bt_setting.py:790:80: E501 line too long (120 > 79 characters)
+source/gui/ui_bt_setting.py:795:80: E501 line too long (90 > 79 characters)
+source/gui/ui_bt_setting.py:798:80: E501 line too long (120 > 79 characters)
+source/gui/ui_bt_setting.py:815:33: E231 missing whitespace after ':'
+source/gui/ui_bt_setting.py:815:45: E231 missing whitespace after ','
+source/gui/ui_bt_setting.py:815:53: E231 missing whitespace after ':'
+source/gui/ui_bt_setting.py:815:59: E231 missing whitespace after ','
+source/gui/ui_bt_setting.py:815:65: E231 missing whitespace after ':'
+source/gui/ui_bt_setting.py:821:12: E111 indentation is not a multiple of four
+source/gui/ui_bt_setting.py:822:14: W291 trailing whitespace
+source/gui/ui_bt_setting.py:837:80: E501 line too long (119 > 79 characters)
+source/gui/ui_bt_setting.py:840:80: E501 line too long (129 > 79 characters)
+source/gui/ui_bt_setting.py:841:80: E501 line too long (135 > 79 characters)
+source/gui/ui_bt_setting.py:927:80: E501 line too long (125 > 79 characters)
+source/gui/ui_bt_setting.py:928:80: E501 line too long (131 > 79 characters)
+source/gui/ui_bt_setting.py:982:80: E501 line too long (125 > 79 characters)
+source/gui/ui_bt_setting.py:983:80: E501 line too long (131 > 79 characters)
+source/gui/ui_bt_setting.py:1433:42: W291 trailing whitespace
+source/gui/ui_bt_setting.py:1441:5: E301 expected 1 blank line, found 0
+source/gui/ui_bt_setting.py:1467:15: W291 trailing whitespace
+source/gui/ui_bt_setting.py:1482:9: F841 local variable 'row' is assigned to but never used
+source/gui/ui_bt_setting.py:1485:27: E231 missing whitespace after ':'
+source/gui/ui_bt_setting.py:1504:43: W291 trailing whitespace
+source/gui/ui_bt_setting.py:1517:5: E303 too many blank lines (2)
+source/gui/ui_bt_setting.py:1521:45: W292 no newline at end of file
+source/gui/ui_common_widget.py:399:29: E231 missing whitespace after ','
+source/gui/ui_common_widget.py:441:80: E501 line too long (81 > 79 characters)
+source/gui/ui_common_widget.py:806:80: E501 line too long (80 > 79 characters)
+source/gui/ui_common_widget.py:807:80: E501 line too long (127 > 79 characters)
+source/gui/ui_common_widget.py:862:80: E501 line too long (80 > 79 characters)
+source/gui/ui_common_widget.py:864:80: E501 line too long (90 > 79 characters)
+source/gui/ui_common_widget.py:872:80: E501 line too long (80 > 79 characters)
+source/gui/ui_common_widget.py:874:80: E501 line too long (90 > 79 characters)
+source/gui/ui_common_widget.py:1025:80: E501 line too long (95 > 79 characters)
+source/gui/ui_common_widget.py:1059:80: E501 line too long (96 > 79 characters)
+source/gui/ui_common_widget.py:1191:51: W291 trailing whitespace
+source/gui/ui_common_widget.py:1198:1: W293 blank line contains whitespace
+source/gui/ui_bt_resultsoverview.py:3:1: F401 'PyQt5.QtCore' imported but unused
+source/gui/ui_bt_resultsoverview.py:3:1: F401 'PyQt5.QtWidgets' imported but unused
+source/gui/ui_bt_resultsoverview.py:3:1: F401 'PyQt5.QtGui' imported but unused
+source/api/__init__.py:2:24: W292 no newline at end of file
+source/api/__init__.py:2:24: W292 no newline at end of file
+source/api/__init__.py:2:24: W292 no newline at end of file
+source/trade/__init__.py:2:24: W292 no newline at end of file
+source/trade/__init__.py:2:24: W292 no newline at end of file
+source/trade/__init__.py:2:24: W292 no newline at end of file
+source/trade/portfolio_manager.py:8:80: E501 line too long (99 > 79 characters)
+source/trade/portfolio_manager.py:12:80: E501 line too long (85 > 79 characters)
+source/trade/portfolio_manager.py:112:80: E501 line too long (87 > 79 characters)
+source/trade/portfolio_manager.py:211:80: E501 line too long (86 > 79 characters)
+source/trade/portfolio_manager.py:214:13: E265 block comment should start with '# '
+source/trade/portfolio_manager.py:217:80: E501 line too long (90 > 79 characters)
+source/trade/portfolio_manager.py:220:13: E265 block comment should start with '# '
+source/trade/portfolio_manager.py:369:80: E501 line too long (87 > 79 characters)

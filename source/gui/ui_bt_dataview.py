@@ -181,6 +181,16 @@ class VolumeAxis(pg.AxisItem):
             ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
         ]
 
+class OpenInterestAxis(pg.AxisItem):
+    def __init__(self):
+        super().__init__(orientation='left')
+        self.style.update({'textFillLimits': [(0, 0.8)]})
+
+    def tickStrings(self, vals, scale, spacing):
+        digts = max(0, np.ceil(-np.log10(spacing * scale)))
+        return [
+            ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
+        ]
 
 CHART_MARGINS = (0, 0, 20, 10)
 
@@ -218,7 +228,7 @@ class BTQuotesChart(QtGui.QWidget):
         self.load_bar(start, end, interval, datasource)
         self.klineitem.generatePicture()
         self.volumeitem.generatePicture()
-        self.oicurve.setData([bar.open_price for bar in self.data])
+        self.oicurve.setData([bar.open_interest for bar in self.data])
         if self.signals_group_arrow:
             self.chart.removeItem(self.signals_group_arrow)
             del self.signals_group_arrow
@@ -362,7 +372,7 @@ class BTQuotesChart(QtGui.QWidget):
         )
         self.klineitem = CandlestickItem(self.data)
         self.volumeitem = VolumeItem(self.data)
-        self.oicurve = pg.PlotCurveItem([bar.open_price for bar in self.data],pen='w')
+        self.oicurve = pg.PlotCurveItem([bar.open_interest for bar in self.data],pen='w')
         self.init_chart()
         self.init_chart_item()
 
@@ -429,7 +439,7 @@ class BTQuotesChart(QtGui.QWidget):
         self.chart.sigXRangeChanged.connect(self.update_yrange_limits)
         self.chartv = pg.PlotWidget(
             parent=self.splitter,
-            axisItems={'bottom': self.xaxis, 'right': VolumeAxis()},
+            axisItems={'bottom': self.xaxis, 'right': VolumeAxis(),'left':OpenInterestAxis()},
             enableMenu=True,
         )
         self.chartv.getPlotItem().setContentsMargins(0, 0, 15, 15)

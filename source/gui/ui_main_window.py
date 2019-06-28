@@ -6,7 +6,7 @@ from datetime import datetime
 import requests
 import itchat
 from source.common.constant import EventType
-
+import pyqtgraph.console
 
 # from source.trade.order_manager import OrderManager
 from source.trade.risk_manager import PassThroughRiskManager
@@ -84,7 +84,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.recorder_manager.signal_recorder_out.connect(
             self._outgoing_general_request_handler)
         self.data_downloader = DataDownloaderWidget()
-
+        self.pgconsole = pyqtgraph.console.ConsoleWidget()
+        
         # 8. client mq
         self._client_mq = ClientMq(
             self._config_server, self._events_engine, self._outgoing_queue)
@@ -266,6 +267,9 @@ class MainWindow(QtWidgets.QMainWindow):
         tool_datadownloader = QtWidgets.QAction('Data Downloader', self)
         tool_datadownloader.triggered.connect(self.data_downloader.show)
         toolMenu.addAction(tool_datadownloader)
+        tool_pgconsole = QtWidgets.QAction('Python Console', self)
+        tool_pgconsole.triggered.connect(self.pgconsole.show)
+        toolMenu.addAction(tool_pgconsole)
 
         # view menu
         viewMenu = menubar.addMenu('View')

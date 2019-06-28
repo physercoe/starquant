@@ -4,13 +4,14 @@
 import source.common.sqglobal as sqglobal
 import sys
 import os
-
+import numpy as np
 from PyQt5 import QtCore, QtWidgets, QtGui, Qt
 import importlib
 import traceback
 from datetime import datetime, timedelta
 from threading import Thread
 from pathlib import Path
+from collections import defaultdict
 
 from source.common.constant import Interval, EventType
 from source.common.datastruct import HistoryRequest, Event
@@ -180,6 +181,70 @@ class Backtester:
             event = Event(type=EventType.BACKTEST_FINISH)
             self.event_engine.put(event)
 
+    def run_batch_bt(
+        self,
+        class_name: str,
+        settinglist: dict,
+        interval: str,
+        rate: float,
+        slippage: float,
+        size: int,
+        pricetick: float,
+        capital: int,
+        setting: dict,
+        datasource: str = "DataBase"
+    ):
+        """"""
+        self.result_df = None
+        self.result_statistics = None
+
+        engine = self.backtesting_engine
+        engine.clear_data()
+
+        strategy_class = self.classes[class_name]
+        engine.add_strategy(
+            strategy_class,
+            setting
+        )
+        fsmlist = settinglist['full_symbol']
+        startlist = settinglist['start']
+        endlist = settinglist['end']
+
+        for i in range(len(fsmlist)):
+            full_symbol = fsmlist[i]
+            start = startlist[i]
+            end = endlist[i]
+            engine.set_parameters(
+                full_symbol=full_symbol,
+                interval=interval,
+                start=start,
+                end=end,
+                rate=rate,
+                slippage=slippage,
+                size=size,
+                pricetick=pricetick,
+                capital=capital
+            )
+
+            engine.load_data(datasource)
+            engine.run_backtesting()
+
+        self.result_df = engine.calculate_result()
+        self.result_statistics = engine.calculate_statistics(output=False)
+        self.result_trades = engine.get_all_trades()
+        self.result_dailys = engine.get_all_daily_results()
+        # Clear thread object handler.
+        self.thread = None
+
+        # Put backtesting done event
+        if self.event_engine:
+            event = Event(type=EventType.BACKTEST_FINISH)
+            self.event_engine.put(event)
+
+
+
+
+
     def start_backtesting(
         self,
         class_name: str,
@@ -220,6 +285,43 @@ class Backtester:
         self.thread.start()
 
         return True
+
+    def start_batch_bt(
+        self,
+        class_name: str,
+        btsettinglist: dict,
+        interval: str,
+        rate: float,
+        slippage: float,
+        size: int,
+        pricetick: float,
+        capital: int,
+        setting: dict,
+        datasource: str = "DataBase"
+    ):
+        if self.thread:
+            self.write_log("已有任务在运行中，请等待完成")
+            return False
+        self.write_log("-" * 40)
+        self.thread = Thread(
+            target=self.run_batch_bt,
+            args=(
+                class_name,
+                btsettinglist,
+                interval,
+                rate,
+                slippage,
+                size,
+                pricetick,
+                capital,
+                setting,
+                datasource
+            )
+        )
+        self.thread.start()
+
+        return True
+
 
     def get_result_df(self):
         """"""
@@ -481,6 +583,18 @@ class BacktesterManager(QtWidgets.QWidget):
         hbox3.addWidget(self.start_date_edit)
         hbox3.addWidget(QtWidgets.QLabel('结束日期'))
         hbox3.addWidget(self.end_date_edit)
+        
+        self.batchmode = QtWidgets.QCheckBox("批量回测模式")
+        self.batchadd = QtWidgets.QPushButton("添加")
+        self.batchedit = QtWidgets.QPushButton("查看/编辑")
+        self.batchtable = BatchTable()
+        self.batchadd.clicked.connect(self.batchaddsetting)
+        self.batchedit.clicked.connect(self.batchtable.show)
+
+        hbox31 = QtWidgets.QHBoxLayout()
+        hbox31.addWidget(self.batchmode)
+        hbox31.addWidget(self.batchadd)
+        hbox31.addWidget(self.batchedit)
 
         hbox4 = QtWidgets.QHBoxLayout()
         hbox4.addWidget(QtWidgets.QLabel('手续费率'))
@@ -529,6 +643,7 @@ class BacktesterManager(QtWidgets.QWidget):
         form.addRow(hbox11)
         form.addRow(hbox2)
         form.addRow(hbox3)
+        form.addRow(hbox31)
         form.addRow(hbox4)
         form.addRow(hbox5)
         form.addRow(hbox52)
@@ -691,29 +806,79 @@ class BacktesterManager(QtWidgets.QWidget):
         self.class_combo.clear()
         self.class_combo.addItems(self.class_names)
 
-    def start_backtesting(self):
-        """"""
-        class_name = self.class_combo.currentText()
+    def batchaddsetting(self):
         full_symbol = self.symbol_line.text()
-        interval = self.interval_combo.currentText()
         start = self.start_date_edit.date().toPyDate()
         end = self.end_date_edit.date().toPyDate()
+        setting = {'full_symbol':full_symbol,'start':start,'end':end}
+        self.batchtable.add_data(setting)
+
+    def start_backtesting(self):
+        """"""
+        if self.batchmode.isChecked():
+           self.start_batch_bt()
+        else: 
+            class_name = self.class_combo.currentText()
+            full_symbol = self.symbol_line.text()
+            interval = self.interval_combo.currentText()
+            start = self.start_date_edit.date().toPyDate()
+            end = self.end_date_edit.date().toPyDate()
+            rate = float(self.rate_line.text())
+            slippage = float(self.slippage_line.text())
+            size = float(self.size_line.text())
+            pricetick = float(self.pricetick_line.text())
+            capital = float(self.capital_line.text())
+            datasource = self.data_source.currentText()
+
+            if end <= start:
+                QtWidgets.QMessageBox().information(None, 'Error',
+                                                    'End date should later than start date!', QtWidgets.QMessageBox.Ok)
+                return
+            if (end - start) > timedelta(days=90) and interval == 'tick':
+                mbox = QtWidgets.QMessageBox().question(None, 'Warning', 'Two many data will slow system performance, continue?',
+                                                        QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+                if mbox == QtWidgets.QMessageBox.No:
+                    return
+
+            old_setting = self.settings[class_name]
+            dialog = BacktestingSettingEditor(class_name, old_setting)
+            i = dialog.exec()
+            if i != dialog.Accepted:
+                return
+
+            new_setting = dialog.get_setting()
+            self.settings[class_name] = new_setting
+
+            result = self.backtester_engine.start_backtesting(
+                class_name,
+                full_symbol,
+                interval,
+                start,
+                end,
+                rate,
+                slippage,
+                size,
+                pricetick,
+                capital,
+                new_setting,
+                datasource
+            )
+
+            if result:
+                self.statistics_monitor.clear_data()
+                self.txnstatics_monitor.clear_data()
+                self.overviewchart.clear_data()
+
+    def start_batch_bt(self):
+        batchsettinglist = self.batchtable.get_data()
+        class_name = self.class_combo.currentText()
+        interval = self.interval_combo.currentText()
         rate = float(self.rate_line.text())
         slippage = float(self.slippage_line.text())
         size = float(self.size_line.text())
         pricetick = float(self.pricetick_line.text())
         capital = float(self.capital_line.text())
         datasource = self.data_source.currentText()
-
-        if end <= start:
-            QtWidgets.QMessageBox().information(None, 'Error',
-                                                'End date should later than start date!', QtWidgets.QMessageBox.Ok)
-            return
-        if (end - start) > timedelta(days=90) and interval == 'tick':
-            mbox = QtWidgets.QMessageBox().question(None, 'Warning', 'Two many data will slow system performance, continue?',
-                                                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
-            if mbox == QtWidgets.QMessageBox.No:
-                return
 
         old_setting = self.settings[class_name]
         dialog = BacktestingSettingEditor(class_name, old_setting)
@@ -724,12 +889,10 @@ class BacktesterManager(QtWidgets.QWidget):
         new_setting = dialog.get_setting()
         self.settings[class_name] = new_setting
 
-        result = self.backtester_engine.start_backtesting(
+        result = self.backtester_engine.start_batch_bt(
             class_name,
-            full_symbol,
+            batchsettinglist,
             interval,
-            start,
-            end,
             rate,
             slippage,
             size,
@@ -1263,3 +1426,100 @@ class TxnStatisticsMonitor(QtWidgets.QTableWidget):
         for key, cell in self.cells.items():
             value = data.get(key, "")
             cell.setText(str(value))
+
+
+class BatchTable(QtWidgets.QTableWidget):    
+    cols = np.array(
+        [
+            ('合约全称', 'full_symbol'),
+            ('起始日期', 'start'),
+            ('结束日期', 'end')
+        ]
+    )
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("批量回测设置")
+        self.setSortingEnabled(True)
+        self.setColumnCount(len(self.cols))
+        self.setHorizontalHeaderLabels(self.cols[:, 0])
+        self.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.verticalHeader().hide()
+        self.itemDoubleClicked.connect(self.show_data)
+        self.init_menu()
+        self.setMinimumHeight(450)
+        self.setMinimumWidth(450)
+    def init_menu(self):
+        self.menu = QtWidgets.QMenu(self)
+
+        delete_action = QtWidgets.QAction("删除选定行", self)
+        delete_action.triggered.connect(self.deleterows)
+        self.menu.addAction(delete_action)
+        clear_action = QtWidgets.QAction("清空", self)
+        clear_action.triggered.connect(self.cleardata)
+        self.menu.addAction(clear_action)
+
+    def cleardata(self):
+        self.setRowCount(0)
+
+    def deleterows(self):
+        """
+        delete 
+        """
+        curow = self.currentRow()
+        selections = self.selectionModel()
+        selectedsList = selections.selectedRows()
+        rows = []
+        for r in selectedsList:
+            rows.append(r.row())
+        if len(rows) == 0 and curow >= 0:
+            rows.append(curow)
+        rows.reverse()
+        for i in rows:
+            self.removeRow(i)
+
+    def show_data(self, item):
+        row = item.row()
+        pass
+
+    def add_data(self, set:dict):
+        if not set:
+            return
+        self.setSortingEnabled(False)
+        self.insertRow(0)
+        for icol, col in enumerate(self.cols[:, 1]):
+            if col == 'start' or col == 'end':
+                val = set[col].strftime('%Y-%m-%d')
+            else:
+                val = set[col]
+            item = QtWidgets.QTableWidgetItem(val)
+            align = QtCore.Qt.AlignVCenter
+            item.setTextAlignment(align)
+            item.setFlags(
+                QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled
+            )
+            self.setItem(0, icol, item)
+        self.setSortingEnabled(True)
+        self.sortItems(1,QtCore.Qt.AscendingOrder)
+
+    def get_data(self):
+        settinglist = defaultdict(list)
+        self.setSortingEnabled(False)
+        for row in range(self.rowCount()):            
+            for icol, col in enumerate(self.cols[:, 1]):
+                item = self.item(row, icol)
+                if item:
+                    if col == 'start' or col == 'end':
+                        timestr = str(item.text())
+                        dt = datetime.strptime(timestr, "%Y-%m-%d")
+                        settinglist[col].append(dt.date())
+                    else:
+                        settinglist[col].append(str(item.text()))
+        self.setSortingEnabled(True)            
+        return settinglist
+
+
+    def contextMenuEvent(self, event):
+        """
+        Show menu with right click.
+        """
+        self.menu.popup(QtGui.QCursor.pos())

@@ -318,7 +318,6 @@ class MongoManager(BaseDatabaseManager):
             updates.pop("set__gateway_name")
             updates.pop("set__vt_symbol")
             updates.pop("set__depth")
-            updates.pop("set__open_interest")
             updates.pop("set__full_symbol")
             updates.pop("set__timestamp")
             (

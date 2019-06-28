@@ -141,13 +141,13 @@ class CsvTickLoader(QtCore.QObject):
                     symbol=self.symbol,
                     exchange=self.exchange,
                     datetime=dt,
-                    volume=int(item[self.volume_head]),
+                    volume=int(float(item[self.volume_head])),
                     last_price=float(item[self.lastprice_head]),
-                    open_interest=int(item[self.openinterest_head]),
+                    open_interest=int(float(item[self.openinterest_head])),
                     ask_price_1=float(item[self.askprice1_head]),
-                    ask_volume_1=int(item[self.askvolume1_head]),
+                    ask_volume_1=int(float(item[self.askvolume1_head])),
                     bid_price_1=float(item[self.bidprice1_head]),
-                    bid_volume_1=int(item[self.bidvolume1_head]),
+                    bid_volume_1=int(float(item[self.bidvolume1_head])),
                     depth=1,
                     gateway_name="DB",
                 )
@@ -201,6 +201,7 @@ class CsvBarLoader(QtCore.QObject):
                  low_head: str,
                  close_head: str,
                  volume_head: str,
+                 openinterest_head: str,
                  datetime_format: str,
                  saveto: str = 'DataBase'):
         super(CsvBarLoader, self).__init__()
@@ -214,6 +215,7 @@ class CsvBarLoader(QtCore.QObject):
         self.low_head = low_head
         self.close_head = close_head
         self.volume_head = volume_head
+        self.openinterest_head = openinterest_head
         self.datetime_format = datetime_format
         self.saveto = saveto
         self.startsig.connect(self.run)
@@ -252,7 +254,8 @@ class CsvBarLoader(QtCore.QObject):
                     exchange=self.exchange,
                     datetime=dt,
                     interval=self.interval,
-                    volume=int(item[self.volume_head]),
+                    volume=int(float(item[self.volume_head])),
+                    open_interest=int(float(item[self.openinterest_head])),
                     open_price=float(item[self.open_head]),
                     high_price=float(item[self.high_head]),
                     low_price=float(item[self.low_head]),
@@ -352,6 +355,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         self.low_edit = QtWidgets.QLineEdit("Low")
         self.close_edit = QtWidgets.QLineEdit("Close")
         self.volume_edit = QtWidgets.QLineEdit("Volume")
+        self.open_interest_edit = QtWidgets.QLineEdit("Openinterest")
 
         self.tick_last_price = QtWidgets.QLineEdit("Lastprice")
         self.tick_volume = QtWidgets.QLineEdit("Volume")
@@ -392,6 +396,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         formbar.addRow("最低价", self.low_edit)
         formbar.addRow("收盘价", self.close_edit)
         formbar.addRow("成交量", self.volume_edit)
+        formbar.addRow("持仓量",self.open_interest_edit)
         barwidget.setLayout(formbar)
         barwidget.setContentsMargins(0, 0, 0, 0)
 
@@ -497,6 +502,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
             high_head = self.high_edit.text()
             close_head = self.close_edit.text()
             volume_head = self.volume_edit.text()
+            openinterest_head = self.open_interest_edit.text()
             alreadyhas = bool(sqglobal.history_bar[symbol])
             if alreadyhas:
                 QtWidgets.QMessageBox().information(
@@ -516,6 +522,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
                 low_head,
                 close_head,
                 volume_head,
+                openinterest_head,
                 datetime_format,
                 saveto
             )
