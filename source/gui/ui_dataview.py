@@ -200,7 +200,7 @@ class QuotesChart(QtGui.QWidget):
         self.data.append(bar)
         self.klineitem.on_bar(bar)
         self.volumeitem.on_bar(bar)
-        self.oicurve.setData([bar.open_interest for bar in self.data])
+        self.oicurve.setData([abar.open_interest for abar in self.data])
         # self.xaxis.on_bar(bar)
         # self.tmax += 1
         # self.pmax = max(self.pmax,bar.high_price)
