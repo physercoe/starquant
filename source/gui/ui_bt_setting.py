@@ -200,12 +200,8 @@ class Backtester:
 
         engine = self.backtesting_engine
         engine.clear_data()
-
         strategy_class = self.classes[class_name]
-        engine.add_strategy(
-            strategy_class,
-            setting
-        )
+
         fsmlist = settinglist['full_symbol']
         startlist = settinglist['start']
         endlist = settinglist['end']
@@ -224,6 +220,11 @@ class Backtester:
                 size=size,
                 pricetick=pricetick,
                 capital=capital
+            )
+            
+            engine.add_strategy(
+                strategy_class,
+                setting
             )
 
             engine.load_data(datasource)
