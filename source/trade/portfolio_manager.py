@@ -207,17 +207,17 @@ class PositionHolding:
         self.long_pos = self.long_td + self.long_yd
         self.short_pos = self.short_td + self.short_yd
         if self.long_pos:
-            self.long_price = (old_long_pos*self.long_price +
-                               (self.long_pos-old_long_pos)*trade.price)/self.long_pos
+            self.long_price = (old_long_pos * self.long_price +
+                               (self.long_pos - old_long_pos) * trade.price) / self.long_pos
         else:
             pass
-            #self.long_price = 0.0
+            # self.long_price = 0.0
         if self.short_pos:
-            self.short_price = (old_short_pos*self.short_price +
-                                (self.short_pos-old_short_pos)*trade.price)/self.short_pos
+            self.short_price = (old_short_pos * self.short_price +
+                                (self.short_pos - old_short_pos) * trade.price) / self.short_pos
         else:
             pass
-            #self.short_price = 0.0
+            # self.short_price = 0.0
 
     def calculate_frozen(self):
         """"""

@@ -172,7 +172,7 @@ class CsvTickLoader(QtCore.QObject):
         elif self.saveto == 'DataBase':
             database_manager.save_tick_data(ticks)
         endtime = ttime()
-        totalloadtime = int(endtime-starttime)
+        totalloadtime = int(endtime - starttime)
         if start and end and count:
             msg = f"\
                 CSV载入Tick成功\n\
@@ -286,7 +286,7 @@ class CsvBarLoader(QtCore.QObject):
         elif self.saveto == 'DataBase':
             database_manager.save_bar_data(bars)
         endtime = ttime()
-        totalloadtime = int(endtime-starttime)
+        totalloadtime = int(endtime - starttime)
         if start and end and count:
             msg = f"\
                 CSV载入Bar成功\n\
@@ -396,7 +396,7 @@ class CsvLoaderWidget(QtWidgets.QWidget):
         formbar.addRow("最低价", self.low_edit)
         formbar.addRow("收盘价", self.close_edit)
         formbar.addRow("成交量", self.volume_edit)
-        formbar.addRow("持仓量",self.open_interest_edit)
+        formbar.addRow("持仓量", self.open_interest_edit)
         barwidget.setLayout(formbar)
         barwidget.setContentsMargins(0, 0, 0, 0)
 

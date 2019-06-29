@@ -742,5 +742,3 @@ class ItchatMsgThread(QtCore.QThread):
                 self.wechatcmd.emit(sqglobal.wxcmd)
                 sqglobal.wxcmd = ''
             self.sleep(1)
-
-

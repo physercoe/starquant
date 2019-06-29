@@ -328,7 +328,7 @@ class StrategyEngine(BaseEngine):
 
     def process_strategycontrol_event(self, event: Event):
         msgtype = event.msg_type
-        deslist = ['@*', str(self.id), '@'+str(self.id)]
+        deslist = ['@*', str(self.id), '@' + str(self.id)]
         if (event.destination not in deslist):
             return
         elif (msgtype == MSG_TYPE.MSG_TYPE_STRATEGY_STATUS):
@@ -528,7 +528,7 @@ class StrategyEngine(BaseEngine):
         self._send_sock.send(m.serialize())
 
         m = Event(type=EventType.QRY,
-                    msgtype=MSG_TYPE.MSG_TYPE_QRY_ACCOUNT)
+                  msgtype=MSG_TYPE.MSG_TYPE_QRY_ACCOUNT)
         m.destination = strategy.api + '.' + strategy.account
         m.source = str(self.id)
         self._send_sock.send(m.serialize())
@@ -815,7 +815,7 @@ class StrategyEngine(BaseEngine):
 
         tradedays = abs(days)
         weekday = datetime.now().weekday()
-        adddays = 2 if (days-weekday > 0) else 0
+        adddays = 2 if (days - weekday > 0) else 0
         if weekday == 6:
             tradedays = days + 1
         else:
@@ -841,7 +841,7 @@ class StrategyEngine(BaseEngine):
     def load_tick(self, full_symbol: str, days: int, callback: Callable, datasource: str = 'DataBase'):
         tradedays = abs(days)
         weekday = datetime.now().weekday()
-        adddays = 2 if (days-weekday > 0) else 0
+        adddays = 2 if (days - weekday > 0) else 0
         if weekday == 6:
             tradedays = days + 1
         else:

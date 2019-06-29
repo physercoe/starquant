@@ -241,10 +241,6 @@ class Backtester:
             event = Event(type=EventType.BACKTEST_FINISH)
             self.event_engine.put(event)
 
-
-
-
-
     def start_backtesting(
         self,
         class_name: str,
@@ -259,7 +255,7 @@ class Backtester:
         capital: int,
         setting: dict,
         datasource: str = "DataBase"
-    ):
+    ):        
         if self.thread:
             self.write_log("已有任务在运行中，请等待完成")
             return False
@@ -321,7 +317,6 @@ class Backtester:
         self.thread.start()
 
         return True
-
 
     def get_result_df(self):
         """"""
@@ -525,9 +520,11 @@ class BacktesterManager(QtWidgets.QWidget):
                 start_dt.day
             )
         )
+        self.start_date_edit.setCalendarPopup(True)
         self.end_date_edit = QtWidgets.QDateEdit(
             QtCore.QDate.currentDate()
         )
+        self.end_date_edit.setCalendarPopup(True)
 
         self.rate_line = QtWidgets.QLineEdit("0.0002")
         self.slippage_line = QtWidgets.QLineEdit("0")
@@ -583,7 +580,7 @@ class BacktesterManager(QtWidgets.QWidget):
         hbox3.addWidget(self.start_date_edit)
         hbox3.addWidget(QtWidgets.QLabel('结束日期'))
         hbox3.addWidget(self.end_date_edit)
-        
+
         self.batchmode = QtWidgets.QCheckBox("批量回测模式")
         self.batchadd = QtWidgets.QPushButton("添加")
         self.batchedit = QtWidgets.QPushButton("查看/编辑")
@@ -810,14 +807,14 @@ class BacktesterManager(QtWidgets.QWidget):
         full_symbol = self.symbol_line.text()
         start = self.start_date_edit.date().toPyDate()
         end = self.end_date_edit.date().toPyDate()
-        setting = {'full_symbol':full_symbol,'start':start,'end':end}
+        setting = {'full_symbol': full_symbol, 'start': start, 'end': end}
         self.batchtable.add_data(setting)
 
     def start_backtesting(self):
         """"""
         if self.batchmode.isChecked():
-           self.start_batch_bt()
-        else: 
+            self.start_batch_bt()
+        else:
             class_name = self.class_combo.currentText()
             full_symbol = self.symbol_line.text()
             interval = self.interval_combo.currentText()
@@ -1428,7 +1425,7 @@ class TxnStatisticsMonitor(QtWidgets.QTableWidget):
             cell.setText(str(value))
 
 
-class BatchTable(QtWidgets.QTableWidget):    
+class BatchTable(QtWidgets.QTableWidget):
     cols = np.array(
         [
             ('合约全称', 'full_symbol'),
@@ -1436,6 +1433,7 @@ class BatchTable(QtWidgets.QTableWidget):
             ('结束日期', 'end')
         ]
     )
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("批量回测设置")
@@ -1448,6 +1446,7 @@ class BatchTable(QtWidgets.QTableWidget):
         self.init_menu()
         self.setMinimumHeight(450)
         self.setMinimumWidth(450)
+
     def init_menu(self):
         self.menu = QtWidgets.QMenu(self)
 
@@ -1481,7 +1480,7 @@ class BatchTable(QtWidgets.QTableWidget):
         row = item.row()
         pass
 
-    def add_data(self, set:dict):
+    def add_data(self, set: dict):
         if not set:
             return
         self.setSortingEnabled(False)
@@ -1499,12 +1498,12 @@ class BatchTable(QtWidgets.QTableWidget):
             )
             self.setItem(0, icol, item)
         self.setSortingEnabled(True)
-        self.sortItems(1,QtCore.Qt.AscendingOrder)
+        self.sortItems(1, QtCore.Qt.AscendingOrder)
 
     def get_data(self):
         settinglist = defaultdict(list)
         self.setSortingEnabled(False)
-        for row in range(self.rowCount()):            
+        for row in range(self.rowCount()):
             for icol, col in enumerate(self.cols[:, 1]):
                 item = self.item(row, icol)
                 if item:
@@ -1514,9 +1513,8 @@ class BatchTable(QtWidgets.QTableWidget):
                         settinglist[col].append(dt.date())
                     else:
                         settinglist[col].append(str(item.text()))
-        self.setSortingEnabled(True)            
+        self.setSortingEnabled(True)
         return settinglist
-
 
     def contextMenuEvent(self, event):
         """

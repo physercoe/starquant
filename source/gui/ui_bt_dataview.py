@@ -181,6 +181,7 @@ class VolumeAxis(pg.AxisItem):
             ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
         ]
 
+
 class OpenInterestAxis(pg.AxisItem):
     def __init__(self):
         super().__init__(orientation='left')
@@ -191,6 +192,7 @@ class OpenInterestAxis(pg.AxisItem):
         return [
             ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
         ]
+
 
 CHART_MARGINS = (0, 0, 20, 10)
 
@@ -266,7 +268,7 @@ class BTQuotesChart(QtGui.QWidget):
                 self.buy_count_at_x[x] += 1
                 ya = self.data[x].low_price * 0.999
                 yt = self.data[x].low_price * \
-                    (1 - 0.001*self.buy_count_at_x[x])
+                    (1 - 0.001 * self.buy_count_at_x[x])
                 pg.ArrowItem(
                     parent=self.signals_group_arrow,
                     pos=(x, ya),
@@ -296,7 +298,7 @@ class BTQuotesChart(QtGui.QWidget):
                 self.sell_count_at_x[x] += 1
                 ya = self.data[x].high_price * 1.001
                 yt = self.data[x].low_price * \
-                    (1 + 0.001*self.sell_count_at_x[x])
+                    (1 + 0.001 * self.sell_count_at_x[x])
                 pg.ArrowItem(
                     parent=self.signals_group_arrow,
                     pos=(x, ya),
@@ -355,13 +357,13 @@ class BTQuotesChart(QtGui.QWidget):
         if rbar > len(self.data):
             rbar = len(self.data)
         ymin = self.data[lbar].low_price
-        ymax = self.data[rbar-1].high_price
+        ymax = self.data[rbar - 1].high_price
         for bar in self.data[lbar:rbar]:
             if bar.high_price > ymax:
                 ymax = bar.high_price
             if bar.low_price < ymin:
                 ymin = bar.low_price
-        self.chart.setYRange(ymin*0.996, ymax*1.004)
+        self.chart.setYRange(ymin * 0.996, ymax * 1.004)
         if self.signals_visible:
             self.show_text_signals(lbar, rbar)
 
@@ -372,7 +374,8 @@ class BTQuotesChart(QtGui.QWidget):
         )
         self.klineitem = CandlestickItem(self.data)
         self.volumeitem = VolumeItem(self.data)
-        self.oicurve = pg.PlotCurveItem([bar.open_interest for bar in self.data],pen='w')
+        self.oicurve = pg.PlotCurveItem(
+            [bar.open_interest for bar in self.data], pen='w')
         self.init_chart()
         self.init_chart_item()
 
@@ -412,7 +415,7 @@ class BTQuotesChart(QtGui.QWidget):
                     continue
                 endix = i
                 break
-            endix = min(endix+1, totalbars)
+            endix = min(endix + 1, totalbars)
             bars = totalbarlist[startix:endix]
 
         self.data.clear()
@@ -439,7 +442,8 @@ class BTQuotesChart(QtGui.QWidget):
         self.chart.sigXRangeChanged.connect(self.update_yrange_limits)
         self.chartv = pg.PlotWidget(
             parent=self.splitter,
-            axisItems={'bottom': self.xaxis, 'right': VolumeAxis(),'left':OpenInterestAxis()},
+            axisItems={'bottom': self.xaxis,
+                       'right': VolumeAxis(), 'left': OpenInterestAxis()},
             enableMenu=True,
         )
         self.chartv.getPlotItem().setContentsMargins(0, 0, 15, 15)
@@ -457,12 +461,13 @@ class BTQuotesChart(QtGui.QWidget):
         p1.vb.sigResized.connect(self.updateViews)
 
         self.chartoi.addItem(self.oicurve)
-      
+
     def updateViews(self):
         p1 = self.chartv.getPlotItem()
         p2 = self.chartoi
         p2.setGeometry(p1.vb.sceneBoundingRect())
         p2.linkedViewChanged(p1.vb, p2.XAxis)
+
 
 class CenteredTextItem(QtGui.QGraphicsTextItem):
     def __init__(

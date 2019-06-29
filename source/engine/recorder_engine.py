@@ -157,11 +157,14 @@ class RecorderEngine(BaseEngine):
     def process_tick_event(self, event: Event):
         """"""
         tick = event.data
-        dayclosetime = tick.datetime.time() < time(hour=9,minute=0) and tick.datetime.time() > time(hour=8,minute=0)
-        nightclosetime = tick.datetime.time() < time(hour=21,minute=0) and tick.datetime.time() > time(hour=16,minute=0)
+        dayclosetime = tick.datetime.time() < time(
+            hour=9, minute=0) and tick.datetime.time() > time(hour=8, minute=0)
+        nightclosetime = tick.datetime.time() < time(
+            hour=21, minute=0) and tick.datetime.time() > time(hour=16, minute=0)
         if dayclosetime or nightclosetime:
             return
-        if (tick.open_price) and tick.last_price and tick.ask_price_1:  # exclude onrtnsubscribe return first tick which time not in trade time
+        # exclude onrtnsubscribe return first tick which time not in trade time
+        if (tick.open_price) and tick.last_price and tick.ask_price_1:
             if tick.full_symbol in self.tick_recordings:
                 self.record_tick(tick)
 
@@ -176,7 +179,7 @@ class RecorderEngine(BaseEngine):
 
     def process_recordercontrol_event(self, event: Event):
         msgtype = event.msg_type
-        deslist = ['@*', str(self.id), '@'+str(self.id)]
+        deslist = ['@*', str(self.id), '@' + str(self.id)]
         if (event.destination not in deslist):
             return
         elif (msgtype == MSG_TYPE.MSG_TYPE_RECORDER_STATUS):

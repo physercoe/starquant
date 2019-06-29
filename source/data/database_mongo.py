@@ -79,7 +79,6 @@ class DbBarData(Document):
         db_bar.low_price = bar.low_price
         db_bar.close_price = bar.close_price
 
-
         return db_bar
 
     def to_bar(self):

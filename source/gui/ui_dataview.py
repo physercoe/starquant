@@ -47,7 +47,6 @@ class MarketDataView(QtWidgets.QWidget):
         # self.symbol_signal.connect(self.datachart.reset)
 
 
-
 class DateAxis(pg.AxisItem):
     """Axis for showing date data"""
 
@@ -110,6 +109,7 @@ class VolumeAxis(pg.AxisItem):
             ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
         ]
 
+
 class OpenInterestAxis(pg.AxisItem):
     def __init__(self):
         super().__init__(orientation='left')
@@ -120,6 +120,7 @@ class OpenInterestAxis(pg.AxisItem):
         return [
             ('{:<8,.%df}' % digts).format(v).replace(',', ' ') for v in vals
         ]
+
 
 CHART_MARGINS = (0, 0, 20, 10)
 
@@ -167,8 +168,9 @@ class QuotesChart(QtGui.QWidget):
             tickTextOffset=7, textFillLimits=[(0, 0.80)], showValues=True
         )
         self.klineitem = CandlestickItem(self.data)
-        self.volumeitem = VolumeItem(self.data)        
-        self.oicurve = pg.PlotCurveItem([bar.open_interest for bar in self.data],pen='w')
+        self.volumeitem = VolumeItem(self.data)
+        self.oicurve = pg.PlotCurveItem(
+            [bar.open_interest for bar in self.data], pen='w')
         self.init_chart()
         self.init_chart_item()
 
@@ -277,7 +279,8 @@ class QuotesChart(QtGui.QWidget):
 
         self.chartv = pg.PlotWidget(
             parent=self.splitter,
-            axisItems={'bottom': self.xaxis, 'right': VolumeAxis(),'left':OpenInterestAxis()},
+            axisItems={'bottom': self.xaxis,
+                       'right': VolumeAxis(), 'left': OpenInterestAxis()},
             enableMenu=True,
         )
         self.chartv.getPlotItem().setContentsMargins(0, 0, 15, 15)
@@ -297,14 +300,11 @@ class QuotesChart(QtGui.QWidget):
 
         self.chartoi.addItem(self.oicurve)
 
-
-
     def updateViews(self):
         p1 = self.chartv.getPlotItem()
         p2 = self.chartoi
         p2.setGeometry(p1.vb.sceneBoundingRect())
         p2.linkedViewChanged(p1.vb, p2.XAxis)
-
 
 
 class OrderBookWidget(QtWidgets.QWidget):

@@ -284,22 +284,22 @@ class CtaManager(QtWidgets.QWidget):
 
     def init_strategy(self, strategy_name: str, id: str):
         m = Event(type=EventType.STRATEGY_CONTROL, data=strategy_name,
-                  des='@'+id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_INIT)
+                  des='@' + id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_INIT)
         self.signal_strategy_out.emit(m)
 
     def start_strategy(self, strategy_name: str, id: str):
         m = Event(type=EventType.STRATEGY_CONTROL, data=strategy_name,
-                  des='@'+id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_START)
+                  des='@' + id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_START)
         self.signal_strategy_out.emit(m)
 
     def stop_strategy(self, strategy_name: str, id: str):
         m = Event(type=EventType.STRATEGY_CONTROL, data=strategy_name,
-                  des='@'+id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STOP)
+                  des='@' + id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_STOP)
         self.signal_strategy_out.emit(m)
 
     def reset_strategy(self, strategy_name: str, id: str):
         m = Event(type=EventType.STRATEGY_CONTROL, data=strategy_name,
-                  des='@'+id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RESET)
+                  des='@' + id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_RESET)
         self.signal_strategy_out.emit(m)
 
     def edit_strategy(self, strategy_name: str, setting: dict, id: str):
@@ -314,7 +314,7 @@ class CtaManager(QtWidgets.QWidget):
                       id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE_DUPLICATE)
         else:
             m = Event(type=EventType.STRATEGY_CONTROL, data=strategy_name,
-                      des='@'+id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE)
+                      des='@' + id, src='0', msgtype=MSG_TYPE.MSG_TYPE_STRATEGY_REMOVE)
         self.signal_strategy_out.emit(m)
 
     def remove_strategy(self, strategy_name):

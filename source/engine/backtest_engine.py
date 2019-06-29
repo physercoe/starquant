@@ -200,7 +200,7 @@ class BacktestingEngine:
         end: datetime = None,
         mode: BacktestingMode = BacktestingMode.BAR,
     ):
-        """"""
+        """"""       
         self.mode = mode
         self.full_symbol = full_symbol
         if interval == 'tick':
@@ -275,7 +275,7 @@ class BacktestingEngine:
                         continue
                     endix = i
                     break
-                endix = min(endix+1, totalbars)
+                endix = min(endix + 1, totalbars)
                 self.history_data_startix = startix
                 self.history_data_endix = endix
                 self.history_data = totalbarlist
@@ -307,7 +307,7 @@ class BacktestingEngine:
                         continue
                     endix = i
                     break
-                endix = min(endix+1, totalticks)
+                endix = min(endix + 1, totalticks)
                 self.history_data = totalticklist
                 self.history_data_startix = startix
                 self.history_data_endix = endix
@@ -379,9 +379,9 @@ class BacktestingEngine:
                     d = d + timedelta(days=3)
                 else:
                     d = d + timedelta(days=1)
-            elif t < time(hour=8,minute=0): # 周六凌晨算周一
+            elif t < time(hour=8, minute=0):  # 周六凌晨算周一
                 if d.weekday() == 5:
-                    d = d + timedelta(days=2)       
+                    d = d + timedelta(days=2)
             daily_result = self.daily_results[d]
             daily_result.add_trade(trade)
 
@@ -515,7 +515,7 @@ class BacktestingEngine:
             else:
                 winratio = 0.0
             if wincount and losscount and lossmoney:
-                winloss = (winmoney / wincount) / (lossmoney/losscount)
+                winloss = (winmoney / wincount) / (lossmoney / losscount)
             else:
                 winloss = 0.0
         # Output
@@ -806,9 +806,9 @@ class BacktestingEngine:
                 d = d + timedelta(days=3)
             else:
                 d = d + timedelta(days=1)
-        elif t < time(hour=8,minute=0): # 周六凌晨算周一
+        elif t < time(hour=8, minute=0):  # 周六凌晨算周一
             if d.weekday() == 5:
-                d = d + timedelta(days=2)            
+                d = d + timedelta(days=2)
         daily_result = self.daily_results.get(d, None)
         if daily_result:
             daily_result.close_price = price
@@ -907,9 +907,9 @@ class BacktestingEngine:
                 trade_price = max(order.price, short_best_price)
                 pos_change = -order.volume
 
-            turnover = trade_price*order.volume*self.size
-            commission = turnover*self.rate
-            slippage = order.volume*self.size*self.slippage
+            turnover = trade_price * order.volume * self.size
+            commission = turnover * self.rate
+            slippage = order.volume * self.size * self.slippage
 
             trade = BacktestTradeData(
                 full_symbol=order.full_symbol,
@@ -931,10 +931,10 @@ class BacktestingEngine:
             if trade.offset == Offset.CLOSE:  # 平仓不会影响持仓成本价格
                 if trade.direction == Direction.LONG:
                     trade.short_pnl = trade.volume * \
-                        (self.holding.short_price - trade.price)*self.size
+                        (self.holding.short_price - trade.price) * self.size
                 else:
                     trade.long_pnl = trade.volume * \
-                        (trade.price - self.holding.long_price)*self.size
+                        (trade.price - self.holding.long_price) * self.size
             self.holding.update_trade(trade)
             trade.long_pos = self.holding.long_pos
             trade.long_price = self.holding.long_price
@@ -1009,9 +1009,9 @@ class BacktestingEngine:
 
             self.trade_count += 1
 
-            turnover = trade_price*stop_order.volume*self.size
-            commission = turnover*self.rate
-            slippage = stop_order.volume*self.size*self.slippage
+            turnover = trade_price * stop_order.volume * self.size
+            commission = turnover * self.rate
+            slippage = stop_order.volume * self.size * self.slippage
 
             trade = BacktestTradeData(
                 full_symbol=stop_order.full_symbol,
@@ -1033,10 +1033,10 @@ class BacktestingEngine:
             if trade.offset == Offset.CLOSE:  # 平仓不会影响持仓成本价格
                 if trade.direction == Direction.LONG:
                     trade.short_pnl = trade.volume * \
-                        (self.holding.short_price - trade.price)*self.size
+                        (self.holding.short_price - trade.price) * self.size
                 else:
                     trade.long_pnl = trade.volume * \
-                        (trade.price - self.holding.long_price)*self.size
+                        (trade.price - self.holding.long_price) * self.size
             self.holding.update_trade(trade)
             trade.long_pos = self.holding.long_pos
             trade.long_price = self.holding.long_price
@@ -1057,7 +1057,8 @@ class BacktestingEngine:
             self.strategy.on_trade(trade)
 
         for oid in rejectedoids:
-            stop_order = self.active_stop_orders.pop(stop_order.client_order_id)
+            stop_order = self.active_stop_orders.pop(
+                stop_order.client_order_id)
             stop_order.status = Status.REJECTED
             self.limit_order_count += 1
             self.limit_orders[oid] = stop_order
@@ -1074,7 +1075,7 @@ class BacktestingEngine:
         # 以交易日为准，一星期内的时间补上周末二天，大于一周的时间暂不考虑补全额外的交易日
         tradedays = abs(days)
         weekday = self.start.weekday()
-        adddays = 2 if (days-weekday > 0) else 0
+        adddays = 2 if (days - weekday > 0) else 0
         if weekday == 6:
             tradedays = days + 1
         else:
@@ -1110,7 +1111,7 @@ class BacktestingEngine:
                     continue
                 endix = i
                 break
-            endix = min(endix+1, totalbars)
+            endix = min(endix + 1, totalbars)
             self.history_bar_startix = startix
             self.history_bar_endix = endix
             self.history_bar = totalbarlist
@@ -1126,7 +1127,7 @@ class BacktestingEngine:
         """
         tradedays = abs(days)
         weekday = self.start.weekday()
-        adddays = 2 if (days-weekday > 0) else 0
+        adddays = 2 if (days - weekday > 0) else 0
         if weekday == 6:
             tradedays = days + 1
         else:
@@ -1162,7 +1163,7 @@ class BacktestingEngine:
                     continue
                 endix = i
                 break
-            endix = min(endix+1, totalticks)
+            endix = min(endix + 1, totalticks)
             self.history_tick_startix = startix
             self.history_tick_endix = endix
             self.history_tick = totalticklist
