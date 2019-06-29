@@ -212,7 +212,10 @@ class BacktestingEngine:
         self.slippage = slippage
         self.size = size
         self.pricetick = pricetick
-        self.start = start
+        if type(start) == date:
+            self.start = datetime(start.year,start.month,start.day)
+        else:
+            self.start = start
 
         self.symbol, self.exchange = extract_full_symbol(self.full_symbol)
 
@@ -220,7 +223,10 @@ class BacktestingEngine:
             self.capital = capital
 
         if end:
-            self.end = end
+            if type(end) == date:
+                self.end = datetime(end.year,end.month,end.day)
+            else:
+                self.end = end
         else:
             self.end = datetime.now()
 
@@ -266,12 +272,12 @@ class BacktestingEngine:
                     return
                 totalbars = len(totalbarlist)
                 for i in range(totalbars):
-                    if totalbarlist[i].datetime.date() < self.start:
+                    if totalbarlist[i].datetime < self.start:
                         continue
                     startix = i
                     break
                 for i in reversed(range(totalbars)):
-                    if totalbarlist[i].datetime.date() > self.end:
+                    if totalbarlist[i].datetime > self.end:
                         continue
                     endix = i
                     break
@@ -298,12 +304,12 @@ class BacktestingEngine:
                     return
                 totalticks = len(totalticklist)
                 for i in range(totalticks):
-                    if totalticklist[i].datetime.date() < self.start:
+                    if totalticklist[i].datetime < self.start:
                         continue
                     startix = i
                     break
                 for i in reversed(range(totalticks)):
-                    if totalticklist[i].datetime.date() > self.end:
+                    if totalticklist[i].datetime > self.end:
                         continue
                     endix = i
                     break
@@ -1102,12 +1108,12 @@ class BacktestingEngine:
                 return
             totalbars = len(totalbarlist)
             for i in range(totalbars):
-                if totalbarlist[i].datetime.date() < start:
+                if totalbarlist[i].datetime < start:
                     continue
                 startix = i
                 break
             for i in reversed(range(totalbars)):
-                if totalbarlist[i].datetime.date() > end:
+                if totalbarlist[i].datetime > end:
                     continue
                 endix = i
                 break
@@ -1154,12 +1160,12 @@ class BacktestingEngine:
                 return
             totalticks = len(totalticklist)
             for i in range(totalticks):
-                if totalticklist[i].datetime.date() < start:
+                if totalticklist[i].datetime < start:
                     continue
                 startix = i
                 break
             for i in reversed(range(totalticks)):
-                if totalticklist[i].datetime.date() > end:
+                if totalticklist[i].datetime > end:
                     continue
                 endix = i
                 break
