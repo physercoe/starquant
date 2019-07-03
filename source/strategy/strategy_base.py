@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from abc import ABC, ABCMeta
 from typing import Any, Callable
-
+from copy import copy
 from ..common.constant import (
     Interval,
     OrderFlag, OrderType, Offset, Direction
@@ -79,7 +79,10 @@ class StrategyBase(metaclass=ABCMeta):
         self.short_pos_frozen = 0
         self.long_price = 0.0
         self.short_price = 0.0
-
+        
+        # Copy a new variables list here to avoid duplicate insert when multiple 
+        # strategy instances are created with the same strategy class.
+        self.variables = copy(self.variables)
         self.variables.insert(0, "inited")
         self.variables.insert(1, "trading")
         self.variables.insert(2, "pos")
