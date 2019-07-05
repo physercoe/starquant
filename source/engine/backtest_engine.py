@@ -821,7 +821,7 @@ class BacktestingEngine:
             self.holding.last_price = price
         else:
             self.daily_results[d] = DailyResult(d, price)
-            # 逐日盯市，改变持仓成本价格
+            # 逐日盯市，改变持仓成本价格,需要用结算价（对商品期货是每日加权平均）
             # self.holding.long_price = self.holding.last_price
             # self.holding.short_price = self.holding.last_price
             self.holding.last_price = price
