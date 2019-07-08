@@ -96,7 +96,7 @@ python 采用flake8检查，autopep8格式化；
 ## Demo
 -----------
 ![ ](demos/live3.png  "实盘交易模式展示")
-![ ](demos/live4.png  "实盘实际运行展示")
+![ ](demos/live5.png  "视图布局选择")
 
 ![ ](demos/bt3.png  "回测结果总体展示")
 ![ ](demos/bt4.png  "回测结果明细和行情、买卖标记展示")

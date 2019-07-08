@@ -86,11 +86,11 @@ To be continued
  
 ## Demo
 
-![ ](demos/live2.png  "trade mode")
+![ ](demos/live3.png  "trade mode")
 
-![](demos/bt.png  "backtest mode")
+![](demos/bt3.png  "backtest mode")
 
-![ ](demos/bt3.png  "backtest results ")
+![ ](demos/bt4.png  "backtest results ")
 
 
 ## Current State
