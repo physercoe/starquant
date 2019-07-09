@@ -120,10 +120,17 @@ namespace StarQuant {
 
 
 
+// string related 
 
-    // string related 
-    vector<string> stringsplit(const string &s, char delim)
-    {
+    string extractExchangeID(const string& fullsym) {
+        string ex;
+        stringstream ss(fullsym);
+        getline(ss, ex, ' ');
+        return ex;
+    }
+
+
+    vector<string> stringsplit(const string &s, char delim) {
         vector<string> elems;
 
         stringstream ss(s);

@@ -506,15 +506,19 @@ namespace StarQuant
 
     }
 
-    void CtpTDEngine::insertOrder(shared_ptr<CtpOrderMsg> pmsg){
+    void CtpTDEngine::insertOrder(shared_ptr<CtpOrderMsg> pmsg) {
+        string exchangeid;
+        pmsg->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pmsg->data_.orderField_.InstrumentID];
+        exchangeid = extractExchangeID(pmsg->data_.fullSymbol_);
         strcpy(pmsg->data_.orderField_.InvestorID, ctpacc_.userid.c_str());
         strcpy(pmsg->data_.orderField_.UserID, ctpacc_.userid.c_str());
         strcpy(pmsg->data_.orderField_.BrokerID, ctpacc_.brokerid.c_str());
+        strcpy(pmsg->data_.orderField_.ExchangeID, exchangeid.c_str());
         lock_guard<mutex> g(oid_mtx);
         pmsg->data_.serverOrderID_ = m_serverOrderId++;
         pmsg->data_.brokerOrderID_ = m_brokerOrderId_++;
         pmsg->data_.createTime_ = ymdhmsf();			
-        pmsg->data_.fullSymbol_ = DataManager::instance().ctp2Full_[pmsg->data_.orderField_.InstrumentID];
+
         pmsg->data_.price_ = pmsg->data_.orderField_.LimitPrice;
         int dir_ = pmsg->data_.orderField_.Direction != THOST_FTDC_D_Sell ? 1:-1 ;
         pmsg->data_.quantity_ = dir_ * pmsg->data_.orderField_.VolumeTotalOriginal;
@@ -582,6 +586,7 @@ namespace StarQuant
         int osess;
         long coid = pmsg->data_.clientOrderID_;
         string ctpsym;
+        string exchangeid;
         std::shared_ptr<Order> o;
         if (pmsg->data_.serverOrderID_ < 0){
             o = OrderManager::instance().retrieveOrderFromSourceAndClientOrderId(pmsg->data_.clientID_, pmsg->data_.clientOrderID_);
@@ -624,9 +629,10 @@ namespace StarQuant
             LOG_ERROR(logger,"cancelorder OM cannot find order(osid):"<<o->serverOrderID_);
             return;
         }
-        //send cancel request		
+        // send cancel request
         strcpy(myreq.InstrumentID, ctpsym.c_str());
-        //strcpy(myreq.ExchangeID, o->.c_str());			// TODO: check the required field
+        exchangeid = extractExchangeID(o->fullSymbol_);
+        strcpy(myreq.ExchangeID, exchangeid.c_str());
         strcpy(myreq.OrderRef, oref.c_str());
         myreq.FrontID = ofront;
         myreq.SessionID = osess;

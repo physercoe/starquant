@@ -63,7 +63,7 @@ class BarGenerator:
             self.bar.datetime = self.bar.datetime.replace(
                 second=0, microsecond=0
             )
-            if self.tick_counts > 3:
+            if self.tick_counts > 5:
                 self.on_bar(self.bar)
 
             new_minute = True

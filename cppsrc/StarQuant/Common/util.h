@@ -4,12 +4,12 @@
 #include <sstream>
 #include <iterator>
 #include <atomic>
-#include <chrono> //for msleep
-#include <thread> //for msleep
+#include <chrono>  // for msleep
+#include <thread>  // for msleep
 #include <ctime>
 #include <mutex>
 #include <set>
-#include <iterator>
+#include <vector>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/date_time/local_time/local_time_types.hpp>
 #include <boost/date_time/local_time/local_time_io.hpp>
@@ -112,9 +112,11 @@ namespace StarQuant {
 
     
 //string related 
+
     vector<string> stringsplit(const string &s, char delim);
     bool startwith(const string&, const string&);
     bool endwith(const std::string &str, const std::string &suffix);
+    string extractExchangeID(const std::string& fullsym);
     string UTF8ToGBK(const std::string & strUTF8);
     string GBKToUTF8(const std::string & strGBK);
     
