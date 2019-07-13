@@ -149,7 +149,7 @@ namespace StarQuant
         //PRINT_TO_FILE("INFO:[%s,%d][%s]recording service stopped: %s\n", __FILE__, __LINE__, __FUNCTION__);
     }
 
-    void TickReplayService(const std::string& filetoreplay,int tickinterval)
+    void TickReplayService(const std::string& filetoreplay,int32_t tickinterval)
     {
         std::unique_ptr<CMsgq> msgq_pub_;
         msgq_pub_ = std::make_unique<CMsgqNanomsg>(MSGQ_PROTOCOL::PUB, CConfig::instance().SERVERPUB_URL);
@@ -157,7 +157,7 @@ namespace StarQuant
         uint64_t logt = 0;
         //vector<TimeAndMsg> lines = readreplayfile(filetoreplay);
         vector<string> lines = readreplayfile(filetoreplay);
-        int i = 0, sz = lines.size();
+        int32_t i = 0, sz = lines.size();
         while (!gShutdown && i++ < sz) {
 //			logt = lines[i].t;
 //			curt = getMicroTime();

@@ -55,8 +55,8 @@ void TapTDEngine::init(){
 }
 
 void TapTDEngine::stop(){
-    int tmp = disconnect();
-    int count = 0;
+    int32_t tmp = disconnect();
+    int32_t count = 0;
     while( estate_ != DISCONNECTED){
         msleep(100);
         count++;
@@ -78,7 +78,7 @@ bool TapTDEngine::connect() {
     strcpy(stLoginAuth.Password, tapacc_.password.c_str());
     stLoginAuth.ISModifyPassword = APIYNFLAG_NO;
     stLoginAuth.ISDDA = APIYNFLAG_NO;
-    int count = 0;
+    int32_t count = 0;
     while(estate_ != EState::LOGIN_ACK){
         switch(estate_){
             case EState::DISCONNECTED:
@@ -122,7 +122,7 @@ bool TapTDEngine::connect() {
 bool TapTDEngine::disconnect() {
     PRINT_TO_FILE("INFO:[%s,%d][%s]Tap td disconnecting!\n", __FILE__, __LINE__, __FUNCTION__);
     estate_ = LOGOUTING;
-    int i = api_->Disconnect();
+    int32_t i = api_->Disconnect();
     if (i != TAPIERROR_SUCCEED){
         cout<<"tap td disconnect error:"<<i<<endl;
         return false;
@@ -314,7 +314,7 @@ void TapTDEngine::cancelOrder(long oid) {
 }
 
 void TapTDEngine::cancelOrder(const vector<string>& v) {
-    int source = stoi(v[1]);
+    int32_t source = stoi(v[1]);
     long coid = stol(v[3]);
     PRINT_TO_FILE_AND_CONSOLE("INFO:[%s,%d][%s]Cancel Order clientOrderId=%ld\n", __FILE__, __LINE__, __FUNCTION__, coid);
     TAPIINT32 iErr = TAPIERROR_SUCCEED;

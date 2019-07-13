@@ -76,7 +76,7 @@ namespace StarQuant
     private:
 
         long m_brokerOrderId_;
-        unsigned int sessionID_;						// 会话编号
+        unsigned int32_t sessionID_;						// 会话编号
 
         ITapTradeAPI* api_;			
         OrderStatus TapOrderStatusToOrderStatus(const TAPIOrderStateType);

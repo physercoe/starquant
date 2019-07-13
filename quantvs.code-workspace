@@ -69,7 +69,14 @@
 			"valarray": "cpp",
 			"variant": "cpp",
 			"algorithm": "cpp",
-			"cinttypes": "cpp"
+			"cinttypes": "cpp",
+			"bit": "cpp",
+			"map": "cpp",
+			"set": "cpp",
+			"memory_resource": "cpp",
+			"regex": "cpp",
+			"shared_mutex": "cpp",
+			"string": "cpp"
 		}
 	}
 }

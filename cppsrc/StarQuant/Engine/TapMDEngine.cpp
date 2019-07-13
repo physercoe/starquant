@@ -58,8 +58,8 @@ namespace StarQuant
     }
 
     void TapMDEngine::stop(){
-        int tmp = disconnect();
-        int count = 0;
+        int32_t tmp = disconnect();
+        int32_t count = 0;
         while( estate_ != DISCONNECTED){
             msleep(100);
             count++;
@@ -82,7 +82,7 @@ namespace StarQuant
         APIStrncpy(stLoginAuth.Password, tapacc_.password.c_str());
         stLoginAuth.ISModifyPassword = APIYNFLAG_NO;
         stLoginAuth.ISDDA = APIYNFLAG_NO;
-        int count = 0;
+        int32_t count = 0;
         while(estate_ != EState::LOGIN_ACK){
             switch(estate_){
                 case EState::DISCONNECTED:
