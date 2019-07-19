@@ -22,9 +22,9 @@ Welcome to StarQuant
 * order , risk manage, log by log4cplus;
 * strategy , marketdatafeed, trade run by different processes, communicate by message queue(nanomsg), support cpu affinity;
 * realtime message notify through wechat(itchat) ...
- 
+
 ## Architecture
- 
+
 C++ 11 based, client-server, event-driven, decoupled module design.
 
 
@@ -67,15 +67,16 @@ $ mkdir build
 $ cd build
 $ cmake ..
 $ make
-$ cp StarQuant/sqserver ../../
+$ cp StarQuant/apiserver.exe ../../
 ```
-start sqserver and sqgui:
+start apiserver and gui, strategy, recorder:
 ```
-$ ./sqserver
-
+$ ./apiserver
 ```
 ```
-$ python sqgui.py
+$ python gui.py
+$ python strategy.py
+$ python recorder.py
 ```
 
 
@@ -83,7 +84,7 @@ $ python sqgui.py
 
 To be continued
 
- 
+
 ## Demo
 
 ![ ](demos/live3.png  "trade mode")
@@ -95,9 +96,8 @@ To be continued
 
 ## Current State
 
-Currently StarQuant is still under development, when it is finished there will be a release version.
-TODO:
-1. ...
+Currently StarQuant is under test, v1.0-alpha version has been released.
+
 
 
 

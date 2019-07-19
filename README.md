@@ -16,7 +16,11 @@ Welcome to StarQuant
 
 **StarQuant**(中文名：易数交易系统)是一个轻量的、面向个人( 普通）用户的综合量化交易回测系统，目前主要用于期货期权程序化交易，后期会考虑加入股票交易的功能。
 
-当前进展：完成1.0版本alpha版本，在实盘测试中，对于流动性好，盘口大的品种非大笔交易下tick级回测与实盘的成交时间和价位一致。
+当前进展：完成1.0版本alpha版本，在实盘测试中，
+
+1）对于流动性好，盘口大的品种非大笔交易下tick级回测与实盘的成交时间和价位一致；
+
+2）无人工干预 7*24h连续工作，api柜台自动重连断开，行情自动记录，策略自动初始化、开始和停止；
 
 
 
@@ -33,9 +37,10 @@ Welcome to StarQuant
 * 支持基于实盘行情数据的模拟交易（Paper brokerage，简单的撮合），方便实盘前的测试；
 * 采用Qt可视化界面作为前端，方便管理，监控和操作，相关监控信息均有记录，可以导出为csv文件；可以查看实时k线数据；可以查看合约基本信息；可以选择性显示/隐藏指定视图控件单元，调整视图布局；
 *  支持微信实时推送和接收信息（itchat 或Server酱等方式)
- 
+*  Linux，windows跨平台支持；
+
 ## 系统架构
- 
+
 系统主框架基于c++实现，采用c-s架构，基于事件驱动模式，采用模块化松耦合设计，服务端的行情，交易、数据记录为单独线程，服务端与gui界面、策略之间的进程通信采用消息队列方式（nanomsg），行情数据可以通过相关端口以消息形式转发到策略进程，策略下单操作也通过相关端口将指令转发到服务端，然后调用相关柜台api，行情api支持CTP，TAP等，数据可以记录到本地（csv文件或Mongodb数据库），策略可以采用python或c++实现。GUI是基于PyQt5，支持手动交易，策略交易，委托持仓账号等信息查看。
 
 注：开源的代码主要展示了系统的原型和框架，方便在此基础上二次开发和定制，定制化的代码未开源。
@@ -44,7 +49,12 @@ Welcome to StarQuant
 
 ## 开发环境
 本系统在开发过程中参考了已有的开源软件vnpy,kungfu，EliteQuant等。
-开发环境：Manjaro（arch，Linux内核4.14)，python 3.7.2，gcc 9.1
+开发环境：
+
+(1) Manjaro（arch，Linux内核4.14)，python 3.7.2，gcc 9.1
+
+(2) windows 10测试通过，visual studio 14 2015 
+
 第三方库：
 boost 1.69
 nanomsg
@@ -53,10 +63,9 @@ yamlcpp
 libmongoc-1.0
 fmt
 
-python依赖psutil，pyyaml,pyqt,qdarkstyle,tushare等包。
+python依赖psutil，pyyaml,pyqt,qdarkstyle等包。
 
 ## 运行
-
 
 首先需要编译完成cppsrc下的库，需要事先安装boost，nanomsg以及CTP,TAP等柜台api的动态链接库。
 编译过程和原项目类似，使用 [CMake](https://cmake.org) 进行编译：
@@ -68,9 +77,8 @@ $ cd build
 $ cmake ..
 $ make
 ```
-编译完成后将cppsrc/build/StarQuant下的可执行文件sqserver拷贝到主目录运行即可启动服务端，
-gui界面执行sqgui.py即可启动，backtest.py为回测执行文件，config_*.yaml为相应的配置文件，运行前请修改并且放到etc文件夹下
-mystrategy为相应的策略文件夹，其中策略可以单独运行
+编译完成后将cppsrc/build/StarQuant下的可执行文件apiserver.exe拷贝到主目录运行即可启动服务端，
+gui界面执行gui.py即可启动，运行strategy.py可启动单独的策略进程，运行recorder.py可启动行情记录进程。
 
 ## 编写约定
 -------------------
@@ -89,10 +97,10 @@ python 采用flake8检查，autopep8格式化；
   对于ctp，程序内部api会转换为对应的简写形式，rb1905，
 行情、交易、策略之间消息传递的格式：消息头|消息内容
  消息头:目的地|源地址|类型，类型有：
- 
+
  消息内容：对应类型的数据
 
- 
+
 ## Demo
 -----------
 ![ ](demos/live3.png  "实盘交易模式展示")
