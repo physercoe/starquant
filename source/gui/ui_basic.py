@@ -51,7 +51,7 @@ class VerticalTabBar(QtWidgets.QTabBar):
 
 class QFloatTableWidgetItem (QtWidgets.QTableWidgetItem):
     def __init__(self, value):
-        super(QFloatTableWidgetItem, self).__init__(value)
+        super().__init__(value)
 
     def __lt__(self, other):
         if (isinstance(other, QFloatTableWidgetItem)):
@@ -69,7 +69,7 @@ class BaseCell(QtWidgets.QTableWidgetItem):
 
     def __init__(self, content: Any, data: Any):
         """"""
-        super(BaseCell, self).__init__()
+        super().__init__()
         self.setTextAlignment(QtCore.Qt.AlignCenter)
         self.set_content(content, data)
 
@@ -94,14 +94,14 @@ class EnumCell(BaseCell):
 
     def __init__(self, content: str, data: Any):
         """"""
-        super(EnumCell, self).__init__(content, data)
+        super().__init__(content, data)
 
     def set_content(self, content: Any, data: Any):
         """
         Set text using enum.constant.value.
         """
         if content:
-            super(EnumCell, self).set_content(content.value, data)
+            super().set_content(content.value, data)
 
 
 class OTCell(BaseCell):
@@ -111,7 +111,7 @@ class OTCell(BaseCell):
 
     def __init__(self, content: str, data: Any):
         """"""
-        super(OTCell, self).__init__(content, data)
+        super().__init__(content, data)
 
     def set_content(self, content: Any, data: Any):
         """
@@ -130,13 +130,13 @@ class DirectionCell(EnumCell):
 
     def __init__(self, content: str, data: Any):
         """"""
-        super(DirectionCell, self).__init__(content, data)
+        super().__init__(content, data)
 
     def set_content(self, content: Any, data: Any):
         """
         Cell color is set according to direction.
         """
-        super(DirectionCell, self).set_content(content, data)
+        super().set_content(content, data)
 
         if content is Direction.SHORT:
             self.setForeground(COLOR_SHORT)
@@ -151,7 +151,7 @@ class BidCell(BaseCell):
 
     def __init__(self, content: Any, data: Any):
         """"""
-        super(BidCell, self).__init__(content, data)
+        super().__init__(content, data)
 
         self.setForeground(COLOR_BLACK)
         self.setForeground(COLOR_BID)
@@ -164,7 +164,7 @@ class AskCell(BaseCell):
 
     def __init__(self, content: Any, data: Any):
         """"""
-        super(AskCell, self).__init__(content, data)
+        super().__init__(content, data)
 
         self.setForeground(COLOR_BLACK)
         self.setForeground(COLOR_ASK)
@@ -177,14 +177,14 @@ class PnlCell(BaseCell):
 
     def __init__(self, content: Any, data: Any):
         """"""
-        super(PnlCell, self).__init__(content, data)
+        super().__init__(content, data)
 
     def set_content(self, content: Any, data: Any):
         """
         Cell color is set based on whether pnl is 
         positive or negative.
         """
-        super(PnlCell, self).set_content(content, data)
+        super().set_content(content, data)
 
         if str(content).startswith("-"):
             self.setForeground(COLOR_SHORT)
@@ -199,7 +199,7 @@ class TimeCell(BaseCell):
 
     def __init__(self, content: Any, data: Any):
         """"""
-        super(TimeCell, self).__init__(content, data)
+        super().__init__(content, data)
 
     def set_content(self, content: Any, data: Any):
         """
@@ -222,7 +222,7 @@ class MsgCell(BaseCell):
 
     def __init__(self, content: str, data: Any):
         """"""
-        super(MsgCell, self).__init__(content, data)
+        super().__init__(content, data)
         self.setTextAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
 
@@ -240,7 +240,7 @@ class BaseMonitor(QtWidgets.QTableWidget):
 
     def __init__(self, event_engine: EventEngine):
         """"""
-        super(BaseMonitor, self).__init__()
+        super().__init__()
 
         self.event_engine = event_engine
         self.cells = {}

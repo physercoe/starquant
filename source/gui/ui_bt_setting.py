@@ -1043,7 +1043,7 @@ class BacktestingSettingEditor(QtWidgets.QDialog):
         self, class_name: str, parameters: dict
     ):
         """"""
-        super(BacktestingSettingEditor, self).__init__()
+        super().__init__()
 
         self.class_name = class_name
         self.parameters = parameters

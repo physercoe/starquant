@@ -30,7 +30,7 @@ class RecorderEngine(BaseEngine):
 
 # init
     def __init__(self, configfile: str = '', gateway: str = "CTP.MD"):
-        super(RecorderEngine, self).__init__(event_engine=EventEngine(10))
+        super().__init__(event_engine=EventEngine(10))
         """
         two sockets to send and recv msg
         """

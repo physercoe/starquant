@@ -1224,7 +1224,7 @@ class TargetPosTemplate(CtaTemplate):
 
     def __init__(self, cta_engine, strategy_name, vt_symbol, setting):
         """"""
-        super(TargetPosTemplate, self).__init__(
+        super().__init__(
             cta_engine, strategy_name, vt_symbol, setting
         )
         self.variables.append("target_pos")

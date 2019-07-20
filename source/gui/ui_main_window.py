@@ -42,7 +42,7 @@ from .ui_dataview import MarketDataView
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, config_server, config_client, lang_dict):
-        super(MainWindow, self).__init__()
+        super().__init__()
 
         # member variables
         self._current_time = None

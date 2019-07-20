@@ -19,7 +19,7 @@ class MarketDataView(QtWidgets.QWidget):
 
     def __init__(self, sym: str = ""):
         """"""
-        super(MarketDataView, self).__init__()
+        super().__init__()
 
         self.full_symbol = ""
         self.init_ui()
@@ -314,7 +314,7 @@ class OrderBookWidget(QtWidgets.QWidget):
 
     def __init__(self):
         """"""
-        super(OrderBookWidget, self).__init__()
+        super().__init__()
 
         self.full_symbol = ""
         self.init_ui()

@@ -82,7 +82,7 @@ class ManualWindow(QtWidgets.QFrame):
     localorder_signal = QtCore.pyqtSignal(Event)
 
     def __init__(self, apilist):
-        super(ManualWindow, self).__init__()
+        super().__init__()
 
         # member variables
         self._current_time = None
@@ -346,7 +346,7 @@ class CtpApiWindow(QtWidgets.QFrame):
     cancelall_signal = QtCore.pyqtSignal(Event)
 
     def __init__(self):
-        super(CtpApiWindow, self).__init__()
+        super().__init__()
         self.orderfielddict = {}
         self.init_gui()
 
@@ -625,7 +625,7 @@ class PaperApiWindow(QtWidgets.QFrame):
     orderfield_signal = QtCore.pyqtSignal(PaperOrderField)
 
     def __init__(self):
-        super(PaperApiWindow, self).__init__()
+        super().__init__()
         self.orderfielddict = {}
         self.init_gui()
 

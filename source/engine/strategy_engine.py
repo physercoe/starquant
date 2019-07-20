@@ -43,7 +43,7 @@ class StrategyEngine(BaseEngine):
 # init
 
     def __init__(self, configfile: str = '', id: int = 1):
-        super(StrategyEngine, self).__init__(event_engine=EventEngine(10))
+        super().__init__(event_engine=EventEngine(10))
         """
         two sockets to send and recv msg
         """

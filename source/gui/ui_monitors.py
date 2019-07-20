@@ -31,12 +31,12 @@ class MarketMonitor(BaseMonitor):
     symbol_signal = QtCore.pyqtSignal(str)
 
     def init_ui(self):
-        super(MarketMonitor, self).init_ui()
+        super().init_ui()
         self.setToolTip("双击单元格显示orderbook")
         self.itemDoubleClicked.connect(self.show_detail)
 
     def init_menu(self):
-        super(MarketMonitor, self).init_menu()
+        super().init_menu()
         unsubsribe_action = QtWidgets.QAction("取消订阅", self)
         unsubsribe_action.triggered.connect(self.unsubscribe)
         self.menu.addAction(unsubsribe_action)
@@ -92,7 +92,7 @@ class OrderMonitor(BaseMonitor):
     }
 
     def init_menu(self):
-        super(OrderMonitor, self).init_menu()
+        super().init_menu()
         hide_action = QtWidgets.QAction("隐藏不活动订单", self)
         hide_action.triggered.connect(self.hide_orders)
         show_action = QtWidgets.QAction("显示所有订单", self)
@@ -101,7 +101,7 @@ class OrderMonitor(BaseMonitor):
         self.menu.addAction(show_action)
 
     def init_ui(self):
-        super(OrderMonitor, self).init_ui()
+        super().init_ui()
         self.setToolTip("双击单元格撤单")
         self.itemDoubleClicked.connect(self.cancel_order)
 

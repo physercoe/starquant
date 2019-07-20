@@ -36,7 +36,10 @@ class BarGenerator:
         self.interval = interval
         self.interval_count = 0
 
-        self.window = window
+        if window:
+            self.window = window
+        else:
+            self.window = 1
         self.window_bar = None
         self.on_window_bar = on_window_bar
 

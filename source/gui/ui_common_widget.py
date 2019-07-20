@@ -38,7 +38,7 @@ from .ui_basic import EnumCell, BaseCell
 class WebWindow(QtWidgets.QFrame):
 
     def __init__(self):
-        super(WebWindow, self).__init__()
+        super().__init__()
 
         # member variables
         self.init_gui()
@@ -92,7 +92,7 @@ class CsvTickLoader(QtCore.QObject):
                  bidvolume1_head: str,
                  datetime_format: str,
                  saveto: str = 'DataBase'):
-        super(CsvTickLoader, self).__init__()
+        super().__init__()
         self.file_path = file_path
         self.symbol = symbol
         self.exchange = exchange
@@ -204,7 +204,7 @@ class CsvBarLoader(QtCore.QObject):
                  openinterest_head: str,
                  datetime_format: str,
                  saveto: str = 'DataBase'):
-        super(CsvBarLoader, self).__init__()
+        super().__init__()
         self.file_path = file_path
         self.symbol = symbol
         self.exchange = exchange
@@ -944,7 +944,7 @@ class ContractManager(QtWidgets.QWidget):
     }
 
     def __init__(self):
-        super(ContractManager, self).__init__()
+        super().__init__()
 
         self.contracts = {}
         self.load_contract()
@@ -1176,7 +1176,7 @@ class AboutWidget(QtWidgets.QDialog):
     # ----------------------------------------------------------------------
     def __init__(self, parent=None):
         """Constructor"""
-        super(AboutWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self.initUi()
     # ----------------------------------------------------------------------

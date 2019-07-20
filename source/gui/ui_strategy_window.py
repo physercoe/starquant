@@ -24,7 +24,7 @@ class CtaManager(QtWidgets.QWidget):
     data_filename = "cta_strategy_data.json"
 
     def __init__(self):
-        super(CtaManager, self).__init__()
+        super().__init__()
 
         # self.main_engine = main_engine
         # self.event_engine = event_engine
@@ -364,7 +364,7 @@ class StrategyManager(QtWidgets.QFrame):
         self, cta_manager: CtaManager, data: dict
     ):
         """"""
-        super(StrategyManager, self).__init__()
+        super().__init__()
 
         self.cta_manager = cta_manager
         # self.cta_engine = cta_engine
@@ -489,7 +489,7 @@ class DataMonitor(QtWidgets.QTableWidget):
 
     def __init__(self, data: dict):
         """"""
-        super(DataMonitor, self).__init__()
+        super().__init__()
 
         self._data = data
         self.cells = {}
@@ -534,7 +534,7 @@ class SettingEditor(QtWidgets.QDialog):
         self, parameters: dict, strategy_name: str = "", class_name: str = ""
     ):
         """"""
-        super(SettingEditor, self).__init__()
+        super().__init__()
 
         self.parameters = parameters
         self.strategy_name = strategy_name
