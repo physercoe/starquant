@@ -66,7 +66,8 @@ CtpMDEngine::~CtpMDEngine() {
 void CtpMDEngine::releaseapi() {
     if (api_ != nullptr) {
         // this->api_->Join();
-        msleep(1000);
+        // make sure ctpapi is idle
+        msleep(500);
         this->api_->RegisterSpi(nullptr);
         if (apiinited_)
             this->api_->Release();  // api must init() or will segfault
@@ -278,11 +279,17 @@ bool CtpMDEngine::disconnect() {
         if (error != 0) {
             LOG_ERROR(logger, name_ << "  logout error:" << error);
             estate_ = EState::LOGIN_ACK;
+            // make sure ctpapi callback done before return
+            msleep(500);
             return false;
         }
+        // make sure ctpapi callback done
+        msleep(500);
         return true;
     } else {
         LOG_DEBUG(logger, name_ << "  is not connected(logined), cannot disconnect!");
+        // make sure ctpapi callback done
+        msleep(500);
         return false;
     }
 }

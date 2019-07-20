@@ -253,9 +253,9 @@ int32_t tradingengine::run() {
         exit(0);
     }
 
-    for (const auto& e : pengines_) {
-        e->stop();
-    }
+    // for (const auto& e : pengines_) {
+    //     e->stop();
+    // }
     return 0;
 }
 
