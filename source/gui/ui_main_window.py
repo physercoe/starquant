@@ -85,6 +85,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._outgoing_general_request_handler)
         self.data_downloader = DataDownloaderWidget()
         self.pgconsole = pyqtgraph.console.ConsoleWidget()
+        self.pgconsole.setStyleSheet("background-color: #CCE8CF; color:black")
 
         # 8. client mq
         self._client_mq = ClientMq(

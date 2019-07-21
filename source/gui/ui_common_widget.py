@@ -1190,7 +1190,7 @@ class AboutWidget(QtWidgets.QDialog):
             易数交易系统
             Lightweight Algorithmic Trading System            
             Language: C++,Python
-            Contact: dr.wb@qq.com
+            Contact: whereilive@gmail.com
             License：MIT
 
             莫道交易如浪深，莫言策略似沙沉。
