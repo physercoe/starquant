@@ -407,6 +407,7 @@ class CtpTDEngine : public IEngine, CThostFtdcTraderSpi {
     std::vector<shared_ptr<CtpOrderMsg> > localorders_;
     uint64_t lastQryTime_;
     int32_t timercount_;
+    int32_t msgqMode_;   // dontwaitmode flags
 
     OrderStatus CtpOrderStatusToOrderStatus(const char status);
     OrderFlag CtpComboOffsetFlagToOrderFlag(const char flag);

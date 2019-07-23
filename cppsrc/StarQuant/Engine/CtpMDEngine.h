@@ -85,6 +85,7 @@ class CtpMDEngine : public IEngine, CThostFtdcMdSpi {
     bool autoconnect_;
     vector<string> lastsubs_;
     int32_t timercount_;
+    int32_t msgqMode_;   // dontwaitmode flags
 };
 }  // namespace StarQuant
 

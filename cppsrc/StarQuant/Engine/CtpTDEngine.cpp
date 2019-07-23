@@ -48,7 +48,8 @@ CtpTDEngine::CtpTDEngine(const string& gw)
     , inconnectaction_(false)
     , autoconnect_(false)
     , autoqry_(false)
-    , timercount_(0) {
+    , timercount_(0)
+    , msgqMode_(0) {
     lastQryTime_ = getMicroTime();
     name_ = gw;
     init();
@@ -88,6 +89,7 @@ void CtpTDEngine::init() {
         messenger_ = std::make_unique<CMsgqEMessenger>(name_, CConfig::instance().SERVERSUB_URL);
         msleep(100);
     }
+    msgqMode_ = 0;
     string acc = accAddress(name_);
     ctpacc_ = CConfig::instance()._gatewaymap[name_];
     string path = CConfig::instance().logDir() + "/ctp/td/" + acc;
@@ -122,7 +124,7 @@ void CtpTDEngine::stop() {
 
 void CtpTDEngine::start() {
     while (estate_ != EState::STOP) {
-        auto pmsgin = messenger_->recv(1);
+        auto pmsgin = messenger_->recv(msgqMode_);
         bool processmsg = ((pmsgin != nullptr)
         && ( startwith(pmsgin->destination_,DESTINATION_ALL) || (pmsgin->destination_ == name_ )));
         // if (pmsgin == nullptr || (pmsgin->destination_ != name_  && ! startwith(pmsgin->destination_,DESTINATION_ALL) ) )
@@ -456,6 +458,12 @@ void CtpTDEngine::processbuf() {
             }
             qryBuffer_.pop();
         }
+    }
+    // if nothing to do, tdengine should block until next msg comes in, which save cpu energy;
+    if (qryBuffer_.empty() && localorders_.empty()) {
+        msgqMode_ = 0;
+    } else {
+        msgqMode_ = 1;
     }
 }
 

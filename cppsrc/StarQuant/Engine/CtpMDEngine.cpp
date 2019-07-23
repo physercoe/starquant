@@ -52,7 +52,8 @@ CtpMDEngine ::CtpMDEngine()
     , apiinited_(false)
     , inconnectaction_(false)
     , autoconnect_(false)
-    , timercount_(0) {
+    , timercount_(0)
+    , msgqMode_(0) {
     name_ = "CTP.MD";
     init();
 }
@@ -90,6 +91,7 @@ void CtpMDEngine::init() {
     // }
     reqId_ = 0;
     lastsubs_.clear();
+    msgqMode_ = 0;
     if (logger == nullptr) {
         logger = SQLogger::getLogger("MDEngine.CTP");
     }
@@ -127,7 +129,7 @@ void CtpMDEngine::stop() {
 
 void CtpMDEngine::start() {
     while (estate_ != EState::STOP) {
-        auto pmsgin = messenger_->recv();
+        auto pmsgin = messenger_->recv(msgqMode_);
         bool processmsg = ((pmsgin != nullptr) \
         && (startwith(pmsgin->destination_, DESTINATION_ALL) || (pmsgin->destination_ == name_)));
         // if (pmsgin == nullptr || (pmsgin->destination_ != name_ && ! startwith(pmsgin->destination_,DESTINATION_ALL)) ) 
