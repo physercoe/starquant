@@ -16,7 +16,7 @@ Welcome to StarQuant
 
 **StarQuant**(中文名：易数交易系统)是一个轻量的、面向个人( 普通）用户的综合量化交易回测系统，目前主要用于期货期权程序化交易，后期会考虑加入股票交易的功能。
 
-当前进展：完成1.0版本alpha版本，在实盘测试中，
+当前进展：完成1.0版本alpha版本，在实盘测试中：
 
 1）对于流动性好，盘口大的品种非大笔交易下tick级回测与实盘的成交时间和价位一致；
 
@@ -71,7 +71,7 @@ python依赖psutil，pyyaml,pyqt,qdarkstyle等包。
 编译过程和原项目类似，使用 [CMake](https://cmake.org) 进行编译：
 
 ```
-$ cd cppsur
+$ cd cppsrc
 $ mkdir build
 $ cd build
 $ cmake ..

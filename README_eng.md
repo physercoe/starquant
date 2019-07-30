@@ -15,12 +15,15 @@ Welcome to StarQuant
 **StarQuant** is light-weighted, integrated algo-backtest/trade system/platform for individual trader, it is mainly used for future trading at present, stock and other commodity will be included in future.
 
 ## Features
-* strategy bactested in python, run directly in live；
-* marketdata subscribe and record, simulated trading；
-* algo-trading in live, support multiple API and accounts, autoconnect/logout/reset, working in 7*24h；
+* decoupled module design, namely strategy, marketdatafeed, trade run by different processes, communicate by message queue(nanomsg), low-latency(30 -100 microsenconds);
+* event-driven based backtest system(same as vnpy), strategy bactested in python, run directly in live；support multiple data source, i.e. data can be loaded from MongoDB, CSV file; support multiple  timescale data such as tick ,1min bar, 1h bar; 
+* support strategy parameter optimization through multi-process or  genetic algorithm;
+* marketdata record;
+* simulated trading(paper brokerage);
+* support multiple API and accounts, autoconnect/logout/reset, working in 7*24h；support self-defined instructions, such as cancel all; support local stop orders;
+* strategy can be dynamically managed, i.e. init/start/stop/edit/remove at will;
 * pyQt5 based GUI interface for monitoring and manual control；
-* order , risk manage, log by log4cplus;
-* strategy , marketdatafeed, trade run by different processes, communicate by message queue(nanomsg), support cpu affinity;
+* risk manage, flow control;
 * realtime message notify through wechat(itchat) ...
 
 ## Architecture
@@ -62,7 +65,7 @@ Manjaro（arch，Linux 4.14)，python 3.7.2，gcc 8.2, anaconda 5.2
 compile files in cppsrc:
 
 ```
-$ cd cppsur
+$ cd cppsrc
 $ mkdir build
 $ cd build
 $ cmake ..

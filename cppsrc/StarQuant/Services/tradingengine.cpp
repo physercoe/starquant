@@ -143,7 +143,7 @@ int32_t tradingengine::cronjobs(bool force) {
             std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_ENGINE_CONNECT);
             msg_relay_->send(pmsg);
         }
-// auto reset at 16:00 ,2:35
+// auto reset at 16:00,2:35
         if (tm_info.tm_hour == 16 && tm_info.tm_min == 0 && tm_info.tm_sec == 0) {
             std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_ENGINE_RESET);
             msg_relay_->send(pmsg);
