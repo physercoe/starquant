@@ -154,7 +154,7 @@ class PositionMonitor(BaseMonitor):
         "volume": {"display": "数量", "cell": BaseCell, "update": True},
         "yd_volume": {"display": "昨仓", "cell": BaseCell, "update": True},
         "frozen": {"display": "冻结", "cell": BaseCell, "update": True},
-        "price": {"display": "均价", "cell": BaseCell, "update": False},
+        "price": {"display": "均价", "cell": BaseCell, "update": True},
         "pnl": {"display": "持仓盈亏", "cell": PnlCell, "update": True},
         "realized_pnl": {"display": "平仓盈亏", "cell": PnlCell, "update": True},
         "api": {"display": "接口", "cell": BaseCell, "update": False},
