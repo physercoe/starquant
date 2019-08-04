@@ -315,10 +315,15 @@ class ManualWindow(QtWidgets.QFrame):
         ctpapi.orderfield_signal.connect(self.place_order_ctp)
         ctpapi.local_orderfield_signal.connect(self.place_local_order_ctp)
 
+        xtpapi = XtpApiWindow()
+        xtpapi.subscribe_signal.connect(self.subsrcibe)
+        xtpapi.qry_signal.connect(self.qry)        
+
         paperapi = PaperApiWindow()
         paperapi.orderfield_signal.connect(self.place_order_paper)
 
         self.api_widget.addWidget(ctpapi)
+        self.api_widget.addWidget(xtpapi)
         self.api_widget.addWidget(paperapi)
         self.api_widget.setCurrentIndex(0)
         self.gateway.currentIndexChanged.connect(self.set_apiwidget)
@@ -334,8 +339,10 @@ class ManualWindow(QtWidgets.QFrame):
         key = self.gateway.currentText()
         if key.startswith("CTP"):
             self.api_widget.setCurrentIndex(0)
-        else:
+        elif key.startswith("XTP"):
             self.api_widget.setCurrentIndex(1)
+        else:
+            self.api_widget.setCurrentIndex(2)
 
 
 class CtpApiWindow(QtWidgets.QFrame):
@@ -720,6 +727,174 @@ class PaperApiWindow(QtWidgets.QFrame):
             pass
         self.orderfield_signal.emit(o)
 
+class XtpApiWindow(QtWidgets.QFrame):
+    orderfield_signal = QtCore.pyqtSignal(PaperOrderField)
+    local_orderfield_signal = QtCore.pyqtSignal(CtpOrderField)
+    orderfield_signal = QtCore.pyqtSignal(CtpOrderField)
+
+    subscribe_signal = QtCore.pyqtSignal(Event)
+    qry_signal = QtCore.pyqtSignal(Event)
+    cancelall_signal = QtCore.pyqtSignal(Event)
+
+    def __init__(self):
+        super().__init__()
+        self.orderfielddict = {}
+        self.init_gui()
+
+    def init_gui(self):
+        xtpapilayout = QtWidgets.QFormLayout()
+
+
+        self.qry_type = QtWidgets.QComboBox()
+        self.qry_type.addItems(
+            ['Account', 'Position', 'Order', 'Trade', 'PositionDetail', 'Ticker'])
+        self.qry_content = QtWidgets.QLineEdit()
+        self.btn_qry = QtWidgets.QPushButton('Query')
+        self.btn_qry.clicked.connect(self.qry)
+
+        xtphboxlayout0 = QtWidgets.QHBoxLayout()
+        xtphboxlayout0.addWidget(QtWidgets.QLabel('Query Type'))
+        xtphboxlayout0.addWidget(self.qry_type)
+        xtphboxlayout0.addWidget(self.qry_content)
+        xtphboxlayout0.addWidget(self.btn_qry)
+        xtpapilayout.addRow(xtphboxlayout0)
+
+        self.exchange = QtWidgets.QComboBox()
+        self.exchange.addItems(['SSE', 'SZSE'])
+        self.orderfielddict['exchange'] = ['SSE','SZSE']
+        self.sec_type = QtWidgets.QComboBox()
+        self.sec_type.addItems(['Stock', 'Fund', 'Bond', 'INDEX','OPTION','TECH_S'])
+        self.orderfielddict['sectype'] = ['T', 'F', 'B', 'Z', 'O', 't']
+        xtphboxlayout1 = QtWidgets.QHBoxLayout()
+        xtphboxlayout1.addWidget(QtWidgets.QLabel('Exchange'))
+        xtphboxlayout1.addWidget(self.exchange)
+        xtphboxlayout1.addWidget(QtWidgets.QLabel('Security'))
+        xtphboxlayout1.addWidget(self.sec_type)
+        xtpapilayout.addRow(xtphboxlayout1)
+
+        self.sub_type = QtWidgets.QComboBox()
+        self.sub_type.addItems(['MarketData', 'TickByTick', 'OrderBook'])
+        self.sym = QtWidgets.QLineEdit()
+        self.sym.returnPressed.connect(self.subscribe)
+
+        xtphboxlayout2 = QtWidgets.QHBoxLayout()
+        xtphboxlayout2.addWidget(QtWidgets.QLabel('Ticker'))
+        xtphboxlayout2.addWidget(self.sym)
+        xtphboxlayout2.addWidget(QtWidgets.QLabel('SubType'))
+        xtphboxlayout2.addWidget(self.sub_type)
+        xtpapilayout.addRow(xtphboxlayout2)
+
+        self.order_type = QtWidgets.QComboBox()
+        self.order_type.addItems(['MKT', 'LMT', 'STP', 'STPLMT', 'FAK', 'FOK'])
+        self.orderfielddict['ordertype'] = [OrderType.MKT, OrderType.LMT,
+                                            OrderType.STP, OrderType.STPLMT, OrderType.FAK, OrderType.FOK]
+        self.direction = QtWidgets.QComboBox()
+        self.direction.addItems(['Long', 'Short'])
+        self.orderfielddict['direction'] = [1, -1]
+        self.order_flag = QtWidgets.QComboBox()
+        self.order_flag.addItems(
+            ['Open', 'Close', 'Close_T', 'Close_YD'])
+        self.orderfielddict['orderflag'] = [
+            OrderFlag.OPEN, OrderFlag.CLOSE, OrderFlag.CLOSE_TODAY, OrderFlag.CLOSE_YESTERDAY]
+        xtphboxlayout3 = QtWidgets.QHBoxLayout()
+        xtphboxlayout3.addWidget(QtWidgets.QLabel('Order Type'))
+        xtphboxlayout3.addWidget(self.order_type)
+        xtphboxlayout3.addWidget(QtWidgets.QLabel('Direction'))
+        xtphboxlayout3.addWidget(self.direction)
+        xtphboxlayout3.addWidget(QtWidgets.QLabel('Order Flag'))
+        xtphboxlayout3.addWidget(self.order_flag)
+        xtpapilayout.addRow(xtphboxlayout3)
+
+        self.limit_price = QtWidgets.QLineEdit()
+        self.limit_price.setValidator(QtGui.QDoubleValidator())
+        self.limit_price.setText('0.0')
+        self.stop_price = QtWidgets.QLineEdit()
+        self.stop_price.setText('0.0')
+        self.stop_price.setValidator(QtGui.QDoubleValidator())
+        self.order_quantity = QtWidgets.QLineEdit()
+        self.order_quantity.setValidator(QtGui.QIntValidator())
+        self.order_quantity.setText('0')
+        xtphboxlayout4 = QtWidgets.QHBoxLayout()
+        xtphboxlayout4.addWidget(QtWidgets.QLabel('LimitPrice'))
+        xtphboxlayout4.addWidget(self.limit_price)
+        xtphboxlayout4.addWidget(QtWidgets.QLabel('StopPrice'))
+        xtphboxlayout4.addWidget(self.stop_price)
+        xtphboxlayout4.addWidget(QtWidgets.QLabel('Quantity'))
+        xtphboxlayout4.addWidget(self.order_quantity)
+        xtpapilayout.addRow(xtphboxlayout4)
+
+        self.request_type = QtWidgets.QComboBox()
+        self.request_type.addItems(['Order',
+                                    'LocalOrder',
+                                    'ParkedOrder',
+                                    'CancelAll',
+                                    'CloseAll']
+                                   )
+        self.btn_order = QtWidgets.QPushButton('Request')
+        self.btn_order.clicked.connect(self.place_order)     # insert order
+
+        xtpapilayout.addRow(self.btn_order)
+
+        self.setLayout(xtpapilayout)
+
+    def qry(self):
+        qry = Event(EventType.QRY)
+        if(self.qry_type.currentText() == 'Account'):
+            qry.msg_type = MSG_TYPE.MSG_TYPE_QRY_ACCOUNT
+        if (self.qry_type.currentText() == 'Position'):
+            qry.msg_type = MSG_TYPE.MSG_TYPE_QRY_POS
+        if (self.qry_type.currentText() == 'Contract'):
+            qc = QryContractRequest()
+            qc.sym_type = SYMBOL_TYPE.XTP
+            qc.content = self.qry_content.text()
+            if not qc.content:
+                qc.sym_type = SYMBOL_TYPE.FULL
+            qry.msg_type = MSG_TYPE.MSG_TYPE_QRY_CONTRACT
+            qry.data = qc
+        if (self.qry_type.currentText() == 'Order'):
+            qry.msg_type = MSG_TYPE.MSG_TYPE_QRY_ORDER
+        if (self.qry_type.currentText() == 'Trade'):
+            qry.msg_type = MSG_TYPE.MSG_TYPE_QRY_TRADE
+        if (self.qry_type.currentText() == 'PositionDetail'):
+            qry.msg_type = MSG_TYPE.MSG_TYPE_QRY_POSDETAIL
+        self.qry_signal.emit(qry)
+
+    def subscribe(self):
+        sectype = self.orderfielddict['sectype'][self.sec_type.currentIndex()]
+        ticker = str(self.sym.text()).upper()
+        fullname = self.exchange.currentText() + ' ' + sectype + \
+            ' ' + ticker + ' 0'
+        ss = SubscribeRequest()
+        ss.sym_type = SYMBOL_TYPE.XTP
+        if not ticker:
+            ss.sym_type = SYMBOL_TYPE.FULL
+        ss.content = fullname        
+        m = Event(EventType.SUBSCRIBE)
+        if self.sub_type.currentText() == "MarketData":
+            m.msg_type = MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA
+        elif self.sub_type.currentText() == 'TickByTick':
+            m.msg_type = MSG_TYPE.MSG_TYPE_SUBSCRIBE_ORDER_TRADE        
+        m.data = ss
+        self.subscribe_signal.emit(m)
+
+    def place_order(self):
+        sectype = self.orderfielddict['sectype'][self.sec_type.currentIndex()]
+        fullname = self.exchange.currentText() + ' ' + sectype + \
+            ' ' + str(self.sym.text()).upper() + ' ' + self.sym_no.text()
+        o = PaperOrderField()
+        o.full_symbol = fullname
+        o.order_type = self.orderfielddict['ordertype'][self.order_type.currentIndex(
+        )]
+        o.order_flag = self.orderfielddict['orderflag'][self.order_flag.currentIndex(
+        )]
+        try:
+            o.order_size = int(self.order_quantity.text(
+            )) * self.orderfielddict['direction'][self.direction.currentIndex()]
+            o.limit_price = float(self.limit_price.text())
+            o.stop_price = float(self.stop_price.text())
+        except:
+            pass
+        self.orderfield_signal.emit(o)
 
 class ItchatThread(QtCore.QThread):
     def __init__(self):

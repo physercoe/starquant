@@ -166,6 +166,7 @@ void PaperTDEngine::start() {
 
 void PaperTDEngine::processbuf() {
         // save datamanager's security file
+    //  LOG_DEBUG(logger,"DM save xtp:"<<DataManager::instance().saveXtpSecurityFile_);
     if (DataManager::instance().saveXtpSecurityFile_) {
         DataManager::instance().saveXtpSecurityFile();
         DataManager::instance().saveXtpSecurityFile_ = false;

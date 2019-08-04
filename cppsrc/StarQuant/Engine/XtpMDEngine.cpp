@@ -48,7 +48,8 @@ namespace StarQuant {
 // extern std::atomic<bool> gShutdown;
 
 XtpMDEngine ::XtpMDEngine()
-    : loginReqId_(0)
+    : _client_id(0)
+    , loginReqId_(0)
     , reqId_(0)
     , apiinited_(false)
     , inconnectaction_(false)
@@ -108,7 +109,7 @@ void XtpMDEngine::init() {
     string path = CConfig::instance().logDir() + "/xtp/md";
     boost::filesystem::path dir(path.c_str());
     boost::filesystem::create_directory(dir);
-    _client_id = (uint8_t)(xtpacc_.intid % 256);
+    _client_id = xtpacc_.intid;
     // 创建API对象
     this->api_ = XTP::API::QuoteApi::CreateQuoteApi(_client_id, path.c_str());
     this->api_->RegisterSpi(this);
@@ -120,6 +121,7 @@ void XtpMDEngine::init() {
     apiinited_ = true;
     autoconnect_ = CConfig::instance().autoconnect;
     LOG_DEBUG(logger, name_ << " inited, api version:" << this->api_->GetApiVersion());
+    LOG_DEBUG(logger, name_ << " client_id:"<< xtpacc_.intid<< ", "<< unsigned(_client_id));
 }
 
 void XtpMDEngine::stop() {
@@ -274,6 +276,7 @@ bool XtpMDEngine::connect() {
                     protocal = XTP_PROTOCOL_UDP;
                     //  SetUDPBufferSize(uint32_t buff_size);
                 }
+                LOG_DEBUG(logger, name_ <<"login field "<<ip<<" "<<port<<" "<<xtpacc_.userid<<" "<<xtpacc_.password<<" "<<protocal);
                 error = this->api_->Login(ip.c_str(), port, xtpacc_.userid.c_str(), xtpacc_.password.c_str(), protocal);
                 if (error == 0) {
                     estate_ = LOGIN_ACK;
@@ -820,7 +823,8 @@ void XtpMDEngine::OnQueryAllTickers(XTPQSI* ticker_info, XTPRI *error_info, bool
         DataManager::instance().xtpSecurityDetails_[pmsg->data_.fullSymbol_] = pmsg->data_;
         if (is_last) {
             DataManager::instance().saveXtpSecurityFile_  = true;
-            LOG_DEBUG(logger, name_ <<" OnQueryAllTickers:"
+            LOG_DEBUG(logger, name_ <<" is last OnQueryAllTickers:"
+            <<" fullSymbol_=" <<pmsg->data_.fullSymbol_
             <<" ticker="<< ticker_info->ticker
             <<" Name="<< ticker_info->ticker_name);
         }

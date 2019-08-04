@@ -490,7 +490,7 @@ class DLL_EXPORT_IMPORT Security{
     ~Security() {}
     string fullSymbol_;
     string symbol_;
-    char securityType_;
+    char securityType_ = 'F';
     string exchange_;
     string contractNo_;
     int32_t multiplier_ = 0;

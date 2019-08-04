@@ -172,9 +172,10 @@ void DataManager::saveSecurityToFile() {
 }
 
 void DataManager::saveXtpSecurityFile() {
+    fmt::print("DM begin to write xtp ticker");
     try {
         YAML::Node securities;
-        for (auto iterator = xtpSecurityDetails_.begin(); iterator != securityDetails_.end(); ++iterator) {
+        for (auto iterator = xtpSecurityDetails_.begin(); iterator != xtpSecurityDetails_.end(); ++iterator) {
             auto sym = iterator->first;
             auto sec = iterator->second;
             securities[sym]["symbol"] = sec.symbol_;
