@@ -169,7 +169,24 @@ bool endwith(const std::string &str, const std::string &suffix) {
         str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
+uint16_t extractPort(const string& address) {
+    string s_port;
+    uint16_t port = 4444;
+    int n = address.rfind(':');
+    if (n != string::npos) {
+        s_port = address.substr(n+1);
+        port = (uint16_t) (abs(stoi(s_port)) % 65536);
+    }
+    return port;
+}
 
+string extractIp(const string& address) {
+    int last = address.rfind(':');
+    int first = address.find("://");
+    int length = last-first-3;
+    string ip = address.substr(first+3, length);
+    return ip;
+}
 
 string UTF8ToGBK(const std::string & strUTF8) {
     string stroutGBK = "";

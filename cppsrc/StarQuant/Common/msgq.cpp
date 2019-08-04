@@ -141,9 +141,19 @@ shared_ptr<MsgHeader> CMsgqEMessenger::recv(int32_t mode) {
                 pheader = make_shared<SubscribeMsg>(des, src);
                 pheader->deserialize(msgin);
                 break;
+            case MSG_TYPE_SUBSCRIBE_ORDER_TRADE:
+                pheader = make_shared<SubscribeMsg>(des, src);
+                pheader->deserialize(msgin);
+                pheader->msgtype_ = MSG_TYPE_SUBSCRIBE_ORDER_TRADE;
+                break;
             case MSG_TYPE_UNSUBSCRIBE:
                 pheader = make_shared<UnSubscribeMsg>(des, src);
                 pheader->deserialize(msgin);
+                break;
+            case MSG_TYPE_UNSUBSCRIBE_ORDER_TRADE:
+                pheader = make_shared<UnSubscribeMsg>(des, src);
+                pheader->deserialize(msgin);
+                pheader->msgtype_ = MSG_TYPE_UNSUBSCRIBE_ORDER_TRADE;
                 break;
             case MSG_TYPE_ORDER_ACTION:
             case MSG_TYPE_CANCEL_ORDER:

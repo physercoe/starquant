@@ -165,6 +165,11 @@ void PaperTDEngine::start() {
 }
 
 void PaperTDEngine::processbuf() {
+        // save datamanager's security file
+    if (DataManager::instance().saveXtpSecurityFile_) {
+        DataManager::instance().saveXtpSecurityFile();
+        DataManager::instance().saveXtpSecurityFile_ = false;
+    }
 }
 
 void PaperTDEngine::timertask() {

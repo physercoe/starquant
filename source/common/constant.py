@@ -411,6 +411,7 @@ class Product(Enum):
     WARRANT = "权证"
     SPREAD = "价差"
     FUND = "基金"
+    TECH_STOCK = "科创"
 
 
 PRODUCT_CTP2VT = {
@@ -431,7 +432,8 @@ PRODUCT_VT2SQ = {
     Product.BOND: "B",
     Product.WARRANT: "W",
     Product.SPREAD: "S",
-    Product.FUND: "J"
+    Product.FUND: "J",
+    Product.TECH_STOCK:"t"
 }
 
 

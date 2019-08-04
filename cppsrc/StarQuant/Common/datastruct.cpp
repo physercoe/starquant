@@ -105,6 +105,39 @@ string TickMsg::serialize() {
     return s;
 }
 
+string TickByTickMsg::serialize() {
+    string s;
+    if (msgtype_ == MSG_TYPE::MSG_TYPE_STOCK_TickByTickTrade) {
+        s = destination_
+            + SERIALIZATION_SEPARATOR + source_
+            + SERIALIZATION_SEPARATOR + to_string(msgtype_)
+            + SERIALIZATION_SEPARATOR + data_.fullSymbol_
+            + SERIALIZATION_SEPARATOR + data_.time_
+            + SERIALIZATION_SEPARATOR + to_string(data_.channel_no_)
+            + SERIALIZATION_SEPARATOR + to_string(data_.seq_)
+            + SERIALIZATION_SEPARATOR + to_string(data_.price_)
+            + SERIALIZATION_SEPARATOR + to_string(data_.size_)
+            + SERIALIZATION_SEPARATOR + to_string(data_.money_)
+            + SERIALIZATION_SEPARATOR + to_string(data_.bid_no_)
+            + SERIALIZATION_SEPARATOR + to_string(data_.ask_no_)
+            + SERIALIZATION_SEPARATOR + data_.trade_flag_;
+    } else {
+        s = destination_
+            + SERIALIZATION_SEPARATOR + source_
+            + SERIALIZATION_SEPARATOR + to_string(msgtype_)
+            + SERIALIZATION_SEPARATOR + data_.fullSymbol_
+            + SERIALIZATION_SEPARATOR + data_.time_
+            + SERIALIZATION_SEPARATOR + to_string(data_.channel_no_)
+            + SERIALIZATION_SEPARATOR + to_string(data_.seq_)
+            + SERIALIZATION_SEPARATOR + to_string(data_.price_)
+            + SERIALIZATION_SEPARATOR + to_string(data_.size_)
+            + SERIALIZATION_SEPARATOR + data_.side_
+            + SERIALIZATION_SEPARATOR + data_.ord_type_;
+    }
+
+    return s;
+}
+
 string SecurityMsg::serialize() {
     string s;
     s = destination_

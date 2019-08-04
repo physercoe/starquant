@@ -22,6 +22,7 @@
 #include <Engine/IEngine.h>
 #include <Engine/CtpMDEngine.h>
 #include <Engine/CtpTDEngine.h>
+#include <Engine/XtpMDEngine.h>
 // #include <Engine/TapMDEngine.h>
 // #include <Engine/TapTDEngine.h>
 #include <Engine/PaperTDEngine.h>
@@ -200,8 +201,10 @@ int32_t tradingengine::run() {
                         std::shared_ptr<IEngine> papertdengine = make_shared<PaperTDEngine>();
                         threads_.push_back(new std::thread(startengine, papertdengine));
                         pengines_.push_back(papertdengine);
-                    } else if (iter->second.api == "TAP.TD") {
-                        // TODO: finish later
+                    } else if (iter->second.api == "XTP.MD") {
+                        std::shared_ptr<IEngine> xtpmdengine = make_shared<XtpMDEngine>();
+                        pengines_.push_back(xtpmdengine);
+                        threads_.push_back(new std::thread(startengine, xtpmdengine));
                     } else if (iter->second.api == "TAP.MD") {
                         // TODO: finish later
                     } else {

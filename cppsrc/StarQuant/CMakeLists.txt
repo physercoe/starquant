@@ -14,6 +14,7 @@ set(StarQuantCppSrc
   ./Engine/IEngine.cpp
   ./Engine/CtpMDEngine.cpp
   ./Engine/CtpTDEngine.cpp
+  ./Engine/XtpMDEngine.cpp
  # ./Engine/TapMDEngine.cpp
  # ./Engine/TapTDEngine.cpp
   ./Engine/PaperTDEngine.cpp
@@ -37,6 +38,8 @@ target_link_libraries(starquant
   thostmduserapi 
   TapQuoteAPI 
   TapTradeAPI
+  xtptraderapi
+  xtpquoteapi
   pthread 
   dl 
   util

@@ -29,6 +29,7 @@ mutex DataManager::instancelock_;
 
 DataManager::DataManager() : count_(0) {
     loadSecurityFile();
+    loadXtpSecurityFile();
 }
 
 DataManager::~DataManager() {}
@@ -95,6 +96,8 @@ void DataManager::loadSecurityFile() {
     catch(...) {
         fmt::print("Read contract error!");
     }
+}
+void DataManager::loadXtpSecurityFile() {
 }
 
 void DataManager::saveSecurityToFile() {
@@ -168,7 +171,29 @@ void DataManager::saveSecurityToFile() {
     }
 }
 
-
+void DataManager::saveXtpSecurityFile() {
+    try {
+        YAML::Node securities;
+        for (auto iterator = xtpSecurityDetails_.begin(); iterator != securityDetails_.end(); ++iterator) {
+            auto sym = iterator->first;
+            auto sec = iterator->second;
+            securities[sym]["symbol"] = sec.symbol_;
+            securities[sym]["exchange"] = sec.exchange_;
+            securities[sym]["product"] = sec.securityType_;
+            securities[sym]["size"] = sec.multiplier_;
+            securities[sym]["name"] = sec.localName_;
+            securities[sym]["pricetick"] = sec.ticksize_;
+        }
+        std::ofstream fout("etc/xtpcontract.yaml");
+        fout<< securities;
+    }
+    catch(exception &e) {
+        fmt::print("Write xtp Contract exception:{}.", e.what());
+    }
+    catch(...) {
+        fmt::print("Write xtp Contract error!");
+    }
+}
 
 void DataManager::reset() {
     orderBook_.clear();

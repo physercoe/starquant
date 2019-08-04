@@ -63,7 +63,8 @@ enum CurrencyType {
 };
 enum SymbolType {
     ST_Full = 0,
-    ST_Ctp = 1
+    ST_Ctp = 1,
+    ST_Xtp = 2
 };
 const std::string CurrencyTypeString[] = {
     "USD",
@@ -197,6 +198,8 @@ enum MSG_TYPE : int32_t {
     // stock
     MSG_TYPE_STOCK_TICK = 1020,
     MSG_TYPE_STOCK_BAR = 1021,
+    MSG_TYPE_STOCK_TickByTickTrade = 1031,
+    MSG_TYPE_STOCK_TickByTickEntrust = 1032,
     // others
     MSG_TYPE_Trade = 1060,
     MSG_TYPE_Bid = 1061,
@@ -255,6 +258,7 @@ enum MSG_TYPE : int32_t {
     MSG_TYPE_SUBSCRIBE_INDEX = 2003,
     MSG_TYPE_SUBSCRIBE_ORDER_TRADE = 2004,
     MSG_TYPE_UNSUBSCRIBE = 2011,
+    MSG_TYPE_UNSUBSCRIBE_ORDER_TRADE = 2012,
     // td request
     MSG_TYPE_QRY_COMMODITY = 2021,
     MSG_TYPE_QRY_CONTRACT   = 2022,
@@ -433,6 +437,52 @@ class DLL_EXPORT_IMPORT TickMsg: public MsgHeader{
     virtual string serialize();
     // virtual void deserialize(const string& msgin);
 };
+
+
+
+class DLL_EXPORT_IMPORT TickByTick{
+ public:
+    TickByTick() { }
+    ~TickByTick() { }
+
+    string fullSymbol_;
+    string time_;
+    int32_t channel_no_ = 0;
+    int64_t seq_ = 1;
+    char TBTType_ = 'a';
+    double price_ = 0.0;
+    int32_t size_ = 0;
+    ///  委托
+    char  side_ = '1';
+    char ord_type_ = '2';
+    ///  成交
+    double money_ = 0;  ///  成交金额(仅适用上交所)
+    int64_t bid_no_ = 0;
+    int64_t ask_no_ = 0;
+    char trade_flag_ = 'B';
+};
+
+class DLL_EXPORT_IMPORT TickByTickMsg: public MsgHeader{
+ public:
+    TickByTickMsg():MsgHeader(), data_() {
+        msgtype_ = MSG_TYPE::MSG_TYPE_STOCK_TickByTickTrade;
+    }
+    ~TickByTickMsg() {}
+
+    TickByTick data_;
+
+    virtual string serialize();
+    // virtual void deserialize(const string& msgin);
+};
+
+
+
+
+
+
+
+
+
 
 class DLL_EXPORT_IMPORT Security{
  public:

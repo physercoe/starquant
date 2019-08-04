@@ -73,13 +73,13 @@ class OrderMonitor(BaseMonitor):
     sorting = True
 
     headers = {
-        "account": {"display": "账号", "cell": BaseCell, "update": False},
-        "clientID": {"display": "下单客户", "cell": BaseCell, "update": False},
-        "full_symbol": {"display": "代码全称", "cell": BaseCell, "update": False},
-        "type": {"display": "类型", "cell": OTCell, "update": False},
-        "direction": {"display": "方向", "cell": DirectionCell, "update": False},
-        "offset": {"display": "开平", "cell": EnumCell, "update": False},
-        "price": {"display": "价格", "cell": BaseCell, "update": False},
+        "account": {"display": "账号", "cell": BaseCell, "update": True},
+        "clientID": {"display": "下单客户", "cell": BaseCell, "update": True},
+        "full_symbol": {"display": "代码全称", "cell": BaseCell, "update": True},
+        "type": {"display": "类型", "cell": OTCell, "update": True},
+        "direction": {"display": "方向", "cell": DirectionCell, "update": True},
+        "offset": {"display": "开平", "cell": EnumCell, "update": True},
+        "price": {"display": "价格", "cell": BaseCell, "update": True},
         "volume": {"display": "总数量", "cell": BaseCell, "update": True},
         "traded": {"display": "已成交", "cell": BaseCell, "update": True},
         "status": {"display": "状态", "cell": EnumCell, "update": True},

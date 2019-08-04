@@ -123,6 +123,8 @@ vector<string> stringsplit(const string &s, char delim);
 bool startwith(const string&, const string&);
 bool endwith(const std::string &str, const std::string &suffix);
 string extractExchangeID(const std::string& fullsym);
+uint16_t extractPort(const std::string& address);
+string extractIp(const std::string& address);
 string UTF8ToGBK(const std::string & strUTF8);
 string GBKToUTF8(const std::string & strGBK);
 

@@ -48,8 +48,11 @@ class DataManager {
     TickWriter recorder_;
     uint64_t count_ = 0;
     bool contractUpdated_ = false;
+    bool xtpContractUpdated_ = false;
     bool saveSecurityFile_ = false;
+    bool saveXtpSecurityFile_ = false;
     std::map<std::string, Security> securityDetails_;  // ctpsymbol to security
+    std::map<std::string, Security> xtpSecurityDetails_;  // xtpsymbol
     std::map<string, Tick> orderBook_;
     std::map<string, string> ctp2Full_;
     std::map<string, string> full2Ctp_;
@@ -65,7 +68,9 @@ class DataManager {
     void updateOrderBook(const Tick& k) { orderBook_[k.fullSymbol_] = k;}
     void updateOrderBook(const Fill& fill);
     void saveSecurityToFile();
+    void saveXtpSecurityFile();
     void loadSecurityFile();
+    void loadXtpSecurityFile();
 };
 }  // namespace StarQuant
 
