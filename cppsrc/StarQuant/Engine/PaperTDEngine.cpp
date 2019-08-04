@@ -171,6 +171,20 @@ void PaperTDEngine::processbuf() {
         DataManager::instance().saveXtpSecurityFile();
         DataManager::instance().saveXtpSecurityFile_ = false;
     }
+
+    auto pk = make_shared<TickByTickMsg>();
+    pk->data_.fullSymbol_ = "SSE T 00001 0";
+    pk->data_.time_ = ymdhmsf();
+    pk->msgtype_ = MSG_TYPE_STOCK_TickByTickEntrust;
+    pk->data_.channel_no_ = 1;
+    pk->data_.seq_ = 2;
+    pk->data_.price_ = 1;
+    pk->data_.size_ = 1;
+    pk->data_.side_ = '0';
+    pk->data_.ord_type_ = '1';
+    pk->destination_ = DESTINATION_ALL;
+    pk->source_ = name_;
+    messenger_->send(pk, 1);
 }
 
 void PaperTDEngine::timertask() {

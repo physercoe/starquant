@@ -69,6 +69,14 @@ class Event(object):
                 self.event_type = EventType.TICK
                 self.data = TickData(gateway_name=self.source)
                 self.data.deserialize(v[3])
+            elif msg2type == MSG_TYPE.MSG_TYPE_STOCK_TickByTickEntrust:
+                self.event_type = EventType.TBTENTRUST
+                self.data = TBTEntrustData(gateway_name=self.source)
+                self.data.deserialize(v[3])
+            elif msg2type == MSG_TYPE.MSG_TYPE_STOCK_TickByTickTrade:
+                self.event_type = EventType.TBTTRADE
+                self.data = TBTTradeData(gateway_name=self.source)
+                self.data.deserialize(v[3])
             elif msg2type == MSG_TYPE.MSG_TYPE_RTN_ORDER:
                 self.event_type = EventType.ORDERSTATUS
                 self.data = OrderData(gateway_name=self.source)
@@ -280,6 +288,98 @@ class BarData(BaseData):
         self.vt_symbol = f"{self.symbol}.{self.exchange.value}"
         self.full_symbol = generate_full_symbol(self.exchange, self.symbol)
         self.bar_start_time = pd.Timestamp(self.datetime)
+
+
+@dataclass
+class TBTEntrustData(BaseData):
+    """
+    Tickbytick entrust data.
+    """
+
+    full_symbol: str = ''
+    exchange: Exchange = Exchange.SSE
+    datetime: datetime = datetime(2019, 1, 1)
+    symbol : str = ''
+    channel_no: int = 0
+    seq: int = 0
+    price: float = 0
+    volume: float = 0
+
+    side: str = '0'
+    ord_type: str = '0'
+
+    def __post_init__(self):
+        """"""
+        pass
+
+    def deserialize(self, msg: str):
+        try:
+            v = msg.split('|')
+            self.full_symbol = v[0]
+            tmp = v[0].split(' ')
+            self.exchange = Exchange(tmp[0])
+            self.symbol = tmp[2]
+            self.datetime = pd.to_datetime(v[1]).to_pydatetime()
+            self.channel_no = int(v[2])
+            self.seq = int(v[3])
+            self.price = float(v[4])
+            self.volume = float(v[5])
+
+            self.side = v[6]
+            self.ord_type = v[7]
+        except Exception as e:
+            print(e)
+            pass
+
+
+
+@dataclass
+class TBTTradeData(BaseData):
+    """
+    tickbytick trade data.
+    """
+
+    full_symbol: str = ''
+    exchange: Exchange = Exchange.SSE
+    datetime: datetime = datetime(2019, 1, 1)
+    symbol : str = ''
+    channel_no: int = 0
+    seq: int = 0
+    price: float = 0
+    volume: float = 0
+
+
+    money: float = 0
+    bid_no: int = 0
+    ask_no: int = 0
+    trade_flag: str = 'B'
+
+    def __post_init__(self):
+        """"""
+        pass
+
+    def deserialize(self, msg: str):
+        try:
+            v = msg.split('|')
+            self.full_symbol = v[0]
+            tmp = v[0].split(' ')
+            self.exchange = Exchange(tmp[0])
+            self.symbol = tmp[2]
+            self.datetime = pd.to_datetime(v[1]).to_pydatetime()
+            self.channel_no = int(v[2])
+            self.seq = int(v[3])
+            self.price = float(v[4])
+            self.volume = float(v[5])
+
+            self.money = float(v[6])
+            self.bid_no = int(v[7])
+            self.ask_no = int(v[8])
+            self.trade_flag = v[9]
+
+        except Exception as e:
+            print(e)
+            pass
+
 
 
 @dataclass

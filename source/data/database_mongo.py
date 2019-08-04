@@ -4,7 +4,7 @@ from typing import Sequence, Optional
 
 from mongoengine import DateTimeField, Document, FloatField, StringField, connect
 
-from ..common.datastruct import Exchange, Interval, BarData, TickData
+from ..common.datastruct import Exchange, Interval, BarData, TickData, TBTEntrustData, TBTTradeData
 from .database import BaseDatabaseManager, Driver
 
 
@@ -99,6 +99,146 @@ class DbBarData(Document):
             gateway_name="DB",
         )
         return bar
+
+
+class DbTBTEntrustData(Document):
+    """
+    tickbytick data for database storage.
+
+    Index is defined unique with datetime, symbol, exchange
+    """
+
+    symbol: str = StringField()
+    exchange: str = StringField()
+    datetime: datetime = DateTimeField()
+    
+    channel_no:int = FloatField()
+    seq:int = FloatField()
+    volume: float = FloatField()
+    price: float = FloatField()
+
+    side: str = StringField()
+    ord_type: str = StringField()
+
+    meta = {
+        "indexes": [
+            {
+                "fields": ("symbol", "exchange", "datetime"),
+                "unique": True,
+            }
+        ]
+    }
+
+    @staticmethod
+    def from_tbtentrust(tbte: TBTEntrustData):
+        """
+        Generate DbBarData object from BarData.
+        """
+        db_tbte = DbTBTEntrustData()
+
+        db_tbte.symbol = tbte.symbol
+        db_tbte.exchange = tbte.exchange.value
+        db_tbte.datetime = tbte.datetime
+        db_tbte.volume = tbte.volume
+        db_tbte.price = tbte.price
+        db_tbte.channel_no = tbte.channel_no
+        db_tbte.seq = tbte.seq
+
+        db_tbte.side = tbte.side
+        db_tbte.ord_type = tbte.ord_type
+
+
+        return db_tbte
+
+    def to_tbtentrust(self):
+        """
+        Generate TBTEntrustData object from DbTBTEntrustData.
+        """
+        tbte = TBTEntrustData(
+            symbol=self.symbol,
+            exchange=Exchange(self.exchange),
+            datetime=self.datetime,
+            volume=self.volume,
+            price=self.price,
+            channel_no=self.channel_no,
+            seq=self.seq,
+            side=self.side,
+            ord_type=self.ord_type,
+            gateway_name="DB",
+        )
+        return tbte
+
+class DbTBTTradeData(Document):
+    """
+    tickbytick data for database storage.
+
+    Index is defined unique with datetime, symbol, exchange
+    """
+
+    symbol: str = StringField()
+    exchange: str = StringField()
+    datetime: datetime = DateTimeField()
+    
+    channel_no:int = FloatField()
+    seq:int = FloatField()
+    volume: float = FloatField()
+    price: float = FloatField()
+
+    money: str = FloatField()
+    bid_no: str = FloatField()
+    ask_no: str = FloatField()
+    trade_flag: str = StringField()
+
+    meta = {
+        "indexes": [
+            {
+                "fields": ("symbol", "exchange", "datetime"),
+                "unique": True,
+            }
+        ]
+    }
+
+    @staticmethod
+    def from_tbttrade(tbt: TBTTradeData):
+        """
+        Generate DbBarData object from BarData.
+        """
+        db_tbt = DbTBTEntrustData()
+
+        db_tbt.symbol = tbt.symbol
+        db_tbt.exchange = tbt.exchange.value
+        db_tbt.datetime = tbt.datetime
+        db_tbt.volume = tbt.volume
+        db_tbt.price = tbt.price
+        db_tbt.channel_no = tbt.channel_no
+        db_tbt.seq = tbt.seq
+
+        db_tbt.money = tbt.money
+        db_tbt.bid_no = tbt.bid_no
+        db_tbt.ask_no = tbt.ask_no
+        db_tbt.trade_flag = tbt.trade_flag
+
+        return db_tbt
+
+    def to_tbttrade(self):
+        """
+        Generate TBTEntrustData object from DbTBTEntrustData.
+        """
+        tbt = TBTTradeData(
+            symbol=self.symbol,
+            exchange=Exchange(self.exchange),
+            datetime=self.datetime,
+            volume=self.volume,
+            price=self.price,
+            channel_no=self.channel_no,
+            seq=self.seq,
+            money=self.money,
+            bid_no=self.bid_no,
+            ask_no=self.ask_no,
+            trade_flag=self.trade_flag,
+            gateway_name="DB",
+        )
+        return tbt
 
 
 class DbTickData(Document):
@@ -278,6 +418,39 @@ class MongoManager(BaseDatabaseManager):
         data = [db_bar.to_bar() for db_bar in s]
         return data
 
+    def load_tbte_data(
+        self,
+        symbol: str,
+        exchange: Exchange,
+        start: datetime,
+        end: datetime,
+    ) -> Sequence[TBTEntrustData]:
+        s = DbTBTEntrustData.objects(
+            symbol=symbol,
+            exchange=exchange.value,
+            datetime__gte=start,
+            datetime__lte=end,
+        )
+        data = [db_tbt.to_tbtentrust() for db_tbt in s]
+        return data
+
+    def load_tbtt_data(
+        self,
+        symbol: str,
+        exchange: Exchange,
+        start: datetime,
+        end: datetime,
+    ) -> Sequence[TBTTradeData]:
+        s = DbTBTTradeData.objects(
+            symbol=symbol,
+            exchange=exchange.value,
+            datetime__gte=start,
+            datetime__lte=end,
+        )
+        data = [db_tbt.to_tbttrade() for db_tbt in s]
+        return data
+
+
     def load_tick_data(
         self, symbol: str, exchange: Exchange, start: datetime, end: datetime
     ) -> Sequence[TickData]:
@@ -310,6 +483,36 @@ class MongoManager(BaseDatabaseManager):
                     symbol=d.symbol, interval=d.interval.value, datetime=d.datetime
                 ).update_one(upsert=True, **updates)
             )
+
+    def save_tbte_data(self, datas: Sequence[TBTEntrustData]):
+        for d in datas:
+            updates = self.to_update_param(d)
+            updates.pop("set__gateway_name")
+            updates.pop("set__full_symbol")
+            # updates.pop("set__channel_no")
+            # updates.pop("set__seq")
+            (
+                DbTBTEntrustData.objects(
+                    symbol=d.symbol, exchange=d.exchange.value, datetime=d.datetime
+                ).update_one(upsert=True, **updates)
+            )
+
+    def save_tbtt_data(self, datas: Sequence[TBTTradeData]):
+        for d in datas:
+            updates = self.to_update_param(d)
+            updates.pop("set__gateway_name")
+            updates.pop("set__full_symbol")
+            # updates.pop("set__bid_no")
+            # updates.pop("set__ask_no")
+            # updates.pop("set__channel_no")
+            # updates.pop("set__seq")
+
+            (
+                DbTBTTradeData.objects(
+                    symbol=d.symbol, exchange=d.exchange.value, datetime=d.datetime
+                ).update_one(upsert=True, **updates)
+            )
+
 
     def save_tick_data(self, datas: Sequence[TickData]):
         for d in datas:
