@@ -100,7 +100,10 @@ class Backtester:
                 if filename.endswith(".py"):
                     strategy_module_name = "teststrategy.".join(
                         [module_name, filename.replace(".py", "")])
-                    self.load_strategy_class_from_module(
+                elif filename.endswith(".pyd"):
+                    strategy_module_name = "teststrategy.".join(
+                        [module_name, filename.replace(".pyd", "")])
+                self.load_strategy_class_from_module(
                         strategy_module_name, reload)
 
     def load_strategy_class_from_module(self, module_name: str, reload: bool = False):

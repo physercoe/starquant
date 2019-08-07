@@ -636,7 +636,10 @@ class StrategyEngine(BaseEngine):
                 if filename.endswith(".py"):
                     strategy_module_name = "mystrategy.".join(
                         [module_name, filename.replace(".py", "")])
-                    self.load_strategy_class_from_module(
+                elif filename.endswith(".pyd"):
+                    strategy_module_name = "mystrategy.".join(
+                        [module_name, filename.replace(".pyd", "")])
+                self.load_strategy_class_from_module(
                         strategy_module_name, reload)
 
     def load_strategy_class_from_module(self, module_name: str, reload: bool = False):
@@ -996,6 +999,15 @@ class StrategyEngine(BaseEngine):
                 req.client_order_id)
 
         return orderids
+
+    def send_stop_order(self,
+        strategy: StrategyBase,
+        original_req: OrderRequest
+    ):
+        """
+        not implemented yet.
+        """
+        pass
 
     def cancel_order(self, strategy: StrategyBase, orderid: int):
         """

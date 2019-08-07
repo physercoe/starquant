@@ -263,6 +263,13 @@ class StrategyBase(metaclass=ABCMeta):
         """
         pass
 
+    @virtual
+    def on_finish(self):
+        """
+        Callback of backtest finish.
+        """
+        pass
+
     def cancel_order(self, oid):
         if self.trading:
             self.strategy_engine.cancel_order(self, oid)
@@ -282,7 +289,7 @@ class StrategyBase(metaclass=ABCMeta):
 
     def buy_open(self, price: float, size: int, type='lmt'):
         if not self.trading:
-            return
+            return []
         if (type == 'mkt'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -310,7 +317,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.MKT,
@@ -330,7 +337,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         elif (type == 'lmt'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -358,7 +365,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.LMT,
@@ -379,7 +386,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         elif (type == 'fak'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -407,7 +414,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.FAK,
@@ -428,7 +435,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         elif (type == 'fok'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -456,7 +463,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.FOK,
@@ -477,13 +484,13 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         else:
             print('order type not supported!')
-
+            return []
     def buy_close(self, price: float, size: int, type='lmt'):
         if not self.trading:
-            return
+            return []
         if (type == 'mkt'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -511,7 +518,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.MKT,
@@ -531,7 +538,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         elif (type == 'lmt'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -559,7 +566,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.LMT,
@@ -580,7 +587,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         elif (type == 'fak'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -608,7 +615,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.FAK,
@@ -629,7 +636,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         elif (type == 'fok'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -657,7 +664,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.FOK,
@@ -678,13 +685,14 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.LONG,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         else:
             print('order type not supported!')
+            return []
 
     def sell_open(self, price: float, size: int, type='lmt'):
         if not self.trading:
-            return
+            return []
         if (type == 'mkt'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -712,7 +720,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.MKT,
@@ -732,7 +740,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         elif (type == 'lmt'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -760,7 +768,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.LMT,
@@ -781,7 +789,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         elif (type == 'fak'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -809,7 +817,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.FAK,
@@ -830,7 +838,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         elif (type == 'fok'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -858,7 +866,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.FOK,
@@ -879,13 +887,14 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         else:
             print('order type not supported!')
+            return []
 
     def sell_close(self, price: float, size: int, type='lmt'):
         if not self.trading:
-            return
+            return []
         if (type == 'mkt'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -913,7 +922,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.MKT,
@@ -933,7 +942,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         elif (type == 'lmt'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -961,7 +970,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.LMT,
@@ -982,7 +991,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         elif (type == 'fak'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -1010,7 +1019,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.FAK,
@@ -1031,7 +1040,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         elif (type == 'fok'):
             if self.api == "CTP.TD":
                 of = CtpOrderField(
@@ -1059,7 +1068,7 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
             elif self.api == "PAPER.TD":
                 of = PaperOrderField(
                     order_type=OrderType.FOK,
@@ -1080,9 +1089,10 @@ class StrategyBase(metaclass=ABCMeta):
                     direction=Direction.SHORT,
                     orderfield=of
                 )
-                self.strategy_engine.send_order(self, order)
+                return self.strategy_engine.send_order(self, order)
         else:
             print('order type not supported!')
+            return []
 
   # vnpy's use
 
@@ -1091,30 +1101,116 @@ class StrategyBase(metaclass=ABCMeta):
         Send buy order to open a long position.
 
         """
-        self.buy_open(price, volume)
-
-        pass
+        #   only bactest use
+        if stop:
+            of = PaperOrderField(
+                order_type=OrderType.LMT,
+                limit_price=price,
+                full_symbol=self.full_symbol,
+                order_flag=OrderFlag.OPEN,
+                order_size=volume
+            )
+            order = OrderRequest(
+                api="PAPER.TD",
+                account=self.account,
+                symbol=self.symbol,
+                full_symbol=self.full_symbol,
+                price=price,
+                volume=volume,
+                offset=Offset.OPEN,
+                type=OrderType.LMT,
+                direction=Direction.LONG,
+                orderfield=of
+            )
+            return self.strategy_engine.send_stop_order(self,order)
+        else:
+            return self.buy_open(price, volume)
 
     def sell(self, price: float, volume: float, stop: bool = False):
         """
         Send sell order to close a long position.
         """
-        self.sell_close(price, volume)
-        pass
+        if stop:
+            of = PaperOrderField(
+                order_type=OrderType.LMT,
+                limit_price=price,
+                full_symbol=self.full_symbol,
+                order_flag=OrderFlag.CLOSE,
+                order_size=volume * (-1)
+            )
+            order = OrderRequest(
+                api="PAPER.TD",
+                account=self.account,
+                symbol=self.symbol,
+                full_symbol=self.full_symbol,
+                price=price,
+                volume=volume,
+                offset=Offset.CLOSE,
+                type=OrderType.LMT,
+                direction=Direction.SHORT,
+                orderfield=of
+            )
+            return self.strategy_engine.send_stop_order(self, order)
+        else:
+            return self.sell_close(price, volume)
+
 
     def short(self, price: float, volume: float, stop: bool = False):
         """
         Send short order to open as short position.
         """
-        self.sell_open(price, volume)
-        pass
+        if stop:
+            of = PaperOrderField(
+                order_type=OrderType.LMT,
+                limit_price=price,
+                full_symbol=self.full_symbol,
+                order_flag=OrderFlag.OPEN,
+                order_size=volume * (-1)
+            )
+            order = OrderRequest(
+                api="PAPER.TD",
+                account=self.account,
+                symbol=self.symbol,
+                full_symbol=self.full_symbol,
+                price=price,
+                volume=volume,
+                offset=Offset.OPEN,
+                type=OrderType.LMT,
+                direction=Direction.SHORT,
+                orderfield=of
+            )
+            return self.strategy_engine.send_stop_order(self, order)
+        else:
+            return self.sell_open(price, volume)
 
     def cover(self, price: float, volume: float, stop: bool = False):
         """
         Send cover order to close a short position.
         """
-        self.buy_close(price, volume)
-        pass
+        if stop:
+            of = PaperOrderField(
+                order_type=OrderType.LMT,
+                limit_price=price,
+                full_symbol=self.full_symbol,
+                order_flag=OrderFlag.CLOSE,
+                order_size=volume
+            )
+            order = OrderRequest(
+                api="PAPER.TD",
+                account=self.account,
+                symbol=self.symbol,
+                full_symbol=self.full_symbol,
+                price=price,
+                volume=volume,
+                offset=Offset.CLOSE,
+                type=OrderType.LMT,
+                direction=Direction.LONG,
+                orderfield=of
+            )
+            return self.strategy_engine.send_stop_order(self, order)
+        else:
+            return self.buy_close(price, volume)
+
 # end wrapper
 
     def write_log(self, msg: str):

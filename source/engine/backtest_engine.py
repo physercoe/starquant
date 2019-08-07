@@ -6,6 +6,7 @@ from typing import Union
 from collections import defaultdict
 from typing import Any, Callable
 import multiprocessing
+import traceback
 import random
 from itertools import product
 from functools import lru_cache
@@ -331,41 +332,47 @@ class BacktestingEngine:
             func = self.new_bar
         else:
             func = self.new_tick
+        try:
+            self.strategy.on_init()
 
-        self.strategy.on_init()
+            # Use the first [days] of history data for initializing strategy
+            # day_count = 0
+            # ix = 0
 
-        # Use the first [days] of history data for initializing strategy
-        # day_count = 0
-        # ix = 0
+            # using load_bar/tick for  initializing strategy
+            if self.historybar_callback:
+                for data in self.history_bar[self.history_bar_startix:self.history_bar_endix]:
+                    self.historybar_callback(data)
+            if self.historytick_callback:
+                for data in self.history_tick[self.history_tick_startix:self.history_tick_endix]:
+                    self.historytick_callback(data)
 
-        # using load_bar/tick for  initializing strategy
-        if self.historybar_callback:
-            for data in self.history_bar[self.history_bar_startix:self.history_bar_endix]:
-                self.historybar_callback(data)
-        if self.historytick_callback:
-            for data in self.history_tick[self.history_tick_startix:self.history_tick_endix]:
-                self.historytick_callback(data)
+            # for ix, data in enumerate(self.history_data):
+            #     if self.datetime and data.datetime.day != self.datetime.day:
+            #         day_count += 1
+            #         if day_count >= self.days:
+            #             break
 
-        # for ix, data in enumerate(self.history_data):
-        #     if self.datetime and data.datetime.day != self.datetime.day:
-        #         day_count += 1
-        #         if day_count >= self.days:
-        #             break
+            #     self.datetime = data.datetime
+            #     self.callback(data)
 
-        #     self.datetime = data.datetime
-        #     self.callback(data)
+            self.strategy.inited = True
+            self.output("策略初始化完成")
 
-        self.strategy.inited = True
-        self.output("策略初始化完成")
+            self.strategy.on_start()
+            self.strategy.trading = True
+            self.output("开始回放历史数据")
 
-        self.strategy.on_start()
-        self.strategy.trading = True
-        self.output("开始回放历史数据")
-
-        # Use the rest of history data for running backtesting
-        for data in self.history_data[self.history_data_startix:self.history_data_endix]:
-            func(data)
-
+            # Use the rest of history data for running backtesting
+            for data in self.history_data[self.history_data_startix:self.history_data_endix - 1]:
+                func(data)
+            self.strategy.on_finish()
+            #  deal last data alonely,for some backtest use, such as close all positon in batch mode
+            lastdata = self.history_data[self.history_data_endix - 1]
+            func(lastdata)
+        except:            
+            msg = f"回测异常:\n{traceback.format_exc()}"
+            self.output(msg)    
         self.output("历史数据回放结束")
 
     def calculate_result(self):
@@ -1063,8 +1070,7 @@ class BacktestingEngine:
             self.strategy.on_trade(trade)
 
         for oid in rejectedoids:
-            stop_order = self.active_stop_orders.pop(
-                stop_order.client_order_id)
+            stop_order = self.active_stop_orders.pop(oid)
             stop_order.status = Status.REJECTED
             self.limit_order_count += 1
             self.limit_orders[oid] = stop_order
@@ -1195,7 +1201,7 @@ class BacktestingEngine:
         self.active_limit_orders[req.client_order_id] = req
         self.limit_orders[req.client_order_id] = req
 
-        return req.client_order_id
+        return [req.client_order_id]
 
     def send_stop_order(
         self,
@@ -1212,7 +1218,7 @@ class BacktestingEngine:
         self.active_stop_orders[req.client_order_id] = req
         self.stop_orders[req.client_order_id] = req
 
-        return req.client_order_id
+        return [req.client_order_id]
 
     def cancel_order(self, strategy: CtaTemplate, orderid: int):
         """
