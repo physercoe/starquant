@@ -411,9 +411,9 @@ class BaseMonitor(QtWidgets.QTableWidget):
 class CandlestickItem(pg.GraphicsObject):
     w = 0.35
     bull_pen = pg.mkPen('r')
-    bear_pen = pg.mkPen('g')
-    bull_brush = pg.mkBrush('r')  # pg.mkBrush('#00cc00')
-    bear_brush = pg.mkBrush('g')  # pg.mkBrush('#fa0000')
+    bear_pen = pg.mkPen('#00ffff')
+    bull_brush = pg.mkBrush('#000000')  # pg.mkBrush('#00cc00')
+    bear_brush = pg.mkBrush('#00ffff')  # pg.mkBrush('#fa0000')
 
     def __init__(self, data):
         pg.GraphicsObject.__init__(self)
@@ -464,9 +464,9 @@ class CandlestickItem(pg.GraphicsObject):
 class VolumeItem(pg.GraphicsObject):
     w = 0.35
     bull_pen = pg.mkPen('r')
-    bear_pen = pg.mkPen('g')
+    bear_pen = pg.mkPen('#00ffff')
     bull_brush = pg.mkBrush('r')  # pg.mkBrush('#00cc00')
-    bear_brush = pg.mkBrush('g')  # pg.mkBrush('#fa0000')
+    bear_brush = pg.mkBrush('#00ffff')  # pg.mkBrush('#fa0000')
 
     def __init__(self, data):
         pg.GraphicsObject.__init__(self)

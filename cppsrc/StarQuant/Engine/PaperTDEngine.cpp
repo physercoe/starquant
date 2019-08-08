@@ -184,7 +184,7 @@ void PaperTDEngine::processbuf() {
     pk->data_.ord_type_ = '1';
     pk->destination_ = DESTINATION_ALL;
     pk->source_ = name_;
-    messenger_->send(pk, 1);
+    // messenger_->send(pk, 1);
 }
 
 void PaperTDEngine::timertask() {

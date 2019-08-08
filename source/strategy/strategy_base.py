@@ -266,7 +266,7 @@ class StrategyBase(metaclass=ABCMeta):
     @virtual
     def on_finish(self):
         """
-        Callback of backtest finish.
+        Callback of backtest finish, i.e. before last data
         """
         pass
 
@@ -1102,6 +1102,8 @@ class StrategyBase(metaclass=ABCMeta):
 
         """
         #   only bactest use
+        if not self.trading:
+            return []   
         if stop:
             of = PaperOrderField(
                 order_type=OrderType.LMT,
@@ -1130,6 +1132,8 @@ class StrategyBase(metaclass=ABCMeta):
         """
         Send sell order to close a long position.
         """
+        if not self.trading:
+            return []  
         if stop:
             of = PaperOrderField(
                 order_type=OrderType.LMT,
@@ -1159,6 +1163,8 @@ class StrategyBase(metaclass=ABCMeta):
         """
         Send short order to open as short position.
         """
+        if not self.trading:
+            return []       
         if stop:
             of = PaperOrderField(
                 order_type=OrderType.LMT,
@@ -1187,6 +1193,8 @@ class StrategyBase(metaclass=ABCMeta):
         """
         Send cover order to close a short position.
         """
+        if not self.trading:
+            return []
         if stop:
             of = PaperOrderField(
                 order_type=OrderType.LMT,

@@ -201,7 +201,7 @@ class BTQuotesChart(QtGui.QWidget):
     signal = QtCore.pyqtSignal(Event)
 
     short_pen = pg.mkPen('#006000')
-    short_brush = pg.mkBrush('#00ff00')
+    short_brush = pg.mkBrush('#00ffff')
     long_pen = pg.mkPen('#600000')
     long_brush = pg.mkBrush('#ff0000')
     digits = 1
