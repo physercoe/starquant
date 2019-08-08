@@ -1186,12 +1186,13 @@ class AboutWidget(QtWidgets.QDialog):
         self.setWindowTitle('About StarQuant')
 
         text = u"""
-            StarQuant
-            易数交易系统
-            Lightweight Algorithmic Trading System            
+            StarQuant(易数交易系统)            
+            Integrated Algo-Trade/Backtest System            
             Language: C++,Python
-            Contact: whereilive@gmail.com
             License：MIT
+
+            Contact: whereilive@gmail.com
+
 
             莫道交易如浪深，莫言策略似沙沉。
             千回万测虽辛苦，实盘验后始得金。
@@ -1200,7 +1201,13 @@ class AboutWidget(QtWidgets.QDialog):
         label = QtWidgets.QLabel()
         label.setText(text)
         label.setMinimumWidth(300)
+
+        self.gif = QtGui.QMovie('source/gui/image/star.gif')
+        labelgif = QtWidgets.QLabel()
+        labelgif.setMovie(self.gif)
+        self.gif.start()
         vbox = QtWidgets.QVBoxLayout()
+        vbox.addWidget(labelgif)
         vbox.addWidget(label)
         button = QtWidgets.QPushButton("源代码网址")
         button.clicked.connect(self.open_code)
