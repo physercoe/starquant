@@ -53,6 +53,7 @@ typedef struct _SLogAppender {
     void                (*fnLogger) (
                         const struct _SLogAppender *pLogAppender,
                         const char *pLogFile,
+                        const SLogLevelT *pLevel,
                         const char *pMsg,
                         int32 msgLength);
 
@@ -71,6 +72,8 @@ typedef struct _SLogAppender {
     int32               asyncQueueSize;         /**< 异步日志的消息队列大小 */
     int32               asyncQueueShmId;        /**< 异步日志的共享内存ID (0 表示使用默认值) */
 
+    /** 日志配置区段名称 */
+    char                logSection[SLOGCFG_MAX_SECTION_LENGTH];
     /** 日志文件名称 */
     char                logFile[SPK_MAX_PATH_LEN];
 } SLogAppenderT;
@@ -83,7 +86,7 @@ typedef struct _SLogAppender {
         0, 0, 0, 0, \
         0, 0, \
         0, 0, 0, \
-        {0}
+        {0}, {0}
 /* -------------------------           */
 
 
@@ -152,10 +155,19 @@ void    SLog_SetMinLogLevel(
 
 /* 返回日志记录器所对应的日志文件路径 */
 const char*
-        SLog_GetLogFile(const SLogAppenderT *pAppender);
+        SLog_GetLogFile(
+                const SLogAppenderT *pAppender);
 
 /* 设置线程级别的最小日志登记级别 */
 void    SLog_SetThreadMinLogLevel(
+                const SLogLevelT *pMinLogLevel);
+
+/* 返回最小日志登记级别的级别限定 (通过SetMinLogLevel设置的最小日志级别将不会低于该限定) */
+const SLogLevelT*
+        SLog_GetMinLevelLimit();
+
+/* 设置最小日志登记级别的级别限定 (通过SetMinLogLevel设置的最小日志级别将不能低于该限定) */
+void    SLog_SetMinLevelLimit(
                 const SLogLevelT *pMinLogLevel);
 
 /* 判断指定的日志级别是否可用 */
@@ -190,6 +202,10 @@ const SLogAppenderT*
 /* 返回指定位置的日志记录器 */
 const SLogAppenderT*
         SLog_GetLogAppender(int32 index);
+
+/* 检索并返还与日志配置区段名称相匹配的日志记录器 */
+const SLogAppenderT*
+        SLog_GetLogAppenderByName(const char *pSectionName);
 
 /* 返回日志记录器个数 */
 int32   SLog_GetLogAppenderCount();
@@ -229,12 +245,18 @@ BOOL    SLog_EnableAsyncLogAppender(SLogAppenderT *pLogAppender);
 /* 禁用所有的异步日志记录器 (改为使用普通的日志文件模式) */
 BOOL    SLog_DisableAsyncLogAppenders();
 
-/* 禁用指定的异步日志记录器 (改为使用普通的日志文件模式) */
+/* 禁用指定的异步日志记录器 (改为使用普通的日志文件模式, 并断开与日志队列的连接) */
 BOOL    SLog_DisableAsyncLogAppender(SLogAppenderT *pLogAppender);
+
+/* 禁用指定的异步日志记录器 (改为使用普通的日志文件模式) */
+BOOL    SLog_DisableAsyncLogAppender2(
+                SLogAppenderT *pLogAppender,
+                BOOL detachQueue);
 
 /* 创建并启动所有的异步日志记录器的文件写入线程 */
 int32   SLog_StartAsyncLogWriterThreads(
-                volatile int32 *pTerminatedFlag,
+                volatile int32 *pNormalTerminatedFlag,
+                volatile int32 *pExceptionAbortedFlag,
                 BOOL isWaitThreadsTerminated);
 /* -------------------------           */
 
@@ -245,12 +267,12 @@ int32   SLog_StartAsyncLogWriterThreads(
 
 /* 日志登记处理实现声明 */
 void    _SLog_LogImpl(
-                const char *srcFile,
+                const char *pSrcFile,
                 int32 fileNameLength,
                 int32 srcLine,
-                const char *strFunction,
+                const char *pSrcFunction,
                 int32 logMask,
-                const SLogLevelT *level,
+                const SLogLevelT *pLevel,
                 const char *fmt, ...);
 /* -------------------------           */
 
@@ -270,6 +292,9 @@ void    _SLog_DebugSimpleness(const char *fmt, ...);
 void    _SLog_InfoSimpleness(const char *fmt, ...);
 void    _SLog_WarnSimpleness(const char *fmt, ...);
 void    _SLog_ErrorSimpleness(const char *fmt, ...);
+void    _SLog_BzInfoSimpleness(const char *fmt, ...);
+void    _SLog_BzWarnSimpleness(const char *fmt, ...);
+void    _SLog_BzErrorSimpleness(const char *fmt, ...);
 void    _SLog_FatalSimpleness(const char *fmt, ...);
 
 void    _SLog_LogSimplenessMasked(const char *fmt, ...);
@@ -279,6 +304,9 @@ void    _SLog_DebugSimplenessMasked(const char *fmt, ...);
 void    _SLog_InfoSimplenessMasked(const char *fmt, ...);
 void    _SLog_WarnSimplenessMasked(const char *fmt, ...);
 void    _SLog_ErrorSimplenessMasked(const char *fmt, ...);
+void    _SLog_BzInfoSimplenessMasked(const char *fmt, ...);
+void    _SLog_BzWarnSimplenessMasked(const char *fmt, ...);
+void    _SLog_BzErrorSimplenessMasked(const char *fmt, ...);
 void    _SLog_FatalSimplenessMasked(const char *fmt, ...);
 
 void    _SLog_AssertSimpleness(BOOL EXPR, const char *fmt, ...);

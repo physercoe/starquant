@@ -70,7 +70,8 @@ extern "C" {
 #if defined (__WINDOWS__) || defined (__MINGW__)
 #   define  __spk_gettimeofday                  __SPK_WIN32_gettimeofday
 
-#   if defined (_MSC_VER) && _MSC_VER < 1400
+#   if (defined (_MSC_VER) && _MSC_VER < 1400) \
+            || (! defined (_WIN32_WINNT) || _WIN32_WINNT < 0x0600)
 #       define  __spk_localtime_r(T, P_TM)      __STime_LocaltimeR((T), (P_TM))
 #   else
 #       define  __spk_localtime_r(T, P_TM)      localtime_s((P_TM), (T))
@@ -110,6 +111,11 @@ struct tm*  STime_ParseTime(struct tm *pTm, const char *pTimeStr,
  * 校验字符串是否是有效的日期型字符串
  */
 BOOL        STime_IsValidDate(const char *pStr, const char *pFormat);
+
+/*
+ * 校验是否是有效的日期型整数 (YYYYMMDD)
+ */
+BOOL        STime_IsValidIntDate(int32 date);
 
 /*
  * 返回 timeval 结构体大小
@@ -175,7 +181,7 @@ __STime_FastSecondToDate2(const int64 unixSecs, struct tm *pResult,
     SLOG_ASSERT(pResult);
     pResult->tm_sec = unixSecs % K_MINUTES_IN_HOUR;
 
-    hours = (unixSecs / K_MINUTES_IN_HOUR);
+    hours = (int32) (unixSecs / K_MINUTES_IN_HOUR);
     pResult->tm_min = hours % K_MINUTES_IN_HOUR;
 
     hours /= K_MINUTES_IN_HOUR;
@@ -712,7 +718,7 @@ STime_GetHourOfIntTimeMs(int32 iTime) {
  */
 static __inline int32
 STime_GetMinuteOfIntTimeMs(int32 iTime) {
-    return (iTime % 10000000) / 100;
+    return (iTime % 10000000) / 100000;
 }
 
 
@@ -724,7 +730,7 @@ STime_GetMinuteOfIntTimeMs(int32 iTime) {
  */
 static __inline int32
 STime_GetSecondOfIntTimeMs(int32 iTime) {
-    return (iTime % 100000) / 100;
+    return (iTime % 100000) / 1000;
 }
 
 
@@ -822,11 +828,11 @@ STime_DiffIntTimeMs(int32 beginTimeMs, int32 endTimeMs) {
 
     beginMs = STime_GetHourOfIntTimeMs(beginTimeMs) * 3600 * 1000
             + STime_GetMinuteOfIntTimeMs(beginTimeMs) * 60 * 1000
-            + beginTimeMs / 100000;
+            + beginTimeMs % 100000;
 
     endMs = STime_GetHourOfIntTimeMs(endTimeMs) * 3600 * 1000
             + STime_GetMinuteOfIntTimeMs(endTimeMs) * 60 * 1000
-            + endTimeMs / 100000;
+            + endTimeMs % 100000;
 
     return (endMs - beginMs);
 }
@@ -949,6 +955,32 @@ STime_FormatTmToTimestamp(char *pBuf, const struct tm *pTm) {
             pTm->tm_hour,
             pTm->tm_min,
             pTm->tm_sec);
+    return pBuf;
+}
+
+
+/**
+ * 格式化时间为形如"YYYYMMDD-HH:mm:SS"的17位时间戳字符串返回
+ *
+ * @param[out]  pBuf        缓存区指针
+ * @param       unixSecs    number of seconds since 1970-01-01 00:00:00 +0000 (UTC)
+ * @return      形如"YYYYMMDD-HH:mm:SS"的17位时间戳字符串
+ */
+static __inline char*
+STime_FormatUnixTimestamp(char *pBuf, int64 unixSecs) {
+    struct tm       tm1;
+
+    SLOG_ASSERT(pBuf);
+
+    __STime_FastSecondToDate(unixSecs, &tm1);
+
+    snprintf(pBuf, 18, "%d%02d%02d-%02d:%02d:%02d",
+            tm1.tm_year + 1900,
+            tm1.tm_mon + 1,
+            tm1.tm_mday,
+            tm1.tm_hour,
+            tm1.tm_min,
+            tm1.tm_sec);
     return pBuf;
 }
 
@@ -1522,7 +1554,8 @@ STime_GetIntTimeMsFromTimespec(const STimespecT *pTs) {
     SLOG_ASSERT(pTs);
     STime_GetTmBySeconds(&tm1, pTs->tv_sec);
 
-    return STime_GetIntTimeFromTm(&tm1) * 1000 + pTs->tv_nsec / 1000000;
+    return STime_GetIntTimeFromTm(&tm1) * 1000
+            + (int32) (pTs->tv_nsec / 1000000);
 }
 
 
@@ -1560,7 +1593,8 @@ STime_GetIntTimestampFromTimespec2(const STimespecT *pTs, int32 *pOutDate,
     STime_GetTmBySeconds(&tm1, pTs->tv_sec);
 
     *pOutDate = STime_GetIntDateFromTm(&tm1);
-    *pOutTimeMs = STime_GetIntTimeFromTm(&tm1) * 1000 + pTs->tv_nsec / 1000000;
+    *pOutTimeMs = STime_GetIntTimeFromTm(&tm1) * 1000
+            + (int32) (pTs->tv_nsec / 1000000);
 }
 /* -------------------------           */
 

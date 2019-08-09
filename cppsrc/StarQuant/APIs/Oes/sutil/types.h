@@ -32,45 +32,84 @@
  * 平台类型检测
  * =================================================================== */
 
-#if ! defined (__LINUX__) && (defined (__linux__) || defined (__KERNEL__) \
-        || defined (_LINUX) || defined (LINUX))
-#   define  __LINUX__                   (1)
+#if defined (__LINUX__) || defined (__linux__) || defined (__KERNEL__) \
+        || defined (_LINUX) || defined (LINUX)
+#   ifndef  __LINUX__
+#       define  __LINUX__               (1)
+#   endif
+#   define  __SPK_PLATFORM_NAME__       "LINUX"
 
-#elif ! defined (__HPUX__) && (defined (__hpux) || defined (__HPUX) \
-        || defined (__hpux__) || defined (hpux) || defined (HPUX))
-#   define  __HPUX__                    (1)
 
-#elif ! defined (__AIX__) && defined (_AIX)
-#   define  __AIX__                     (1)
+#elif defined (__HPUX__) || defined (__hpux) || defined (__HPUX) \
+        || defined (__hpux__) || defined (hpux) || defined (HPUX)
+#   ifndef  __HPUX__
+#       define  __HPUX__                (1)
+#   endif
+#   define  __SPK_PLATFORM_NAME__       "HPUX"
 
-#elif ! defined (__SOLARIS__) && (defined (__solaris__) || defined (__sun__) \
-        || defined (__sun) || defined (sun))
-#   define  __SOLARIS__                 (1)
 
-#elif ! defined (__BSD__) && (defined (__FreeBSD__) || defined (__OpenBSD__) \
-        || defined (__NetBSD__))
-#   define  __BSD__                     (1)
+#elif defined (__AIX__) || defined (_AIX)
+#   ifndef  __AIX__
+#       define  __AIX__                 (1)
+#   endif
+#   define  __SPK_PLATFORM_NAME__       "AIX"
 
-#elif ! defined (__APPLE__) && (defined (__MacOSX__) || defined (__MACOSX__))
-#   define  __APPLE__                   (1)
 
-#elif ! defined (__MINGW__) && (defined (__MINGW32__) || defined (__MINGW64__) \
-        || defined (_MINGW) || defined (MINGW))
-#   define  __MINGW__                   (1)
+#elif defined (__SOLARIS__) || defined (__solaris__) || defined (__sun__) \
+        || defined (__sun) || defined (sun)
+#   ifndef  __SOLARIS__
+#       define  __SOLARIS__             (1)
+#   endif
+#   define  __SPK_PLATFORM_NAME__       "SOLARIS"
 
-#elif ! defined (__CYGWIN__) && (defined (__CYGWIN32__) || defined (CYGWIN))
-#   define  __CYGWIN__                  (1)
 
-#elif ! defined (__WINDOWS__) && (defined (_WIN32) || defined (_WIN64) \
+#elif defined (__BSD__) || defined (__FreeBSD__) || defined (__OpenBSD__) \
+        || defined (__NetBSD__)
+#   ifndef  __BSD__
+#       define  __BSD__                 (1)
+#   endif
+#   define  __SPK_PLATFORM_NAME__       "BSD"
+
+
+#elif defined (__APPLE__) || defined (__MacOSX__) || defined (__MACOSX__)
+#   ifndef  __APPLE__
+#       define  __APPLE__               (1)
+#   endif
+#   define  __SPK_PLATFORM_NAME__       "APPLE"
+
+
+#elif defined (__MINGW__) || defined (__MINGW32__) || defined (__MINGW64__) \
+        || defined (_MINGW) || defined (MINGW)
+#   ifndef  __MINGW__
+#       define  __MINGW__               (1)
+#   endif
+#   define  __SPK_PLATFORM_NAME__       "MINGW"
+
+
+#elif defined (__CYGWIN__) || defined (__CYGWIN32__) || defined (CYGWIN)
+#   ifndef  __CYGWIN__
+#       define  __CYGWIN__              (1)
+#   endif
+#   define  __SPK_PLATFORM_NAME__       "CYGWIN"
+
+
+#elif defined (__WINDOWS__) || defined (_WIN32) || defined (_WIN64) \
         || defined (WIN32) || defined (__WIN32__) || defined (__Win32__) \
-        || defined(__TOS_WIN__) || defined (_MSC_VER))
-#   define  __WINDOWS__                 (1)
+        || defined(__TOS_WIN__) || defined (_MSC_VER)
+#   ifndef  __WINDOWS__
+#       define  __WINDOWS__             (1)
+#   endif
+#   define  __SPK_PLATFORM_NAME__       "WINDOWS"
+
+
+#else
+#   pragma  message("Warning: Neither platform OS type detected!")
 
 #endif
 /* -------------------------           */
 
 
-#if defined (USE_GNULIB) || defined (HAVE_CONFIG_H)
+#if defined (HAVE_CONFIG_H) || defined (USE_GNULIB)
 #   include <config.h>
 #endif
 
@@ -119,6 +158,10 @@
 #   include <sys/time.h>
 #   include <sys/socket.h>
 #   include <sys/select.h>
+
+#   if ! defined (__MINGW__)
+#       include <poll.h>
+#   endif
 #endif
 
 
@@ -457,6 +500,21 @@ extern "C" {
 #       define  SIovecT                 _SPK_STRUCT_IOVEC
 #   endif   /* _SPK_STRUCT_IOVEC */
 
+#   ifndef  _SPK_STRUCT_POLLFD
+#   if defined (_WIN32_WINNT) && _WIN32_WINNT >= 0x0600
+#       define  _SPK_STRUCT_POLLFD      struct pollfd
+#       define  SPollfdT                _SPK_STRUCT_POLLFD
+#   else
+#       define  _SPK_STRUCT_POLLFD      struct _spk_struct_pollfd
+        _SPK_STRUCT_POLLFD {
+            SOCKET      fd;
+            short       events;
+            short       revents;
+        };
+#       define  SPollfdT                _SPK_STRUCT_POLLFD
+#   endif
+#   endif   /* _SPK_STRUCT_POLLFD */
+
 
 #else
     /* socket handle */
@@ -481,6 +539,11 @@ extern "C" {
 #       define  _SPK_STRUCT_IOVEC       struct iovec
 #       define  SIovecT                 _SPK_STRUCT_IOVEC
 #   endif   /* _SPK_STRUCT_IOVEC */
+
+#   ifndef  _SPK_STRUCT_POLLFD
+#       define  _SPK_STRUCT_POLLFD      struct pollfd
+#       define  SPollfdT                _SPK_STRUCT_POLLFD
+#   endif   /* _SPK_STRUCT_POLLFD */
 
 #endif
 /* -------------------------           */
@@ -585,6 +648,15 @@ extern "C" {
 /* ===================================================================
  * 常用缓存区长度定义
  * =================================================================== */
+
+/* FD_SETSIZE */
+#ifndef __SPK_FD_SETSIZE
+#   ifdef FD_SETSIZE
+#       define __SPK_FD_SETSIZE         FD_SETSIZE
+#   else
+#       define __SPK_FD_SETSIZE         (1024)
+#   endif
+#endif
 
 /* 最大文本块长度 */
 #ifndef SPK_MAX_BLOCK_SIZE

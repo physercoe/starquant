@@ -42,6 +42,18 @@ extern "C" {
  * equal to or greater than S2
  */
 int32   SStr_Strverscmp(const char *s1, const char *s2);
+
+/*
+ * 将字符串类型的版本号转换为整数形式的版本号数值
+ * - 版本号数值的格式为 10 位整型数值, 形如: 1AABBCCDD0, 其中:
+ *   - 第一位固定为 1
+ *   - AA 为主版本号
+ *   - BB 为副版本号
+ *   - CC 为发布号
+ *   - DD 为构建号
+ *   - 最后一位固定为 0
+ */
+int32   SStr_GetIntVersion(const char *pStr);
 /* -------------------------           */
 
 

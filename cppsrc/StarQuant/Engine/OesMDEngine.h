@@ -261,7 +261,7 @@ class MdsClientApi {
         const char *pSecurityListStr,
         const char *pDelim,
         eMdsExchangeIdT exchangeId,
-        eMdsSecurityTypeT securityType,
+        eMdsMdProductTypeT mdProductType,
         eMdsSubscribeModeT subMode,
         int32 dataTypes) {
         if (MdsApi_IsValidTcpChannel(&cliEnv.tcpChannel)) {
@@ -270,7 +270,7 @@ class MdsClientApi {
                 pSecurityListStr,
                 pDelim,
                 exchangeId,
-                securityType,
+                mdProductType,
                 subMode,
                 dataTypes);
         }

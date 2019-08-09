@@ -71,6 +71,12 @@ void*   OesJsonParser_EncodeQueryRspItem(
                 char *pBuf,
                 int32 bufSize);
 
+/* 客户端总览信息序列化 */
+int32 JsonParser_EncodeClientOverview(
+                const OesClientOverviewT *pRspItem,
+                char *pBuf,
+                int32 bufSize);
+
 /* 单条委托查询结果序列化 */
 int32   JsonParser_EncodeOrdItem(
                 const OesOrdItemT *pRspItem,
@@ -158,6 +164,18 @@ int32   JsonParser_EncodeEtfComponentItem(
 /* 单条期权产品信息查询结果序列化 */
 int32   JsonParser_EncodeOptionItem(
                 const OesOptionItemT *pRspItem,
+                char *pBuf,
+                int32 bufSize);
+
+/* 单条市场状态信息查询结果序列化 */
+int32   JsonParser_EncodeMktStatusItem(
+                const OesMarketStateItemT *pRspItem,
+                char *pBuf,
+                int32 bufSize);
+
+/* 单条主柜资金查询结果序列化 */
+int32   JsonParser_EncodeCounterCashItem(
+                const OesCounterCashItemT *pRspItem,
                 char *pBuf,
                 int32 bufSize);
 /* -------------------------           */

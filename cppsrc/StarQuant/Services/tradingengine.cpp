@@ -23,8 +23,8 @@
 #include <Engine/CtpMDEngine.h>
 #include <Engine/CtpTDEngine.h>
 #include <Engine/XtpMDEngine.h>
+#include <Engine/OesMDEngine.h>
 // #include <Engine/TapMDEngine.h>
-// #include <Engine/TapTDEngine.h>
 #include <Engine/PaperTDEngine.h>
 #include <Trade/ordermanager.h>
 #include <Trade/portfoliomanager.h>
@@ -205,8 +205,10 @@ int32_t tradingengine::run() {
                         std::shared_ptr<IEngine> xtpmdengine = make_shared<XtpMDEngine>();
                         pengines_.push_back(xtpmdengine);
                         threads_.push_back(new std::thread(startengine, xtpmdengine));
-                    } else if (iter->second.api == "TAP.MD") {
-                        // TODO: finish later
+                    } else if (iter->second.api == "OES.MD") {
+                        std::shared_ptr<IEngine> oesmdengine = make_shared<OesMDEngine>();
+                        pengines_.push_back(oesmdengine);
+                        threads_.push_back(new std::thread(startengine, oesmdengine));
                     } else {
                         LOG_INFO(logger, "API not supported ,ignore it!");
                     }

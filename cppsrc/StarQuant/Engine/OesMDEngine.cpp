@@ -109,6 +109,7 @@ void OesMDEngine::init() {
     // 创建API对象
     this->api_ = make_unique<MdsClientApi>();
     this->api_->RegisterSpi(this);
+    apiinited_ = false;
     estate_ = DISCONNECTED;
     auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
                 MSG_TYPE_ENGINE_STATUS,
@@ -140,7 +141,7 @@ void OesMDEngine::start() {
                 case MSG_TYPE_ENGINE_CONNECT:
                     if (connect()) {
                         auto pmsgout = make_shared<InfoMsg>(pmsgin->source_, name_,
-                            MSG_TYPE_INFO_ENGINE_MDCONNECTED, "XTP.MD connected.");
+                            MSG_TYPE_INFO_ENGINE_MDCONNECTED, "OES.MD connected.");
                         messenger_->send(pmsgout, 1);
                     }
                     break;
@@ -245,6 +246,7 @@ bool OesMDEngine::connect() {
                     if (error == 0) {
                         estate_ = CONNECT_ACK;
                         apiinited_ = true;
+                        LOG_INFO(logger, name_ <<" api env inited.");
                         auto pmsgs = make_shared<InfoMsg>(DESTINATION_ALL, name_,
                             MSG_TYPE_ENGINE_STATUS,
                             to_string(estate_));
@@ -322,6 +324,7 @@ bool OesMDEngine::disconnect() {
         // msleep(500);
         return false;
     }
+    return true;
 }
 
 void OesMDEngine::subscribe(const vector<string>& symbol,SymbolType st) {
@@ -333,7 +336,7 @@ void OesMDEngine::subscribe(const vector<string>& symbol,SymbolType st) {
             MDS_EXCH_SZSE, MDS_SECURITY_TYPE_STOCK, MDS_SUB_MODE_SET,
             MDS_SUB_DATA_TYPE_L1_SNAPSHOT
             | MDS_SUB_DATA_TYPE_L2_SNAPSHOT);
-        if (error != 0) {
+        if (error != 1) {
             LOG_ERROR(logger, name_ << " subscribe SZSE error " << error);
         }
         error = this->api_->SubscribeByString(
@@ -341,7 +344,7 @@ void OesMDEngine::subscribe(const vector<string>& symbol,SymbolType st) {
             MDS_EXCH_SSE, MDS_SECURITY_TYPE_STOCK, MDS_SUB_MODE_SET,
             MDS_SUB_DATA_TYPE_L1_SNAPSHOT
             | MDS_SUB_DATA_TYPE_L2_SNAPSHOT);
-        if (error != 0) {
+        if (error != 1) {
             LOG_ERROR(logger, name_ << " subscribe SSE error " << error);
         }
         subscribeAllMarketData_ = true;
@@ -363,7 +366,7 @@ void OesMDEngine::subscribe(const vector<string>& symbol,SymbolType st) {
             MDS_EXCH_SZSE, MDS_SECURITY_TYPE_STOCK, MDS_SUB_MODE_SET,
             MDS_SUB_DATA_TYPE_L1_SNAPSHOT
             | MDS_SUB_DATA_TYPE_L2_SNAPSHOT);
-    if (error != 0) {
+    if (error != 1) {
         LOG_ERROR(logger, name_ << " subscribe  error " << error);
     }
     LOG_INFO(logger, name_ << " subcribe " << nCount << "|" << sout << ".");
@@ -387,7 +390,7 @@ void OesMDEngine::unsubscribe(const vector<string>& symbol,SymbolType st) {
             MDS_EXCH_SSE, MDS_SECURITY_TYPE_STOCK, MDS_SUB_MODE_SET,
             MDS_SUB_DATA_TYPE_L1_SNAPSHOT
             | MDS_SUB_DATA_TYPE_L2_SNAPSHOT);
-        if (error != 0) {
+        if (error != 1) {
             LOG_ERROR(logger, name_ << " unsubscribe SSE error " << error);
         }
         subscribeAllMarketData_ = false;
@@ -418,14 +421,14 @@ void OesMDEngine::subscribeTickByTick(const vector<string>& symbol, SymbolType s
             (char *) NULL, (char *) NULL,
             MDS_EXCH_SZSE, MDS_SECURITY_TYPE_STOCK, MDS_SUB_MODE_SET,
             MDS_SUB_DATA_TYPE_L2_TRADE | MDS_SUB_DATA_TYPE_L2_ORDER);
-        if (error != 0) {
+        if (error != 1) {
             LOG_ERROR(logger, name_ << " subscribetbt SZSE error " << error);
         }
         error = this->api_->SubscribeByString(
             (char *) NULL, (char *) NULL,
             MDS_EXCH_SSE, MDS_SECURITY_TYPE_STOCK, MDS_SUB_MODE_SET,
             MDS_SUB_DATA_TYPE_L2_TRADE | MDS_SUB_DATA_TYPE_L2_ORDER);
-        if (error != 0) {
+        if (error != 1) {
             LOG_ERROR(logger, name_ << " subscribetbt SSE error " << error);
         }
         subscribeAllMarketTBT_ = true;
@@ -446,7 +449,7 @@ void OesMDEngine::subscribeTickByTick(const vector<string>& symbol, SymbolType s
             sout.c_str(), (char *) NULL,
             MDS_EXCH_SZSE, MDS_SECURITY_TYPE_STOCK, MDS_SUB_MODE_SET,
             MDS_SUB_DATA_TYPE_L2_TRADE | MDS_SUB_DATA_TYPE_L2_ORDER);
-    if (error != 0) {
+    if (error != 1) {
         LOG_ERROR(logger, name_ << " subscribetbt  error " << error);
     }
     LOG_INFO(logger, name_ << " subcribetbt " << nCount << "|" << sout << ".");
@@ -461,14 +464,14 @@ void OesMDEngine::unsubscribeTickByTick(const vector<string>& symbol, SymbolType
             tmp.c_str(), (char *) NULL,
             MDS_EXCH_SZSE, MDS_SECURITY_TYPE_STOCK, MDS_SUB_MODE_SET,
             MDS_SUB_DATA_TYPE_L2_TRADE | MDS_SUB_DATA_TYPE_L2_ORDER);
-        if (error != 0) {
+        if (error != 1) {
             LOG_ERROR(logger, name_ << " unsubscribe SZSE error " << error);
         }
         error = this->api_->SubscribeByString(
             tmp.c_str(), (char *) NULL,
             MDS_EXCH_SSE, MDS_SECURITY_TYPE_STOCK, MDS_SUB_MODE_SET,
             MDS_SUB_DATA_TYPE_L2_TRADE | MDS_SUB_DATA_TYPE_L2_ORDER);
-        if (error != 0) {
+        if (error != 1) {
             LOG_ERROR(logger, name_ << " unsubscribe SSE error " << error);
         }
         subscribeAllMarketData_ = false;
@@ -608,7 +611,7 @@ string OesMDEngine::fullTicker2Oes(const string& full_symbol) {
     partfull = stringsplit(full_symbol, ' ');
     if (partfull[0] == "SSE") {
         oesticker = partfull[2] + ".SH";
-    } else if (partfull[0] == "SSE") {
+    } else if (partfull[0] == "SZSE") {
         oesticker = partfull[2] + ".SZ";
     }
     return oesticker;

@@ -66,6 +66,14 @@ void*   MdsJsonParser_EncodeRsp(
                 int32 bufSize,
                 const char *pRemoteInfo);
 
+/* 应答消息编码处理（编码为精简的JSON格式） */
+void*   MdsJsonParser_EncodeRspSimplify(
+                SMsgHeadT *pRspHead,
+                const MdsMktRspMsgBodyT *pRspBody,
+                char *pBuf,
+                int32 bufSize,
+                const char *pRemoteInfo);
+
 /* 应答消息解码处理（用于接收服务器端返回的应答消息） */
 MdsMktRspMsgBodyT*
         MdsJsonParser_DecodeRsp(
@@ -73,6 +81,24 @@ MdsMktRspMsgBodyT*
                 const void *pMsgBody,
                 MdsMktRspMsgBodyT *pRspMsgBuf,
                 const char *pRemoteInfo);
+/* -------------------------           */
+
+
+/* ===================================================================
+ * 用于具体数据条目的编码/解码处理的函数声明
+ * =================================================================== */
+
+/* 证券静态信息条目的编码处理 */
+int32   MdsJsonParser_EncodeStockStaticItem(
+                const MdsStockStaticInfoT *pItem,
+                char *pBuf,
+                int32 bufSize);
+
+/* 行情快照条目的编码处理 */
+int32   MdsJsonParser_EncodeSnapshotListItem(
+                const MdsL1SnapshotT *pItem,
+                char *pBuf,
+                int32 bufSize);
 /* -------------------------           */
 
 

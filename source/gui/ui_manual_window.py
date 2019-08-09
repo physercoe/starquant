@@ -339,7 +339,7 @@ class ManualWindow(QtWidgets.QFrame):
         key = self.gateway.currentText()
         if key.startswith("CTP"):
             self.api_widget.setCurrentIndex(0)
-        elif key.startswith("XTP"):
+        elif key.startswith("XTP") or key.startswith("OES"):
             self.api_widget.setCurrentIndex(1)
         else:
             self.api_widget.setCurrentIndex(2)
@@ -776,12 +776,18 @@ class XtpApiWindow(QtWidgets.QFrame):
         self.sub_type.addItems(['MarketData', 'TickByTick', 'OrderBook'])
         self.sym = QtWidgets.QLineEdit()
         self.sym.returnPressed.connect(self.subscribe)
+        self.btn_unsubs = QtWidgets.QPushButton('UnSub')
+        self.btn_unsubs.clicked.connect(self.unsubscribe)
+        self.btn_subs = QtWidgets.QPushButton('Sub')
+        self.btn_subs.clicked.connect(self.subscribe)
 
         xtphboxlayout2 = QtWidgets.QHBoxLayout()
         xtphboxlayout2.addWidget(QtWidgets.QLabel('Ticker'))
         xtphboxlayout2.addWidget(self.sym)
         xtphboxlayout2.addWidget(QtWidgets.QLabel('SubType'))
         xtphboxlayout2.addWidget(self.sub_type)
+        xtphboxlayout2.addWidget(self.btn_subs)
+        xtphboxlayout2.addWidget(self.btn_unsubs)
         xtpapilayout.addRow(xtphboxlayout2)
 
         self.order_type = QtWidgets.QComboBox()
@@ -874,6 +880,24 @@ class XtpApiWindow(QtWidgets.QFrame):
             m.msg_type = MSG_TYPE.MSG_TYPE_SUBSCRIBE_MARKET_DATA
         elif self.sub_type.currentText() == 'TickByTick':
             m.msg_type = MSG_TYPE.MSG_TYPE_SUBSCRIBE_ORDER_TRADE        
+        m.data = ss
+        self.subscribe_signal.emit(m)
+
+    def unsubscribe(self):
+        sectype = self.orderfielddict['sectype'][self.sec_type.currentIndex()]
+        ticker = str(self.sym.text()).upper()
+        fullname = self.exchange.currentText() + ' ' + sectype + \
+            ' ' + ticker + ' 0'
+        ss = SubscribeRequest()
+        ss.sym_type = SYMBOL_TYPE.XTP
+        if not ticker:
+            ss.sym_type = SYMBOL_TYPE.FULL
+        ss.content = fullname        
+        m = Event(EventType.SUBSCRIBE)
+        if self.sub_type.currentText() == "MarketData":
+            m.msg_type = MSG_TYPE.MSG_TYPE_UNSUBSCRIBE
+        elif self.sub_type.currentText() == 'TickByTick':
+            m.msg_type = MSG_TYPE.MSG_TYPE_UNSUBSCRIBE_ORDER_TRADE        
         m.data = ss
         self.subscribe_signal.emit(m)
 

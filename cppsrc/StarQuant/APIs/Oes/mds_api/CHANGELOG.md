@@ -1,13 +1,141 @@
 # MDS-API Change Log    {#changelog}
 
+MDS_0.15.9 / 2019-05-31
+==============================================
+
+  * fix: 修复API无法支持取值大于1024的文件描述符的问题 (因为select的限制, 当文件描述符的取值大于1024时, 会导致堆栈溢出)
+  * fix: 扩大深圳证券业务开关的最大数量（该修改会对之前版本API的延迟统计造成影响）, 以应对行情数据内容的更新
+  * 调整行情数据类型(mdStreamType, eMdsMdStreamTypeT)的取值, 使其可以标识出快照行情的具体数据类型
+     - 该修改会存在兼容性问题, 客户端程序可以通过编译错误来识别需要调整的地方 (如果没有编译错误就不需要调整)
+     - 行情数据类型的取值将尽量与消息类型保持一致, 但以下类型比较特殊：
+       - 深圳成交量统计指标
+       - 上交所 Level1 行情快照-债券
+       - 上交所 Level1 行情快照-基金
+  * 重命名 securityType => mdProductType, 以避免与交易端的证券类型混淆
+    - securityType => mdProductType
+    - eMdsSecurityTypeT => eMdsMdProductTypeT
+  * 删除已经废弃的虚拟集合竞价消息的消息定义和数据类型定义
+  * 调整快照头 MdsMktDataSnapshotHeadT 中的内部字段定义, 将 __origTickSeq 字段拆分为 __origTickSeq + __lastUpdateTime 两个字段 (内部使用的字段, 协议保持兼容)
+  * 增加修改客户端登录密码接口
+    - MdsApi_SendChangePasswordReq
+  * 增加设置/获取客户端自定义的本地IP/MAC地址的接口
+    - MdsApi_SetCustomizedIp
+    - MdsApi_GetCustomizedIp
+    - MdsApi_SetCustomizedMac
+    - MdsApi_GetCustomizedMac
+  * 增加设置/获取客户端自定义的设备序列号的接口
+    - MdsApi_SetCustomizedDriverId
+    - MdsApi_GetCustomizedDriverId
+  * 新增错误码
+    - 1029, 密码未改变
+    - 1034, 密码强度不足
+    - 1036, 未通过黑白名单检查
+
+MDS_0.15.8 / 2019-02-22
+==============================================
+
+  * fix: 修复API无法支持取值大于1024的文件描述符的问题 (因为select的限制, 当文件描述符的取值大于1024时, 会导致堆栈溢出)
+  * 重命名 securityType => mdProductType, 以避免与交易端的证券类型混淆
+    - securityType => mdProductType
+    - eMdsSecurityTypeT => eMdsMdProductTypeT
+  * 删除已经废弃的虚拟集合竞价消息的消息定义和数据类型定义
+  * 调整快照头 MdsMktDataSnapshotHeadT 中的内部字段定义, 将 __origTickSeq 字段拆分为 __origTickSeq + __lastUpdateTime 两个字段 (内部使用的字段, 协议保持兼容)
+  * 增大登录时的网络超时时间, 避免因为系统繁忙等原因导致登录失败
+  * 调整错误描述
+    - 1007, 非服务开放时间
+    - 1022, 尚不支持或尚未开通此业务
+    - 1035, 非法的产品类型
+
+MDS_0.15.7.6 / 2018-11-28
+==============================================
+
+  * 添加批量查询行情快照接口
+    - MdsApi_QuerySnapshotList
+  * 按照配置信息结构体, 增加初始化客户端环境接口
+    - MdsApi_InitAllByCfgStruct
+
+MDS_0.15.7.6 / 2018-11-03
+==============================================
+
+  * 增加查询证券(股票/债券/基金)静态信息的接口
+    - MdsApi_QueryStockStaticInfo
+  * 新增错误码定义
+    - 1035, 非法的产品类型（MDSERR_ILLEGAL_PRODUCT_TYPE）
+
+MDS_0.15.7.5 / 2018-08-31
+==============================================
+
+  * 修复 '返回错误号对应的错误信息 (MdsApi_GetErrorMsg)' 接口, windows平台获取错误信息不准确的问题
+
+MDS_0.15.7.4 / 2018-08-31
+==============================================
+
+  * 增加设置当前线程登录用户名/登录密码的接口
+    - MdsApi_SetThreadUsername
+    - MdsApi_SetThreadPassword
+  * 增加返回当前线程最近一次API调用失败的错误号的接口
+    - OesApi_GetLastError
+    - OesApi_SetLastError
+  * 新增错误号详见 mds_errors.h
+  * Merge MDS_0.15.5.16
+    - fix: 修复当多个线程同时初始化API日志时, 会导致日志信息重复输出的问题
+    - 增加 MdsApi_HasMoreCachedData 接口, 用于返回已经接收到但尚未被回调函数处理的缓存数据长度
+    - 重构 SubscribeByString 接口
+      - 支持订阅所有产品的行情或不订阅任何产品的行情
+      - 支持通过 .SH 或 .SZ 后缀为证券代码指定其所属的交易所
+      - 添加 MdsHelper_SetTickTypeOnSubscribeByString 接口, 以设置SubscribeByString默认使用的数据模式 (TickType)
+      - 增量订阅时, 允许不指定 dataType (小于0) 而继承之前订阅的数据类型
+    - 增加可订阅的数据种类 (DataType), 以支持单独订阅指数行情和期权行情
+      - MDS_SUB_DATA_TYPE_INDEX_SNAPSHOT, 与L1_SNAPSHOT的区别在于, INDEX_SNAPSHOT可以单独订阅指数行情
+      - MDS_SUB_DATA_TYPE_OPTION_SNAPSHOT, 与L1_SNAPSHOT的区别在于, OPTION_SNAPSHOT可以单独订阅期权行情
+    - 增加可以处理压缩过的消息的 WaitOnMsg 接口:
+      - MdsApi_WaitOnMsgCompressible
+      - MdsApi_WaitOnTcpChannelGroupCompressible
+      - 与不带 Compressible 后缀的接口相比, 带 Compressible 后缀的接口会自动检测和处理压缩过的消息, 但也会因此带来微小的性能损失
+
+MDS_0.15.5.16 / 2018-08-31
+==============================================
+
+  * fix: 修复当多个线程同时初始化API日志时, 会导致日志信息重复输出的问题
+  * 增加 MdsApi_HasMoreCachedData 接口, 用于返回已经接收到但尚未被回调函数处理的缓存数据长度
+  * 增加设置当前线程登录用户名/登录密码的接口
+    - MdsApi_SetThreadUsername
+    - MdsApi_SetThreadPassword
+  * 增加返回最近一次API调用失败的错误号的接口
+    - MdsApi_GetLastError
+  * 重构 SubscribeByString 接口
+    - 支持订阅所有产品的行情或不订阅任何产品的行情
+    - 支持通过 .SH 或 .SZ 后缀为证券代码指定其所属的交易所
+    - 添加 MdsHelper_SetTickTypeOnSubscribeByString 接口, 以设置SubscribeByString默认使用的数据模式 (TickType)
+    - 增量订阅时, 允许不指定 dataType (小于0) 而继承之前订阅的数据类型
+  * 增加可订阅的数据种类 (DataType), 以支持单独订阅指数行情和期权行情
+    - MDS_SUB_DATA_TYPE_INDEX_SNAPSHOT, 与L1_SNAPSHOT的区别在于, INDEX_SNAPSHOT可以单独订阅指数行情
+    - MDS_SUB_DATA_TYPE_OPTION_SNAPSHOT, 与L1_SNAPSHOT的区别在于, OPTION_SNAPSHOT可以单独订阅期权行情
+  * 增加可以处理压缩过的消息的 WaitOnMsg 接口:
+    - MdsApi_WaitOnMsgCompressible
+    - MdsApi_WaitOnTcpChannelGroupCompressible
+    - 与不带 Compressible 后缀的接口相比, 带 Compressible 后缀的接口会自动检测和处理压缩过的消息, 但也会因此带来微小的性能损失
+
+MDS_0.15.5.11 / 2018-06-05
+==============================================
+
+  * fix: 扩大Level2增量更新消息支持的最大价位变更数量和委托明细数量, 修复在巨幅波动场景下会因为支持的价位数量不足导致丢失价位信息的BUG 
+    - 如果使用的是旧版本的API, 那么服务器端将不再推送增量更新消息 (只推送全量快照), 以此来保持兼容
+    - 如果需要使用增量更新消息的话, 就需要更新到最新版本的API, 否则不需要更新API
+
+MDS_0.15.5.10 / 2018-05-24
+==============================================
+
+  * 行情订阅条件和订阅配置中增加 '逐笔数据的过期时间类型 tickExpireType' (兼容之前版本)
+  * 增加了一个仅内部使用的行情订阅条件 '待订阅的内部频道号', 前端不需要关心和处理 (兼容之前版本)
 
 MDS_0.15.5.4 / 2018-02-22
 ==============================================
 
-  * 调整接口 MdsApi_InitAll, 增加一个函数参数 (pUdpTickOrderAddrKey)，以支持分别订阅逐笔成交和逐笔委托的行情组播
+  * 调整接口 MdsApi_InitAll, 增加一个函数参数 (pUdpTickOrderAddrKey), 以支持分别订阅逐笔成交和逐笔委托的行情组播
   * Merge MDS_0.15.5.2
     - fix: 解决在Windows下的兼容性问题
-    - 增加接口 MdsApi_GetLastRecvTime、MdsApi_GetLastSendTime，用于获取通道最近接受/发送消息的时间
+    - 增加接口 MdsApi_GetLastRecvTime、MdsApi_GetLastSendTime, 用于获取通道最近接受/发送消息的时间
     - 登录失败时, 可以通过 errno/SPK_GET_ERRNO() 获取到具体失败原因
 
 MDS_0.15.5.2 / 2018-01-29 (解决Windows兼容性问题的API更新版本)
@@ -34,7 +162,7 @@ MDS_0.15.5 / 2017-11-12
   * 新增接口 '获取API的发行版本号 (MdsApi_GetApiVersion)'
   * 默认开启用于统计延时的打点信息, 并将打点信息的时间戳类型改为 timeval32 (STimeval32T) 类型
   * 服务器端删除了对JSON等通信协议等支持, 改为只支持二进制协议
-  * 在行情组播中推送逐笔数据，并划分行情组播信道分别推送L1快照、L2快照和逐笔数据
+  * 在行情组播中推送逐笔数据, 并划分行情组播信道分别推送L1快照、L2快照和逐笔数据
   * 调整接口 MdsApi_InitAll, 以支持同时初始化多个组播通道
   * 增加通道组相关的 API 接口, 以支持同时接收多个连接通道的数据
 
@@ -175,7 +303,7 @@ MDS_0.12.8.1 / 2017-04-24 (API升级指引)
             - 0: 不需要
             - 1: 需要, 即确保客户端可以至少收到一幅已订阅产品的快照行情 (如果有的话)
         - 订阅的数据种类 (dataTypes) @see eMdsSubscribeDataTypeT
-            - 0:      所有
+            - 0:      默认数据种类 (所有)
             - 0x0001: L1快照/指数/期权
             - 0x0002: L2快照
             - 0x0004: L2委托队列
@@ -185,6 +313,7 @@ MDS_0.12.8.1 / 2017-04-24 (API升级指引)
             - 0x0040: L2市场总览（上海）
             - 0x0100: 市场状态（上海）
             - 0x0200: 证券实时状态（深圳）
+            - 0xFFFF: 所有数据
             - 例如, 如果只需要订阅 'L1快照' 和 'L2快照', 则可以将 dataTypes 设置为:
                 - 0x01 | 0x02
         - 请求订阅的行情数据的起始时间 (beginTime)

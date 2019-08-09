@@ -19,7 +19,12 @@
  *
  * 全局报文定义
  *
- * @version 1.0 2009/10/18
+ * @version 1.0         2009/10/18
+ * @version 1.5         2018/05/03
+ *          - 添加新的消息标志:
+ *              - SMSG_MSGFLAG_NESTED       嵌套的组合消息 (消息体由一到多条包含消息头的完整消息组成)
+ *              - SMSG_MSGFLAG_COMPRESSED   消息体已压缩
+ *          - 添加通用的辅助宏定义
  * @since   2009/10/18
  */
 
@@ -58,8 +63,11 @@ typedef enum _eSMsgProtocolType {
  * 与协议类型复用相同的字段，通过高4位/低4位进行区分
  */
 typedef enum _eSMsgFlag {
+    SMSG_MSGFLAG_NONE           = 0x00,     /**< 消息标志-无 */
     SMSG_MSGFLAG_REQ            = 0x00,     /**< 消息标志-请求消息 */
-    SMSG_MSGFLAG_RSP            = 0x50,     /**< 消息标志-应答消息 */
+    SMSG_MSGFLAG_RSP            = 0x50,     /**< 消息标志-应答消息 TODO refactor => 0x10 */
+    SMSG_MSGFLAG_NESTED         = 0x20,     /**< 消息标志-嵌套的组合消息 (消息体由一到多条包含消息头的完整消息组成) */
+    SMSG_MSGFLAG_COMPRESSED     = 0x80,     /**< 消息标志-消息体已压缩 */
 
     SMSG_MSGFLAG_MASK_RSPFLAG   = 0xF0,     /**< 消息标志掩码-请求/应答标志的掩码 */
     SMSG_MSGFLAG_MASK_PROTOCOL  = 0x0F      /**< 消息标志掩码-协议类型的掩码 */
@@ -79,35 +87,84 @@ typedef struct _SMsgHead {
     uint8               msgFlag;            /**< 消息标志 @see eSMsgFlagT */
     uint8               msgId;              /**< 消息代码 */
     uint8               status;             /**< 状态码 */
-    uint8               detailStatus;       /**< 明细状态代码 */
+    uint8               detailStatus;       /**< 明细状态代码 (@note 当消息为嵌套的组合消息时, 复用该字段记录消息体中的消息条数) */
     int32               msgSize;            /**< 消息大小 */
-#ifdef  TRACE_MSG_SENDING_TIME
-    STimeval32T         __sendingTime;      /**< 消息实际发送时间 */
-#endif
 } SMsgHeadT;
 
 
-/* 消息头尾部填充字段的长度 */
-#ifdef  TRACE_MSG_SENDING_TIME
-#   define  __SPK_MSG_HEAD_TAILER_SIZE      (sizeof(STimeval32T))
-#else
-#   define  __SPK_MSG_HEAD_TAILER_SIZE      (0)
-#endif
-
-
-/* 消息头尾部填充字段的初始化值定义 */
-#ifdef  TRACE_MSG_SENDING_TIME
-#   define  __NULLOBJ_SPK_MSG_HEAD_TAILER   \
-            , {0, 0}
-#else
-#   define  __NULLOBJ_SPK_MSG_HEAD_TAILER
-#endif
+/* 消息头尾部填充字段的初始化值定义 (@deprecated 已废弃, 为了兼容而暂时保留) */
+#define __NULLOBJ_SPK_MSG_HEAD_TAILER
 
 
 /* 结构体初始化值定义 */
 #define NULLOBJ_SPK_MSG_HEAD                \
-        0, 0, 0, 0, 0 \
-        __NULLOBJ_SPK_MSG_HEAD_TAILER
+        0, 0, 0, 0, 0
+/* -------------------------           */
+
+
+/* ===================================================================
+ * 通用的辅助宏定义
+ * =================================================================== */
+
+/**
+ * 返回消息的协议类型
+ *
+ * @param   msgFlag 消息标志
+ * @return  消息的协议类型 @see eSMsgProtocolTypeT
+ */
+#define SPK_GET_MSG_PROTOCOL_TYPE(msgFlag)          \
+        ( (msgFlag) & SMSG_MSGFLAG_MASK_PROTOCOL )
+
+
+/**
+ * 返回消息的协议类型是否是'BINARY'类型
+ *
+ * @param   msgFlag 消息标志
+ * @return  TRUE 是'BINARY'类型; FALSE 不是'BINARY'类型
+ */
+#define SPK_IS_MSG_PROTOCOL_BINARY(msgFlag)         \
+        ( SPK_GET_MSG_PROTOCOL_TYPE(msgFlag) == SMSG_PROTO_BINARY )
+
+
+/**
+ * 返回消息的协议类型是否是'JSON'类型
+ *
+ * @param   msgFlag 消息标志
+ * @return  TRUE 是'JSON'类型; FALSE 不是'JSON'类型
+ */
+#define SPK_IS_MSG_PROTOCOL_JSON(msgFlag)           \
+        ( SPK_GET_MSG_PROTOCOL_TYPE(msgFlag) == SMSG_PROTO_JSON )
+/* -------------------------           */
+
+
+/**
+ * 返回消息是否是应答消息
+ *
+ * @param   msgFlag 消息标志
+ * @return  TRUE 是应答消息; FALSE 不是应答消息
+ */
+#define SPK_HAS_MSG_FLAG_RSP(msgFlag)               \
+        ( ((msgFlag) & SMSG_MSGFLAG_RSP) == SMSG_MSGFLAG_RSP )
+
+
+/**
+ * 返回消息是否是嵌套的组合消息 (消息体由一到多条包含消息头的完整消息组成)
+ *
+ * @param   msgFlag 消息标志
+ * @return  TRUE 是嵌套的组合消息; FALSE 不是嵌套的组合消息
+ */
+#define SPK_HAS_MSG_FLAG_NESTED(msgFlag)            \
+        ( ((msgFlag) & SMSG_MSGFLAG_NESTED) == SMSG_MSGFLAG_NESTED )
+
+
+/**
+ * 返回消息是否已压缩
+ *
+ * @param   msgFlag 消息标志
+ * @return  TRUE 已压缩; FALSE 未压缩
+ */
+#define SPK_HAS_MSG_FLAG_COMPRESSED(msgFlag)        \
+        ( ((msgFlag) & SMSG_MSGFLAG_COMPRESSED) == SMSG_MSGFLAG_COMPRESSED )
 /* -------------------------           */
 
 

@@ -33,10 +33,6 @@
 #include    <sutil/platform/spk_platforms.h>
 #include    <sutil/string/spk_string_var.h>
 #include    <sutil/string/spk_multi_field_string.h>
-#include    <sutil/string/_spk_strncasecmp.h>
-#include    <sutil/string/_spk_strpbrk.h>
-#include    <sutil/string/_spk_strsep.h>
-#include    <sutil/string/_spk_strchcmp.h>
 #include    <sutil/platform/spk_platforms.h>
 #include    <sutil/logger/spk_console_masked_log.h>
 
@@ -51,10 +47,21 @@ extern "C" {
  * =================================================================== */
 
 #if defined (__WINDOWS__) || defined (__MINGW__)
-#   define  __spk_strtoll               _strtoi64
+#   if (defined (_MSC_VER) && _MSC_VER < 1400) \
+            || (! defined (_WIN32_WINNT) || _WIN32_WINNT < 0x0600)
+#       define  __spk_strtoll           __SPK_WIN32_strtoll
+#   else
+#       define  __spk_strtoll           _strtoi64
+#   endif
+
+
+/* strtoll */
+int64       __SPK_WIN32_strtoll(const char *pStr, char **ppEndPtr, int base);
+
 
 #else
 #   define  __spk_strtoll               strtoll
+
 
 #endif
 /* -------------------------           */
@@ -152,9 +159,19 @@ BOOL    SStr_IsNumeric(const char *pStr, BOOL isUnitAble);
 int64   SStr_ParseUnittedInteger(const char *pStr);
 
 /*
+ * 转换带单位的数值型字符串为长整型数值 (可指定当字符串为空时的默认值)
+ */
+int64   SStr_ParseUnittedInteger2(const char *pStr, int32 defaultValue);
+
+/*
  * 解析BOOL型字符串
  */
 int32   SStr_ParseBoolean(const char *pStr);
+
+/*
+ * 解析BOOL型字符串 (可指定当字符串为空时的默认值)
+ */
+int32   SStr_ParseBoolean2(const char *pStr, int32 defaultValue);
 /* -------------------------           */
 
 
