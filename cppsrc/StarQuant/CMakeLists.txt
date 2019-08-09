@@ -1,4 +1,5 @@
 include_directories(${StarQuantCpp_SOURCE_DIR}/StarQuant)
+include_directories(${StarQuantCpp_SOURCE_DIR}/StarQuant/APIs/Oes)
 set(StarQuantCppSrc
   ./Common/datastruct.cpp
   ./Common/util.cpp
@@ -15,17 +16,17 @@ set(StarQuantCppSrc
   ./Engine/CtpMDEngine.cpp
   ./Engine/CtpTDEngine.cpp
   ./Engine/XtpMDEngine.cpp
+  ./Engine/OesMDEngine.cpp
  # ./Engine/TapMDEngine.cpp
- # ./Engine/TapTDEngine.cpp
   ./Engine/PaperTDEngine.cpp
   ./Services/dataservice.cpp
   ./Services/starquant_.cpp
   ./Services/tradingengine.cpp
    )
 
-add_library(starquant SHARED ${StarQuantCppSrc})
-set_target_properties(starquant  PROPERTIES COMPILE_FLAGS "-fPIC")
-target_link_libraries(starquant  
+add_library(starquant-dev SHARED ${StarQuantCppSrc})
+set_target_properties(starquant-dev  PROPERTIES COMPILE_FLAGS "-fPIC")
+target_link_libraries(starquant-dev  
   ${Boost_LIBRARIES} 
   ${PYTHON_LIBRARY} 
   ${MONGOC_LIBRARIES} 
@@ -40,10 +41,11 @@ target_link_libraries(starquant
   TapTradeAPI
   xtptraderapi
   xtpquoteapi
+  oes_api
   pthread 
   dl 
   util
   m)
 set(SQSERVER_SRC  ./Services/sqserver.cpp )
-add_executable(apiserver.exe ${SQSERVER_SRC})
-TARGET_LINK_LIBRARIES(apiserver.exe starquant)
+add_executable(testapiserver.exe ${SQSERVER_SRC})
+TARGET_LINK_LIBRARIES(testapiserver.exe starquant-dev)

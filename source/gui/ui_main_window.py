@@ -94,7 +94,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # 1. set up gui windows
         self.setGeometry(50, 50, 850, 650)
         self.setWindowTitle('StarQuant')
-        self.setWindowIcon(QtGui.QIcon("source/gui/image/star.png"))
+        self.setWindowIcon(QtGui.QIcon("source/gui/image/quant_logo.png"))
         self.init_menu()
         self.init_status_bar()
         self.init_central_area()
