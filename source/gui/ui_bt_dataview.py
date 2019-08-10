@@ -506,3 +506,186 @@ class CenteredTextItem(QtGui.QGraphicsTextItem):
             p.fillRect(option.rect, self.brush)
             p.setOpacity(1)
         p.drawText(option.rect, self.text_flags, self.toPlainText())
+
+
+
+class BTTickChart(QtGui.QWidget):
+    signal = QtCore.pyqtSignal(Event)
+
+    long_pen = pg.mkPen('#006000')
+    long_brush = pg.mkBrush('#00ff00')
+    short_pen = pg.mkPen('#600000')
+    short_brush = pg.mkBrush('#ff0000')
+
+    zoomIsDisabled = QtCore.pyqtSignal(bool)
+
+    def __init__(self, symbol: str = ""):
+        super().__init__()
+        self.full_symbol = symbol
+        self.data = []
+        self.layout = QtGui.QVBoxLayout(self)
+        self.setWindowTitle("Tick观察")
+        self.setMinimumWidth(900)
+        self.setMinimumHeight(600)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.chart = None
+        self.charv = None
+        self.plot()
+
+    def reset(self, symbol: str, start: datetime, end: datetime, datasource: str = 'DataBase'):
+
+        self.full_symbol = symbol
+        self.load_tick(start, end, datasource)
+        self.pcurve.setData([t.last_price for t in self.data])
+        self.vcurve.setData([t.volume for t in self.data])
+        self.oicurve.setData([t.open_interest for t in self.data])
+
+    def reload(self):
+        full_symbol = self.symbol_line.text()
+        start = self.start_date_edit.dateTime().toPyDateTime()
+        end = self.end_date_edit.dateTime().toPyDateTime()
+        datasource = self.data_source.currentText()
+        self.reset(full_symbol,start,end,datasource)
+        
+    def plot(self):
+
+
+        self.data_source = QtWidgets.QComboBox()
+        self.data_source.addItems(['Memory', 'DataBase'])
+        self.symbol_line = QtWidgets.QLineEdit("SHFE F RB 1910")
+        self.symbol_line.setMaximumWidth(160)
+        self.start_date_edit = QtWidgets.QDateTimeEdit(QtCore.QDateTime.currentDateTime())
+        self.start_date_edit.setCalendarPopup(True)
+        self.start_date_edit.setDisplayFormat('yyyy-MM-dd HH:mm:ss')
+        self.end_date_edit = QtWidgets.QDateTimeEdit(QtCore.QDateTime.currentDateTime())
+        self.end_date_edit.setCalendarPopup(True)
+        self.end_date_edit.setDisplayFormat('yyyy-MM-dd HH:mm:ss')
+        load_button = QtWidgets.QPushButton("加载")
+        load_button.clicked.connect(self.reload)
+        hbox1 = QtWidgets.QHBoxLayout()
+        hbox1.addWidget(QtWidgets.QLabel('数据来源'))
+        hbox1.addWidget(self.data_source)
+        hbox1.addWidget(QtWidgets.QLabel('合约全称'))
+        hbox1.addWidget(self.symbol_line)
+        hbox1.addWidget(QtWidgets.QLabel('开始日期'))
+        hbox1.addWidget(self.start_date_edit)
+        hbox1.addWidget(QtWidgets.QLabel('结束日期'))
+        hbox1.addWidget(self.end_date_edit)
+        hbox1.addWidget(load_button)
+        
+        
+        self.layout.addLayout(hbox1)
+
+
+        self.xaxis = DateAxis2(self.data, orientation='bottom')
+        self.xaxis.setStyle(
+            tickTextOffset=7, textFillLimits=[(0, 0.80)], showValues=True
+        )
+        self.oicurve = pg.PlotCurveItem(
+            [tick.open_interest for tick in self.data], pen='r')
+        self.vcurve = pg.PlotCurveItem(
+            [tick.volume for tick in self.data], pen='g')
+        self.pcurve = pg.PlotCurveItem(
+            [tick.last_price for tick in self.data], pen='w')            
+        self.init_chart()
+        self.init_chart_item()
+
+    def load_tick(self, start: datetime, end: datetime, datasource: str = 'DataBase'):
+        symbol, exchange = extract_full_symbol(self.full_symbol)
+
+        if start > end:
+            QtWidgets.QMessageBox().information(
+                None, 'Info', 'End time before Start time!', QtWidgets.QMessageBox.Ok)
+            return
+
+        ticks = []
+        if datasource == 'DataBase':
+            ticks = database_manager.load_tick_data(
+                symbol=symbol,
+                exchange=exchange,
+                start=start,
+                end=end,
+            )
+        elif datasource == 'Memory':
+            startix = 0
+            endix = 0
+            totalticklist = sqglobal.history_tick[self.full_symbol]
+            if not totalticklist:
+                QtWidgets.QMessageBox().information(
+                    None, 'Info', 'No data in memory!', QtWidgets.QMessageBox.Ok)
+                return
+            totalticks = len(totalticklist)
+            for i in range(totalticks):
+                if totalticklist[i].datetime.date() < start:
+                    continue
+                startix = i
+                break
+            for i in reversed(range(totalticks)):
+                if totalticklist[i].datetime.date() > end:
+                    continue
+                endix = i
+                break
+            endix = min(endix + 1, totalticks)
+            ticks = totalticklist[startix:endix]
+
+        for i in reversed(range(1,len(ticks))):
+            ticks[i].open_interest -= ticks[i-1].open_interest
+            ticks[i].volume -= ticks[i-1].volume
+        self.data.clear()
+        self.data.extend(ticks[1:])
+
+
+    def init_chart_item(self):
+        pass
+        # self.chart.addItem(self.klineitem)
+        # self.chartv.addItem(self.volumeitem)
+
+
+    def init_chart(self):
+        self.splitter = QtGui.QSplitter(QtCore.Qt.Vertical)
+        self.splitter.setHandleWidth(0)
+        self.layout.addWidget(self.splitter)
+        self.chart = pg.PlotWidget(
+            parent=self.splitter,
+            axisItems={'bottom': self.xaxis, 'right': PriceAxis()},
+            enableMenu=True,
+        )
+        self.chart.getPlotItem().setContentsMargins(0, 0, 20, 0)
+        self.chart.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
+        self.chart.hideAxis('left')
+        self.chart.showAxis('right')
+        self.chart.showGrid(x=True, y=True)
+        self.chart.addItem(self.pcurve)
+
+        self.chartv = pg.PlotWidget(
+            parent=self.splitter,
+            axisItems={'bottom': self.xaxis,
+                       'right': VolumeAxis(), 'left': OpenInterestAxis()},
+            enableMenu=True,
+        )
+        self.chartv.getPlotItem().setContentsMargins(0, 0, 15, 15)
+        self.chartv.setFrameStyle(
+            QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
+        # self.chartv.hideAxis('left')
+        self.chartv.showAxis('left')
+        self.chartv.showAxis('right')
+        self.chartv.setXLink(self.chart)
+        self.chartv.addItem(self.vcurve)
+
+        self.chartoi = pg.ViewBox()
+        p1 = self.chartv.getPlotItem()
+        p1.scene().addItem(self.chartoi)
+        p1.getAxis('left').linkToView(self.chartoi)
+        self.chartoi.setXLink(p1)
+        p1.vb.sigResized.connect(self.updateViews)
+
+        self.chartoi.addItem(self.oicurve)
+
+    def updateViews(self):
+        p1 = self.chartv.getPlotItem()
+        p2 = self.chartoi
+        p2.setGeometry(p1.vb.sceneBoundingRect())
+        p2.linkedViewChanged(p1.vb, p2.XAxis)
+
+
+
