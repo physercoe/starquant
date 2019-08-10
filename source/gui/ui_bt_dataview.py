@@ -2,7 +2,7 @@ import source.common.sqglobal as sqglobal
 import sys
 import numpy as np
 from PyQt5 import QtCore, QtWidgets, QtGui
-from datetime import datetime
+from datetime import datetime, timedelta
 import pyqtgraph as pg
 
 from .ui_basic import CandlestickItem, VolumeItem
@@ -534,11 +534,19 @@ class BTTickChart(QtGui.QWidget):
 
     def reset(self, symbol: str, start: datetime, end: datetime, datasource: str = 'DataBase'):
 
+        if end - start > timedelta(minutes=120):
+            QtWidgets.QMessageBox().information(
+                None, 'Info', 'Too many minutes to show, please ensure interval less than 120min !', QtWidgets.QMessageBox.Ok)
+            return
         self.full_symbol = symbol
         self.load_tick(start, end, datasource)
         self.pcurve.setData([t.last_price for t in self.data])
         self.vcurve.setData([t.volume for t in self.data])
         self.oicurve.setData([t.open_interest for t in self.data])
+        self.apcurve.setData([t.ask_price_1 for t in self.data])
+        self.bpcurve.setData([t.bid_price_1 for t in self.data])
+        self.avcurve.setData([t.ask_volume_1 for t in self.data])
+        self.bvcurve.setData([t.bid_volume_1 for t in self.data])
 
     def reload(self):
         full_symbol = self.symbol_line.text()
@@ -586,7 +594,16 @@ class BTTickChart(QtGui.QWidget):
         self.vcurve = pg.PlotCurveItem(
             [tick.volume for tick in self.data], pen='g')
         self.pcurve = pg.PlotCurveItem(
-            [tick.last_price for tick in self.data], pen='w')            
+            [tick.last_price for tick in self.data], pen='w')
+        self.apcurve = pg.PlotCurveItem(
+            [tick.ask_price_1 for tick in self.data], pen='r')
+        self.bpcurve = pg.PlotCurveItem(
+            [tick.bid_price_1 for tick in self.data], pen='g') 
+        self.avcurve = pg.PlotCurveItem(
+            [tick.ask_volume_1 for tick in self.data], pen='#FF6600')
+        self.bvcurve = pg.PlotCurveItem(
+            [tick.bid_volume_1 for tick in self.data], pen='#0099CC')
+
         self.init_chart()
         self.init_chart_item()
 
@@ -647,15 +664,27 @@ class BTTickChart(QtGui.QWidget):
         self.layout.addWidget(self.splitter)
         self.chart = pg.PlotWidget(
             parent=self.splitter,
-            axisItems={'bottom': self.xaxis, 'right': PriceAxis()},
+            axisItems={'bottom': self.xaxis, 'right': PriceAxis(),'left': OpenInterestAxis()},
             enableMenu=True,
         )
         self.chart.getPlotItem().setContentsMargins(0, 0, 20, 0)
         self.chart.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
-        self.chart.hideAxis('left')
+        self.chart.showAxis('left')
         self.chart.showAxis('right')
         self.chart.showGrid(x=True, y=True)
         self.chart.addItem(self.pcurve)
+        self.chart.addItem(self.apcurve)
+        self.chart.addItem(self.bpcurve)
+
+        self.chartab = pg.ViewBox()
+        p2 = self.chart.getPlotItem()
+        p2.scene().addItem(self.chartab)
+        p2.getAxis('left').linkToView(self.chartab)
+        self.chartab.setXLink(p2)
+        p2.vb.sigResized.connect(self.updateViews)
+
+        self.chartab.addItem(self.avcurve)
+        self.chartab.addItem(self.bvcurve)        
 
         self.chartv = pg.PlotWidget(
             parent=self.splitter,
@@ -687,5 +716,9 @@ class BTTickChart(QtGui.QWidget):
         p2.setGeometry(p1.vb.sceneBoundingRect())
         p2.linkedViewChanged(p1.vb, p2.XAxis)
 
+        p3 = self.chart.getPlotItem()
+        p4 = self.chartab
+        p4.setGeometry(p3.vb.sceneBoundingRect())
+        p4.linkedViewChanged(p3.vb, p4.XAxis)
 
 
