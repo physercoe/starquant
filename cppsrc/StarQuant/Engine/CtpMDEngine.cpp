@@ -271,6 +271,7 @@ bool CtpMDEngine::connect() {
 }
 
 bool CtpMDEngine::disconnect() {
+    inconnectaction_ = true;
     if (estate_ == LOGIN_ACK) {
         LOG_INFO(logger, name_ << "  logouting ..");
         CThostFtdcUserLogoutField logoutField = CThostFtdcUserLogoutField();

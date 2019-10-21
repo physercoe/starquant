@@ -54,7 +54,7 @@ namespace StarQuant {
 
     void CConfig::readConfig() {
 //  reset maps
-        _gatewaymap.clear();
+        // _gatewaymap.clear();
 
 // read server config
         std::lock_guard<mutex> g(readlock_);
