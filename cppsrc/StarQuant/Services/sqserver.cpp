@@ -26,7 +26,7 @@ using namespace StarQuant;
 
 int32_t main(int32_t argc, char** argv) {
     std::cout << "StarQuant Server.\n"<< "Version: 1.0beta,"
-        << "Build:" << __DATE__ << __TIME__ <<endl;
+        << "Build:" << __DATE__ << "  " << __TIME__ <<endl;
 
     tradingengine engine;
     std::cout << "Type Ctrl-C to exit\n\n";
