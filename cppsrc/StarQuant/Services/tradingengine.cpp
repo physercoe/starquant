@@ -118,45 +118,49 @@ int32_t tradingengine::cronjobs(bool force) {
 // check gshutdown
     while (!gShutdown) {
         msleep(1 * 1000);
-// switch day, at 20:30 everyday,  reset td engine, needconfirmation
+
         time(&timer);
         localtime_r(&timer, &tm_info);
         // at weekend do nothing 0=sunday 6=saturday
-        if ((tm_info.tm_wday == 0) || (tm_info.tm_wday == 6)) {
+        if (tm_info.tm_wday == 0) {
             continue;
         }
-        if (tm_info.tm_hour == 20 && tm_info.tm_min == 30 && tm_info.tm_sec == 0) {
-            std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_SWITCH_TRADING_DAY);
-            msg_relay_->send(pmsg);
-            RiskManager::instance().switchday();
-        }
-// auto connect at 8:45, 1:15, 20:45
-        if (tm_info.tm_hour == 8 && tm_info.tm_min == 45 && tm_info.tm_sec == 0) {
-            std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_ENGINE_CONNECT);
-            msg_relay_->send(pmsg);
-        }
-        if (tm_info.tm_hour == 13 && tm_info.tm_min == 15 && tm_info.tm_sec == 0) {
-            std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_ENGINE_CONNECT);
-            msg_relay_->send(pmsg);
-        }
-        if (tm_info.tm_hour == 20 && tm_info.tm_min == 45 && tm_info.tm_sec == 0) {
-            std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_ENGINE_CONNECT);
-            msg_relay_->send(pmsg);
-        }
-// auto reset at 16:00,2:35
-        if (tm_info.tm_hour == 16 && tm_info.tm_min == 0 && tm_info.tm_sec == 0) {
-            std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_ENGINE_RESET);
-            msg_relay_->send(pmsg);
-        }
+        // send timer msg to all engine
+        std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_TIMER);
+        msg_relay_->send(pmsg);
+        // flow count reset
+        RiskManager::instance().resetflow();
+        // auto reset at 2:35
         if (tm_info.tm_hour == 2 && tm_info.tm_min == 35 && tm_info.tm_sec == 0) {
             std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_ENGINE_RESET);
             msg_relay_->send(pmsg);
         }
-// send timer msg to all engine
-        std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_TIMER);
-        msg_relay_->send(pmsg);
-// flow count reset
-        RiskManager::instance().resetflow();
+        if (tm_info.tm_wday != 6) {
+            // auto reset at 16:00
+            if (tm_info.tm_hour == 16 && tm_info.tm_min == 0 && tm_info.tm_sec == 0) {
+                std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_ENGINE_RESET);
+                msg_relay_->send(pmsg);
+            }
+            // switch day, at 20:30 everyday,  reset td engine, needconfirmation
+            if (tm_info.tm_hour == 20 && tm_info.tm_min == 30 && tm_info.tm_sec == 0) {
+                std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_SWITCH_TRADING_DAY);
+                msg_relay_->send(pmsg);
+                RiskManager::instance().switchday();
+            }
+            // auto connect at 8:45, 13:15, 20:45
+            if (tm_info.tm_hour == 8 && tm_info.tm_min == 45 && tm_info.tm_sec == 0) {
+                std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_ENGINE_CONNECT);
+                msg_relay_->send(pmsg);
+            }
+            if (tm_info.tm_hour == 13 && tm_info.tm_min == 15 && tm_info.tm_sec == 0) {
+                std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_ENGINE_CONNECT);
+                msg_relay_->send(pmsg);
+            }
+            if (tm_info.tm_hour == 20 && tm_info.tm_min == 45 && tm_info.tm_sec == 0) {
+                std::shared_ptr<MsgHeader> pmsg = make_shared<MsgHeader>(DESTINATION_ALL,"0", MSG_TYPE_ENGINE_CONNECT);
+                msg_relay_->send(pmsg);
+            }
+        }
     }
     // ctrl-c
     if (force) {
