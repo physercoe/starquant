@@ -63,6 +63,8 @@ CMsgqNanomsg::CMsgqNanomsg(MSGQ_PROTOCOL protocol, string url, bool binding)
     } else if (protocol_ == MSGQ_PROTOCOL::PUB) {
         sock_ = nn_socket(AF_SP, NN_PUB);
         assert(sock_ >= 0);
+        int32_t sndbuff = 1024*1024*256;
+        assert(nn_setsockopt(sock_, NN_SOL_SOCKET, NN_SNDBUF, &sndbuff, sizeof(sndbuff)) >=0 );
         eid_ = nn_bind(sock_, endpoint_.c_str());
     } else if (protocol_ == MSGQ_PROTOCOL::SUB) {
         sock_ = nn_socket(AF_SP, NN_SUB);

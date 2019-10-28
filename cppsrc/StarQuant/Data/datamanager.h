@@ -23,13 +23,13 @@
 #include <map>
 #include <regex>
 
-#define CEREAL_RAPIDJSON_NAMESPACE creal_rapidjson
-#include <cereal/types/unordered_map.hpp>
-#include <cereal/types/memory.hpp>
-#include <cereal/archives/json.hpp>
-#include <cereal/types/vector.hpp>
-#include <cereal/types/string.hpp>
-#include <cereal/types/map.hpp>
+// #define CEREAL_RAPIDJSON_NAMESPACE creal_rapidjson
+// #include <cereal/types/unordered_map.hpp>
+// #include <cereal/types/memory.hpp>
+// #include <cereal/archives/json.hpp>
+// #include <cereal/types/vector.hpp>
+// #include <cereal/types/string.hpp>
+// #include <cereal/types/map.hpp>
 
 
 using std::string;
