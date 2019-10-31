@@ -16,11 +16,11 @@ Welcome to StarQuant
 
 **StarQuant**(中文名：易数交易系统)是一个轻量的、面向个人( 普通）用户的综合量化交易回测系统，目前主要用于期货期权程序化交易，后期会考虑加入股票交易的功能。
 
-当前进展：完成1.0版本alpha版本，在实盘测试中：
+当前进展：完成1.0版本beta版本，在实盘测试中：
 
 1）对于流动性好，盘口大的品种非大笔交易下tick级回测与实盘的成交时间和价位一致；
 
-2）无人工干预 7*24h连续工作，api柜台自动重连断开，行情自动记录，策略自动初始化、开始和停止；
+2）无人工干预阿里云/腾讯云下7*24h连续工作，api柜台自动重连断开，行情自动记录，策略自动初始化、开始和停止；
 
 
 
@@ -35,7 +35,7 @@ Welcome to StarQuant
 * 支持回测参数优化筛选功能，可以多进程参数优化和遗传算法优化;可以批量回测不同合约，方便将不同主力合约一起回测；
 * 支持实盘行情订阅和数据存储（tick,bar），类似vnpy的data recorder, 单独进程模式，同时也具有vnpy的csv loader的功能，支持bar和tick数据导入；支持从多个数据源下载数据（RQData，Tushare，JoinQuant）；
 * 支持基于实盘行情数据的模拟交易（Paper brokerage，简单的撮合），方便实盘前的测试；
-* 采用Qt可视化界面作为前端，方便管理，监控和操作，相关监控信息均有记录，可以导出为csv文件；可以查看实时k线数据；可以查看合约基本信息；可以选择性显示/隐藏指定视图控件单元，调整视图布局；
+* 采用Qt可视化界面作为前端，方便管理，监控和操作，相关监控信息均有记录，可以导出为csv文件；可以查看实时k线数据；可以查看合约基本信息；可以选择性显示/隐藏指定视图控件单元，调整视图布局；也可以无图形界面作为后台进程运行，通过脚本发送相关控制管理命令；
 *  支持微信实时推送和接收信息（itchat 或Server酱等方式)
 *  Linux，windows跨平台支持；
 
@@ -51,17 +51,17 @@ Welcome to StarQuant
 本系统在开发过程中参考了已有的开源软件vnpy,kungfu，EliteQuant等。
 开发环境：
 
-(1) Manjaro（arch，Linux内核4.14)，python 3.7.2，gcc 9.1
-
-(2) windows 10测试通过，visual studio 14 2015 
+(1) Manjaro（arch，Linux内核4.14)，anaconda3(python 3.7)，gcc 9.1；
+(2) Ubuntu18.04，gcc7.4, anaconda3(python 3.7)
+(3) windows 10，visual studio 14 2015 
 
 第三方库：
 boost 1.69
-nanomsg
-log4cplus
+nanomsg1.15
+log4cplus2.04
 yamlcpp
 libmongoc-1.0
-fmt
+fmt5.3
 
 python依赖psutil，pyyaml,pyqt,qdarkstyle等包。
 
@@ -111,7 +111,7 @@ python 采用flake8检查，autopep8格式化；
 
 ## TODO
 
-本系统完成了版本1.0的alpha版本，正在实盘测试中。
+本系统完成了版本1.0的beta版本，正在实盘测试中，后续会加入共享内存通信方式，方便直接落地全部交易数据；
 
 
 
