@@ -1188,7 +1188,8 @@ class AboutWidget(QtWidgets.QDialog):
         text = u"""
             StarQuant
             易数交易系统
-            Lightweight Algorithmic Trading System            
+            Lightweight Algorithmic Trading System
+            Version:1.0rc1 Time:20200501            
             Language: C++,Python
             Contact: whereilive@gmail.com
             License：MIT
