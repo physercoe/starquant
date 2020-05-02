@@ -72,14 +72,11 @@ Welcome to StarQuant
 (3) Windows 10 ,vs2015
 
 第三方库：
-boost 1.69
-nanomsg 1.1.5
-log4cplus 2.04或spdlog
-yamlcpp
-libmongoc-1.0
-fmt5.3
+(1)需要系统安装:boost,libmongoc-1.0
 
-python依赖psutil，pyyaml,pyqt,qdarkstyle等包。
+(2)需要系统安装或者自行编译cppsrc/ 下的 nanomsg 1.0, log4cplus 2.04,yaml-cpp,fmt5.3, ta-lib,
+
+(3)python依赖psutil，pyyaml, pyqt, qdarkstyle等包。
 
 ## 运行
 
