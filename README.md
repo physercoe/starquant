@@ -122,8 +122,7 @@ python 采用flake8检查，autopep8格式化；
 ![ ](demos/bt3.png  "普通版回测结果总体展示")
 ![ ](demos/btpro1.png  "定制版批量回测")
 ![ ](demos/btpro2.png  "定制版回测结果筛选，k线、指标分析")
-![ ](demos/btpro3.png  "定制版tick分析，组合价差分析")
-![ ](demos/proload.png  "定制版回测结果读取，脚本回测")![ ](demos/btscript.png  "定制版回测结果读取，脚本回测")
+![ ](demos/Peek 2020-11-01 09-57.gif.png"pro版回测演示")
 ![ ](demos/ctlpro.png  "定制版c++命令行界面")
 ## TODO
 
