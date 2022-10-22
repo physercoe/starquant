@@ -16,7 +16,13 @@ Welcome to StarQuant
 
 **StarQuant**(中文名：易数交易系统)是一个轻量的、面向个人( 普通）用户的综合量化交易回测系统，目前主要用于期货期权程序化交易（CTP接口，在实盘测试中），也支持股票交易功能（中泰xtp，宽睿oes接口，待测试和完善）。
 
-当前进展：完成1.0版本beta版本，在ctp实盘测试中：
+
+
+
+当前进展
+2022.10 更新回测版，见backtest 分支，支持了Pro版中回测的常用功能。
+
+2020.12：完成1.0版本beta版本，在ctp实盘测试中：
 
 1）对于流动性好，盘口大的品种非大笔交易下tick级回测与实盘的成交时间和价位一致；
 
@@ -39,7 +45,7 @@ Welcome to StarQuant
 *  支持微信实时推送和接收信息（itchat 或Server酱等方式)
 *  Linux，windows跨平台支持；
 
-注：目前开源的代码具备了从回测到实盘交易的所有基础功能，也展示了系统的原型和框架，方便在此基础上二次开发和定制，定制化的代码(pro版)目前尚未开源，后期如果star数量较多时（1k以上）可以考虑开源。
+
 
 ## PRO版特点
 * 回测支持任意多个标的；支持不同策略组合的多进程并行批量回测；回测结果可以按指定条件筛选；
@@ -53,7 +59,7 @@ Welcome to StarQuant
 * 支持tick级别标的组合价格（价差）分析和指标分析, 支持tick数据分析和指标显示
 * 实盘支持共享内存通信方式，延迟在10微秒级别，支持10万/秒的吞吐量；
 
-
+注：目前开源的代码具备了从回测到实盘交易的所有基础功能，也展示了系统的原型和框架，方便在此基础上二次开发和定制，定制化的代码(pro版)目前开源了部分功能，部分功能暂未开源，后期如果star数量较多时（1k以上）可以考虑开源。
 ## 系统架构
 
 系统主框架基于c++实现，采用c-s架构，回测具有事件驱动模式和向量化两种模式，采用模块化松耦合设计，服务端的行情，交易、数据记录为单独线程，服务端与gui界面、策略之间的进程通信采用消息队列方式（nanomsg）或共享内存（基于功夫易筋经），行情数据可以通过相关端口以消息形式转发到策略进程，策略下单操作也通过相关端口将指令转发到服务端，然后调用相关柜台api，行情api支持CTP，TAP等，数据可以记录到本地（csv文件或Mongodb数据库），策略可以采用python或c++实现。GUI是基于PyQt5，支持手动交易，策略交易，委托持仓账号等信息查看。
@@ -66,18 +72,18 @@ Welcome to StarQuant
 本系统在开发过程中参考了已有的开源软件vnpy,kungfu等。
 主要开发环境：
 
-(1) Manjaro（arch，Linux内核4.14)，python 3.7.2，gcc 9.1
+(1) Manjaro（arch，Linux内核4.14)，python 3.8，gcc 9
 
-(2) Ubuntu18.04, 
+(2) Ubuntu20.04, 
 
-(3) Windows 10 ,vs2015
+(3) Windows 10 ,vs2019
 
 第三方库：
 (1)需要系统安装:boost,libmongoc-1.0
 
 (2)需要系统安装或者自行编译cppsrc/ 下的 nanomsg 1.0, log4cplus 2.04,yaml-cpp,fmt5.3, ta-lib,
 
-(3)python依赖psutil，pyyaml, pyqt, qdarkstyle等包。
+(3)python依赖psutil，pyyaml, pyqt, qdarkstyle等包，见backtest分支下的requirement.txt
 
 ## 运行
 
@@ -117,14 +123,12 @@ python 采用flake8检查，autopep8格式化；
 
 ## Demo
 -----------
-![ ](demos/demopro.gif "pro版回测演示1")
+![ ](demos/demopro.gif "回测演示1")
 ![ ](demos/live3.png  "普通版实盘交易模式展示")
-![ ](demos/live5.png  "视图布局选择")
 ![ ](demos/livepro.png  "定制版实盘交易展示")
 ![ ](demos/btpro4.png  "定制版回测订单流分析展示")
-![ ](demos/btpro1.png  "定制版批量回测")
-![ ](demos/btpro2.png  "定制版回测结果筛选，k线、指标分析")
-![ ](demos/ctlpro.png  "定制版c++命令行界面")
+![ ](demos/btpro1.png  "批量回测")
+![ ](demos/btpro2.png  "回测结果筛选，k线、指标分析")
 ## TODO
 
 本系统完成了版本1.0的beta版本，正在实盘测试中，同时在完善c++回测、向量化回测，cli界面。

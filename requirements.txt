@@ -1,0 +1,30 @@
+PyQt5
+arctic
+sklearn
+statsmodels
+toolz
+pyqtgraph
+qdarkstyle
+peewee
+pymysql
+mongoengine
+matplotlib
+rqdatac 
+deap
+dask
+numba
+psutil
+futu-api
+ta-lib # ./configure --prefix=/usr make make install
+# the following packages is not required to mannual installed for backtest due to installed by other packages or not used
+pyyaml # dask
+numpy  # arctic
+pandas # arctic
+PyQtWebEngine #
+nanomsg # modified version, l -> i
+itchat  # 
+ray  #
+seaborn #
+requests #
+websocket-client #
+psycopg2-binary # (need postgresql or psycopg2-binary)
