@@ -1,0 +1,47 @@
+#------------------ System Setting --------------#
+mode: backtest      #trade, backtest
+filetoreplay: test.txt
+tickinterval: 1000
+brokerdelay: 100
+msgq: nanomsg           # nanomsg
+log_dir: ./log
+data_dir: ./data
+dbaddr: mongodb://172.128.130.114:27017
+dbname: ftick
+
+# backtest conf
+using_remote: false
+ray_addr: 192.168.1.4:11164
+
+#client conf
+language: cn           # en, cn
+theme: dark           # dark, fusion(for high resolution)
+
+
+
+# trade conf
+cpuaffinity: false
+
+serverpub_url: tcp://127.0.0.1:55555
+serversub_url: tcp://127.0.0.1:55556
+serverpull_url: tcp://127.0.0.1:55557
+serverpush_url: tcp://127.0.0.1:55558
+
+autoconnect: true
+autoqry: false
+
+risk:
+  check: true
+  sizeperorder: 1
+  cashperorder: 20000.0
+  ordercount: 50
+  cash: 50000.0
+  ordersize: 20
+  ordercountpersec: 2
+
+#------------------ End of System ---------------#
+
+gateway:
+  - CTP.MD
+#--------------------api setting---------------------#
+
