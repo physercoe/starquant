@@ -2,6 +2,7 @@ include_directories(${StarQuantCpp_SOURCE_DIR}/StarQuant)
 set(StarQuantCppSrc
   ./Common/datastruct.cpp
   ./Common/util.cpp
+  ./Common/fxmacrodata.cpp
   ./Common/logger.cpp
   ./Common/config.cpp
   ./Common/msgq.cpp
