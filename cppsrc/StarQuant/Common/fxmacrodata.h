@@ -16,8 +16,10 @@ namespace StarQuant {
 class FxMacroDataClient {
  public:
     using QueryParams = std::vector<std::pair<std::string, std::string>>;
+    using Headers = std::vector<std::pair<std::string, std::string>>;
     using Transport = std::function<std::string(const std::string& method,
                                                 const std::string& url,
+                                                const Headers& headers,
                                                 const std::string& body)>;
 
     explicit FxMacroDataClient(std::string api_key = "",
@@ -60,6 +62,8 @@ class FxMacroDataClient {
                         std::string body = "") const;
 
     std::string buildUrl(const std::string& path, QueryParams params = {}) const;
+    // X-API-Key header for the configured key; empty when no key is set.
+    Headers buildHeaders() const;
 
  private:
     std::string api_key_;

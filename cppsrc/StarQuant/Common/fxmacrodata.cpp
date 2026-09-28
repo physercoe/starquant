@@ -58,10 +58,6 @@ FxMacroDataClient::FxMacroDataClient(std::string api_key,
       transport_(std::move(transport)) {}
 
 std::string FxMacroDataClient::buildUrl(const std::string& path, QueryParams params) const {
-    if (!api_key_.empty()) {
-        params.push_back({"api_key", api_key_});
-    }
-
     std::ostringstream url;
     url << base_url_ << ensureLeadingSlash(path);
     char separator = '?';
@@ -72,6 +68,14 @@ std::string FxMacroDataClient::buildUrl(const std::string& path, QueryParams par
     return url.str();
 }
 
+FxMacroDataClient::Headers FxMacroDataClient::buildHeaders() const {
+    Headers headers;
+    if (!api_key_.empty()) {
+        headers.push_back({"X-API-Key", api_key_});
+    }
+    return headers;
+}
+
 std::string FxMacroDataClient::send(const std::string& method,
                                     const std::string& path,
                                     QueryParams params,
@@ -79,7 +83,7 @@ std::string FxMacroDataClient::send(const std::string& method,
     if (!transport_) {
         throw std::runtime_error("FxMacroDataClient requires a transport callback");
     }
-    return transport_(method, buildUrl(path, std::move(params)), body);
+    return transport_(method, buildUrl(path, std::move(params)), buildHeaders(), body);
 }
 
 std::string FxMacroDataClient::dataCatalogue(const std::string& currency,
