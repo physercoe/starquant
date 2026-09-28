@@ -22,6 +22,10 @@ class FxMacroDataClient {
                                                 const Headers& headers,
                                                 const std::string& body)>;
 
+    // List endpoints (announcements, predictions, forex, cot, commodity) return
+    // 20 rows by default and at most 100 per request, newest first. Pass
+    // {"limit", "100"} and {"offset", "..."} in params and follow
+    // pagination.next_offset while pagination.has_more is true.
     explicit FxMacroDataClient(std::string api_key = "",
                                std::string base_url = "https://api.fxmacrodata.com/v1",
                                Transport transport = nullptr);
